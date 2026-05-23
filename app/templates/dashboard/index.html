@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<section class="page-banner dashboard-banner">
+    <div class="container dashboard-hero">
+        <div>
+            <p class="eyebrow">Delivery overview</p>
+            <h1>Welcome, {{ user.full_name }}.</h1>
+            <p>Use this snapshot to see where the team is moving well and where you may need to step in.</p>
+        </div>
+        <div class="profile-chip">
+            <span>{{ user_initials }}</span>
+            <div>
+                <strong>{{ user.username }}</strong>
+                <p>{{ user.email }}</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="card-grid card-grid-4">
+            {% for stat in stats %}
+            <article class="card metric-surface">
+                <p class="metric-label">{{ stat.label }}</p>
+                <h2 class="metric-value-large">{{ stat.value }}</h2>
+                <p class="section-copy">{{ stat.detail }}</p>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="section section-alt">
+    <div class="container dashboard-grid">
+        <div class="surface">
+            <div class="surface-heading">
+                <div>
+                    <p class="eyebrow">Projects</p>
+                    <h2>Priority workstreams</h2>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>Project</th>
+                            <th>Status</th>
+                            <th>Progress</th>
+                            <th>Lead</th>
+                            <th>Due</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for project in projects %}
+                        <tr>
+                            <td>{{ project.name }}</td>
+                            <td><span class="status-pill">{{ project.status }}</span></td>
+                            <td>{{ project.progress }}%</td>
+                            <td>{{ project.lead }}</td>
+                            <td>{{ project.due_date }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-stack">
+            <article class="surface">
+                <p class="eyebrow">Right now</p>
+                <h2>Recent signals</h2>
+                <ul class="list-check">
+                    {% for item in activity %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </article>
+            <article class="surface">
+                <p class="eyebrow">Suggested next step</p>
+                <h2>Review the "Needs input" project first.</h2>
+                <p class="section-copy">
+                    That workstream has enough progress to matter, but not enough clarity to stay on
+                    course without a quick leadership decision.
+                </p>
+            </article>
+        </div>
+    </div>
+</section>
+{% endblock %}
