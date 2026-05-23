@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import sys
 import os
 
@@ -16,15 +15,4 @@ def index():
 
 if __name__ == '__main__':
     app.run(debug=True)
-=======
-import os
 
-from app import create_app
-
-
-app = create_app()
-
-
-if __name__ == "__main__":
-    app.run(debug=os.environ.get("FLASK_DEBUG") == "1")
->>>>>>> 97de5e1540905497f4b5c931e91c6ee8dc690f79
