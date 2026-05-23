@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="container hero-grid">
+        <div class="hero-copy">
+            <p class="eyebrow">Project delivery without the noise</p>
+            <h1>Give your team one place to plan, communicate, and move work forward.</h1>
+            <p class="lede">
+                Bhetam brings together project status, client updates, and team coordination so
+                everyone can see what matters next.
+            </p>
+            <div class="button-row">
+                <a class="button button-secondary" href="{{ url_for('auth.register') }}">Create an account</a>
+                <a class="button button-ghost" href="{{ url_for('auth.services') }}">See what is included</a>
+            </div>
+            <ul class="list-check">
+                <li>Clear progress snapshots for delivery teams</li>
+                <li>Simple collaboration spaces for ongoing work</li>
+                <li>Fast onboarding for new contributors and clients</li>
+            </ul>
+        </div>
+        <div class="hero-panel surface">
+            <p class="eyebrow">Weekly pulse</p>
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <span class="metric-value">8</span>
+                    <span class="metric-label">Active projects</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-value">24</span>
+                    <span class="metric-label">Open tasks</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-value">92%</span>
+                    <span class="metric-label">Team health</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-value">3</span>
+                    <span class="metric-label">Launches this month</span>
+                </div>
+            </div>
+            <div class="stack-note">
+                <strong>What teams like most</strong>
+                <p>Less time chasing updates, more time making decisions and shipping confidently.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="section-heading">
+            <p class="eyebrow">Core strengths</p>
+            <h2>Everything you need to keep momentum visible.</h2>
+            <p>
+                The platform focuses on practical delivery habits: clear ownership, healthy
+                communication, and reporting that is easy to trust.
+            </p>
+        </div>
+        <div class="card-grid card-grid-3">
+            <article class="card">
+                <h3>Shared delivery view</h3>
+                <p>See project progress, blockers, and deadlines in one workspace that teams can update together.</p>
+            </article>
+            <article class="card">
+                <h3>Team coordination</h3>
+                <p>Capture decisions, track follow-ups, and keep collaboration organized around the work itself.</p>
+            </article>
+            <article class="card">
+                <h3>Client confidence</h3>
+                <p>Prepare clean status notes, show the right metrics, and keep stakeholders informed without extra effort.</p>
+            </article>
+        </div>
+    </div>
+</section>
+
+<section class="section section-alt">
+    <div class="container split-layout">
+        <div>
+            <p class="eyebrow">Built for real operations</p>
+            <h2>Flexible enough for growing teams, focused enough to stay useful.</h2>
+            <p class="section-copy">
+                Bhetam works well for product squads, service teams, and project leads who need a
+                reliable delivery rhythm instead of another complicated toolset.
+            </p>
+        </div>
+        <div class="card-stack">
+            <div class="card card-accent">
+                <h3>Planning</h3>
+                <p>Turn priorities into weekly plans with clear owners and due dates.</p>
+            </div>
+            <div class="card">
+                <h3>Execution</h3>
+                <p>Track progress in a way that highlights movement, not just backlog volume.</p>
+            </div>
+            <div class="card">
+                <h3>Reporting</h3>
+                <p>Share concise updates that help leaders and clients make faster decisions.</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
