@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Register — Bhetamल{% endblock %}
+
+{% block extra_css %}
+<style>
+    .auth-wrapper {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    }
+    .auth-left {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 40px;
+    }
+    .auth-card {
+        background: var(--card);
+        border-radius: 20px;
+        padding: 48px 40px;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: var(--shadow);
+    }
+    .logo { text-align: center; margin-bottom: 28px; }
+    .logo h2 { font-size: 22px; font-weight: 700; color: var(--text); }
+    .logo p  { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .login-link { text-align: center; margin-top: 20px; font-size: 14px; color: var(--text-muted); }
+
+    .auth-right {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 40px;
+        gap: 20px;
+    }
+    .location-card {
+        background: white;
+        border-radius: 16px;
+        padding: 28px 24px;
+        width: 100%;
+        max-width: 320px;
+        text-align: center;
+        box-shadow: var(--shadow);
+    }
+    .location-card .pin { font-size: 40px; }
+    .location-card h3 { font-size: 16px; font-weight: 700; margin: 12px 0 8px; }
+    .location-card p  { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+    .privacy-note {
+        background: #F0FFF4;
+        border: 1px solid #BBF7D0;
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 16px;
+        font-size: 13px;
+        color: #15803D;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    .allow-btn {
+        margin-top: 16px;
+        width: 100%;
+        padding: 12px;
+        background: transparent;
+        border: 2px solid var(--primary);
+        border-radius: 10px;
+        color: var(--primary);
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .allow-btn:hover { background: var(--primary-light); }
+
+    @media (max-width: 768px) {
+        .auth-wrapper { grid-template-columns: 1fr; }
+        .auth-right { display: none; }
+        .form-row { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-left">
+        <div class="auth-card">
+            <div class="logo">
+                <h2>Personalizing Your Profile</h2>
+                <p>Let's set the foundation for seamless meetups.</p>
+            </div>
+
+            <form method="POST" action="{{ url_for('auth.register') }}">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" name="full_name" placeholder="e.g. Aarav Sharma" required />
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" name="email" placeholder="hello@example.com" required />
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" name="phone" placeholder="+977 98XXXXXXXX" required />
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" placeholder="Min 6 characters" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" name="confirm_password" placeholder="Repeat password" required />
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Continue to Dashboard</button>
+            </form>
+
+            <div class="login-link">
+                Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="auth-right">
+        <div class="location-card">
+            <div class="pin">📍</div>
+            <h3>Enable Precise Location</h3>
+            <p>Bhetamल uses your live location to calculate the exact midpoint between you and your friends.</p>
+            <div class="privacy-note">
+                🔒 <span>We only access your location while you're actively planning a meetup. Your data is encrypted and never sold.</span>
+            </div>
+            <button class="allow-btn">📡 Allow Location Access</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,217 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background-color: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 650px; /* Aligns with the wide mobile aspect ratio in screenshots */
+}
+
+.auth-card {
+    background: #ffffff;
+    padding: 20px;
+    width: 100%;
+}
+
+/* --- Added: App Logo Styles --- */
+.app-logo-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 24px; /* Balanced spacing above 'Welcome Back' */
+}
+
+.app-logo {
+    max-width: 70px; /* Adapts cleanly to top-center scaling */
+    height: auto;
+    object-fit: contain;
+}
+/* ------------------------------ */
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.auth-header h2 {
+    color: #1e2e4a;
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.auth-header p {
+    color: #8a94a6;
+    font-size: 15px;
+}
+
+/* Custom Input Field wrapper to handle Figma Icons cleanly */
+.input-group {
+    position: relative;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    left: 16px;
+    color: #a0aec0;
+    font-size: 16px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 16px 16px 16px 48px;
+    background-color: #f7f9fc;
+    border: 1px solid #edf2f7;
+    border-radius: 12px;
+    font-size: 15px;
+    color: #4a5568;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.input-group input::placeholder {
+    color: #cbd5e0;
+}
+
+.input-group input:focus {
+    background-color: #ffffff;
+    border-color: #3182ce;
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+/* Forgot Password Link Placement */
+.forgot-password-container {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 24px;
+}
+
+.forgot-password {
+    color: #3182ce;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Figma Accent Primary Blue Button */
+.btn-primary {
+    width: 100%;
+    padding: 16px;
+    background-color: #2b92ec;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #1a7bbd;
+}
+
+/* Middle Divider Styling */
+.divider {
+    text-align: center;
+    margin: 25px 0;
+    position: relative;
+}
+
+.divider::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 100%;
+    height: 1px;
+    background-color: #edf2f7;
+    z-index: 1;
+}
+
+.divider span {
+    background-color: #ffffff;
+    padding: 0 15px;
+    color: #a0aec0;
+    font-size: 14px;
+    position: relative;
+    z-index: 2;
+}
+
+/* Social Login Button Layout styles */
+.social-login {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 30px;
+}
+
+.btn-social {
+    width: 100%;
+    padding: 14px;
+    background-color: #ffffff;
+    border: 1px solid #edf2f7;
+    border-radius: 12px;
+    font-size: 14px;
+    color: #4a5568;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    transition: background-color 0.2s;
+}
+
+.btn-social:hover {
+    background-color: #f7f9fc;
+}
+
+/* Updated Vector Icon Sizes and Alignment */
+.social-icon {
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.social-icon.google { color: #ea4335; }
+.social-icon.facebook { color: #1877f2; }
+
+/* Bottom Redirect Footer text link formatting */
+.auth-footer {
+    text-align: center;
+    font-size: 14px;
+    color: #718096;
+}
+
+.auth-footer a {
+    color: #2b92ec;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* Flash Messages notification banner styling */
+.flash-message {
+    padding: 12px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+}
+.flash-message.danger { background-color: #fed7d7; color: #9b2c2c; }
+.flash-message.success { background-color: #c6f6d5; color: #22543d; }

@@ -1,0 +1,281 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'dashboard' %}
+{% block title %}Dashboard — Bhetamल{% endblock %}
+
+{% block extra_css %}
+<style>
+    .welcome-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+    .welcome-row h1 { font-size: 26px; font-weight: 700; }
+    .welcome-row p  { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+    .welcome-actions { display: flex; gap: 12px; }
+    .btn-primary {
+        background: var(--primary); color: #fff;
+        padding: 11px 22px; border-radius: 10px;
+        font-size: 14px; font-weight: 600;
+        border: none; cursor: pointer;
+        text-decoration: none;
+        display: inline-flex; align-items: center; gap: 8px;
+        transition: background 0.2s;
+    }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary {
+        background: var(--card); color: var(--text);
+        padding: 11px 22px; border-radius: 10px;
+        font-size: 14px; font-weight: 600;
+        border: 1.5px solid var(--border); cursor: pointer;
+        text-decoration: none;
+        display: inline-flex; align-items: center; gap: 8px;
+        transition: background 0.2s;
+    }
+    .btn-secondary:hover { background: var(--bg); }
+
+    /* Grid layout */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 320px;
+        grid-template-rows: auto auto;
+        gap: 20px;
+    }
+    .col-span-2 { grid-column: span 2; }
+
+    /* Meetup cards */
+    .meetups-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .meetup-card {
+        border: 1.5px solid var(--border);
+        border-radius: 14px;
+        padding: 18px;
+        background: var(--bg);
+        position: relative;
+    }
+    .meetup-badge {
+        display: inline-block;
+        font-size: 11px; font-weight: 600;
+        padding: 3px 10px; border-radius: 20px;
+        margin-bottom: 10px;
+    }
+    .badge-live    { background: #DCFCE7; color: #166534; }
+    .badge-confirm { background: #DBEAFE; color: #1E40AF; }
+    .meetup-card h4 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .meetup-card .location { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+    .meetup-card .time { font-size: 13px; color: var(--text-muted); margin-top: 12px; display: flex; align-items: center; gap: 6px; }
+    .avatars { display: flex; margin-bottom: 8px; }
+    .avatars img { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--card); margin-right: -8px; object-fit:cover; }
+    .avatars .more { width: 28px; height: 28px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid var(--card); }
+
+    /* Pending invites */
+    .invite-item {
+        display: flex; align-items: center;
+        gap: 10px; padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .invite-item:last-child { border-bottom: none; }
+    .invite-item img { width: 36px; height: 36px; border-radius: 50%; object-fit:cover; }
+    .invite-info { flex: 1; }
+    .invite-info .name  { font-size: 13px; font-weight: 600; }
+    .invite-info .event { font-size: 12px; color: var(--text-muted); }
+    .invite-actions { display: flex; gap: 6px; }
+    .accept-btn, .decline-btn {
+        width: 28px; height: 28px; border-radius: 8px;
+        border: none; cursor: pointer; font-size: 14px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .accept-btn  { background: #DCFCE7; color: #166534; }
+    .decline-btn { background: #FEE2E2; color: #991B1B; }
+
+    /* Weather widget */
+    .weather-card {
+        background: var(--primary);
+        border-radius: 16px; padding: 20px;
+        color: white;
+    }
+    .weather-label  { font-size: 11px; font-weight: 600; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.05em; }
+    .weather-temp   { font-size: 32px; font-weight: 700; margin: 8px 0 4px; }
+    .weather-desc   { font-size: 13px; opacity: 0.9; }
+    .weather-days   { display: flex; gap: 8px; margin-top: 16px; }
+    .weather-day {
+        flex: 1; text-align: center;
+        background: rgba(255,255,255,0.15);
+        border-radius: 10px; padding: 10px 6px;
+        font-size: 12px;
+    }
+    .weather-day .day-name { opacity: 0.8; margin-bottom: 4px; }
+    .weather-day .day-temp { font-weight: 700; }
+
+    /* Trending spots */
+    .spots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .spot-card {
+        border-radius: 12px; overflow: hidden;
+        position: relative; height: 130px;
+        background: linear-gradient(135deg, #1E293B, #334155);
+        display: flex; align-items: flex-end;
+        cursor: pointer;
+    }
+    .spot-card .spot-overlay {
+        width: 100%; padding: 12px;
+        background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+    }
+    .spot-card .spot-name  { font-size: 13px; font-weight: 700; color: white; }
+    .spot-card .spot-desc  { font-size: 11px; color: rgba(255,255,255,0.8); margin-top: 2px; }
+    .spot-card .spot-badge {
+        position: absolute; top: 10px; left: 10px;
+        background: var(--primary); color: white;
+        font-size: 10px; font-weight: 700;
+        padding: 3px 8px; border-radius: 20px;
+    }
+
+    .view-all { font-size: 13px; font-weight: 600; color: var(--primary); text-decoration: none; }
+
+    @media (max-width: 1100px) {
+        .dashboard-grid { grid-template-columns: 1fr 1fr; }
+        .col-span-2 { grid-column: span 2; }
+    }
+    @media (max-width: 700px) {
+        .dashboard-grid { grid-template-columns: 1fr; }
+        .col-span-2 { grid-column: span 1; }
+        .meetups-grid, .spots-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Welcome Row -->
+<div class="welcome-row">
+    <div>
+        <h1>Hello, {{ session.get('user_name', 'there').split()[0] }} 👋</h1>
+        <p>Ready for another adventure? Your coordination hub is up to date.</p>
+    </div>
+    <div class="welcome-actions">
+        <a href="{{ url_for('meetup.plan') }}" class="btn-primary">➕ Create Meetup</a>
+        <a href="#" class="btn-secondary">🔗 Join Meetup</a>
+    </div>
+</div>
+
+<!-- Dashboard Grid -->
+<div class="dashboard-grid">
+
+    <!-- Active Meetups -->
+    <div class="card col-span-2">
+        <div class="card-title">
+            Active Meetups
+            <a href="#" class="view-all">View All →</a>
+        </div>
+        <div class="meetups-grid">
+            <div class="meetup-card">
+                <div class="avatars">
+                    <img src="https://ui-avatars.com/api/?name=A&background=2563EB&color=fff" />
+                    <img src="https://ui-avatars.com/api/?name=B&background=7C3AED&color=fff" />
+                    <div class="more">+4</div>
+                </div>
+                <span class="meetup-badge badge-live">HAPPENING NOW</span>
+                <h4>Sunset Rooftop Mix</h4>
+                <div class="location">📍 Level 21 Sky Lounge</div>
+                <div class="time">🕐 Starts in 45m</div>
+            </div>
+            <div class="meetup-card">
+                <div class="avatars">
+                    <img src="https://ui-avatars.com/api/?name=C&background=059669&color=fff" />
+                    <img src="https://ui-avatars.com/api/?name=D&background=D97706&color=fff" />
+                </div>
+                <span class="meetup-badge badge-confirm">CONFIRMED</span>
+                <h4>Weekend Brunch & Plan</h4>
+                <div class="location">🍽️ The Artisan Pantry</div>
+                <div class="time">📅 Tomorrow, 10:00 AM</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Invites -->
+    <div class="card">
+        <div class="card-title">Pending Invites</div>
+        <div class="invite-item">
+            <img src="https://ui-avatars.com/api/?name=Priya+S&background=EC4899&color=fff" />
+            <div class="invite-info">
+                <div class="name">Priya Sharma</div>
+                <div class="event">Invited you to "Dinner @ Aura"</div>
+            </div>
+            <div class="invite-actions">
+                <button class="accept-btn">✓</button>
+                <button class="decline-btn">✕</button>
+            </div>
+        </div>
+        <div class="invite-item">
+            <img src="https://ui-avatars.com/api/?name=Arjun+R&background=2563EB&color=fff" />
+            <div class="invite-info">
+                <div class="name">Arjun Reddy</div>
+                <div class="event">Invited you to "Group Hike"</div>
+            </div>
+            <div class="invite-actions">
+                <button class="accept-btn">✓</button>
+                <button class="decline-btn">✕</button>
+            </div>
+        </div>
+
+        <!-- Weather Widget -->
+        <div class="weather-card" style="margin-top: 20px;">
+            <div class="weather-label">Weekend Forecast</div>
+            <div class="weather-temp">28°C ☀️</div>
+            <div class="weather-desc">Perfect for outdoor meetups</div>
+            <div class="weather-days">
+                <div class="weather-day">
+                    <div class="day-name">Sat</div>
+                    <div>☀️</div>
+                    <div class="day-temp">29°</div>
+                </div>
+                <div class="weather-day">
+                    <div class="day-name">Sun</div>
+                    <div>⛅</div>
+                    <div class="day-temp">26°</div>
+                </div>
+                <div class="weather-day">
+                    <div class="day-name">Mon</div>
+                    <div>🌧️</div>
+                    <div class="day-temp">22°</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trending Spots -->
+    <div class="card col-span-2">
+        <div class="card-title">
+            Explore Trending Spots
+            <a href="#" class="view-all">View All →</a>
+        </div>
+        <div class="spots-grid">
+            <div class="spot-card" style="background: linear-gradient(135deg, #064E3B, #065F46);">
+                <span class="spot-badge">⭐ MOST POPULAR</span>
+                <div class="spot-overlay">
+                    <div class="spot-name">Echo Park Glasshouse</div>
+                    <div class="spot-desc">Perfect morning meeting spot.</div>
+                </div>
+            </div>
+            <div class="spot-card" style="background: linear-gradient(135deg, #1E1B4B, #312E81);">
+                <div class="spot-overlay">
+                    <div class="spot-name">Starlight Terrace</div>
+                    <div class="spot-desc">Vibrant nights under the stars.</div>
+                </div>
+            </div>
+            <div class="spot-card" style="background: linear-gradient(135deg, #78350F, #92400E);">
+                <div class="spot-overlay">
+                    <div class="spot-name">The Reader's Lounge</div>
+                    <div class="spot-desc">Quiet corners for deep focus.</div>
+                </div>
+            </div>
+            <div class="spot-card" style="background: linear-gradient(135deg, #164E63, #0E7490);">
+                <div class="spot-overlay">
+                    <div class="spot-name">Himalayan Java Coffee</div>
+                    <div class="spot-desc">Specialty brews, Thamel district.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
