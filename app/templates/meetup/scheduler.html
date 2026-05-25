@@ -1,0 +1,575 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'plan' %}
+{% block title %}Availability Scheduler — Bhetamla{% endblock %}
+
+{% block extra_css %}
+<style>
+    .scheduler-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    .full-width { grid-column: span 2; }
+
+    /* Form styles */
+    .form-group { margin-bottom: 14px; }
+    .form-group label {
+        display: block; font-size: 12px; font-weight: 600;
+        color: var(--text-muted); text-transform: uppercase;
+        letter-spacing: 0.05em; margin-bottom: 6px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%; padding: 10px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 10px; font-size: 14px;
+        background: var(--bg); color: var(--text);
+        outline: none; transition: border-color 0.2s;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus { border-color: var(--primary); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn-primary {
+        background: var(--primary); color: white;
+        border: none; border-radius: 10px;
+        padding: 11px 24px; font-size: 14px;
+        font-weight: 600; cursor: pointer;
+        transition: background 0.2s;
+    }
+    .btn-primary:hover { background: var(--primary-dark); }
+
+    /* Slot items */
+    .slot-item {
+        display: flex; align-items: center;
+        gap: 12px; padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .slot-item:last-child { border-bottom: none; }
+    .slot-date {
+        background: var(--primary-light);
+        color: var(--primary);
+        border-radius: 10px;
+        padding: 8px 12px;
+        text-align: center;
+        min-width: 60px;
+    }
+    .slot-date .s-day  { font-size: 18px; font-weight: 700; }
+    .slot-date .s-month { font-size: 11px; font-weight: 600; }
+    .slot-info { flex: 1; }
+    .slot-info .s-time  { font-size: 14px; font-weight: 600; }
+    .slot-info .s-label { font-size: 12px; color: var(--text-muted); }
+    .remove-btn {
+        background: #FEE2E2; color: #DC2626;
+        border: none; border-radius: 8px;
+        padding: 6px 12px; font-size: 12px;
+        font-weight: 600; cursor: pointer;
+        text-decoration: none;
+    }
+
+    /* Friend items */
+    .friend-item {
+        display: flex; align-items: center;
+        gap: 12px; padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .friend-item:last-child { border-bottom: none; }
+    .friend-avatar {
+        width: 38px; height: 38px;
+        border-radius: 50%;
+        background: var(--primary-light);
+        color: var(--primary);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 15px; font-weight: 700;
+    }
+    .friend-info { flex: 1; }
+    .friend-info .f-name  { font-size: 14px; font-weight: 600; }
+    .friend-info .f-email { font-size: 12px; color: var(--text-muted); }
+
+    /* Search box */
+    .search-users-box { position: relative; margin-bottom: 16px; }
+    .search-users-box input {
+        width: 100%; padding: 10px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 10px; font-size: 14px;
+        background: var(--bg); color: var(--text);
+        outline: none;
+    }
+    .search-users-box input:focus { border-color: var(--primary); }
+    .search-results {
+        position: absolute; top: 100%; left: 0; right: 0;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+        z-index: 100;
+        max-height: 200px;
+        overflow-y: auto;
+        display: none;
+    }
+    .search-result-item {
+        display: flex; align-items: center;
+        gap: 10px; padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--border);
+        font-size: 14px;
+    }
+    .search-result-item:hover { background: var(--primary-light); }
+    .search-result-item:last-child { border-bottom: none; }
+
+    /* Schedule items */
+    .schedule-item {
+        display: flex; align-items: center;
+        gap: 14px; padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .schedule-item:last-child { border-bottom: none; }
+    .schedule-icon {
+        width: 42px; height: 42px;
+        border-radius: 12px;
+        background: var(--primary-light);
+        color: var(--primary);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px;
+    }
+    .schedule-info { flex: 1; }
+    .schedule-info .sc-title { font-size: 14px; font-weight: 700; }
+    .schedule-info .sc-time  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .status-badge {
+        font-size: 11px; font-weight: 600;
+        padding: 3px 10px; border-radius: 20px;
+    }
+    .badge-pending   { background: #FEF3C7; color: #D97706; }
+    .badge-confirmed { background: #DCFCE7; color: #16A34A; }
+    .badge-cancelled { background: #FEE2E2; color: #DC2626; }
+
+    /* Invite item */
+    .invite-item {
+        display: flex; align-items: center;
+        gap: 12px; padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .invite-item:last-child { border-bottom: none; }
+    .invite-info { flex: 1; }
+    .invite-info .i-title { font-size: 14px; font-weight: 600; }
+    .invite-info .i-from  { font-size: 12px; color: var(--text-muted); }
+    .invite-actions { display: flex; gap: 8px; }
+    .accept-btn {
+        background: #DCFCE7; color: #16A34A;
+        border: none; border-radius: 8px;
+        padding: 6px 14px; font-size: 12px;
+        font-weight: 600; cursor: pointer;
+    }
+    .decline-btn {
+        background: #FEE2E2; color: #DC2626;
+        border: none; border-radius: 8px;
+        padding: 6px 14px; font-size: 12px;
+        font-weight: 600; cursor: pointer;
+    }
+
+    /* Common slots */
+    .common-slot {
+        background: #DCFCE7;
+        border: 1px solid #BBF7D0;
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        display: flex; align-items: center; gap: 10px;
+        font-size: 14px; font-weight: 600; color: #166534;
+    }
+
+    /* Friend checkboxes */
+    .friend-checkbox {
+        display: flex; align-items: center;
+        gap: 10px; padding: 8px 0;
+        cursor: pointer;
+    }
+    .friend-checkbox input { width: 16px; height: 16px; cursor: pointer; }
+
+    @media (max-width: 768px) {
+        .scheduler-grid { grid-template-columns: 1fr; }
+        .full-width { grid-column: span 1; }
+        .form-row { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 style="font-size:22px; font-weight:700; margin-bottom:24px;">
+    📅 Friend Availability Scheduler
+</h1>
+
+<div class="scheduler-grid">
+
+    <!-- My Availability -->
+    <div class="card">
+        <div class="card-title">My Availability</div>
+
+        <form method="POST" action="{{ url_for('meetup.add_availability_route') }}">
+            <div class="form-group">
+                <label>Date</label>
+                <input type="date" name="date" required
+                       min="{{ now.strftime('%Y-%m-%d') if now else '' }}" />
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>From</label>
+                    <input type="time" name="start_time" required />
+                </div>
+                <div class="form-group">
+                    <label>To</label>
+                    <input type="time" name="end_time" required />
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Label (optional)</label>
+                <input type="text" name="label" placeholder="e.g. Free after work" />
+            </div>
+            <button type="submit" class="btn-primary">Add Slot</button>
+        </form>
+
+        <div style="margin-top:20px;">
+            {% if slots %}
+                {% for slot in slots %}
+                <div class="slot-item">
+                    <div class="slot-date">
+                        <div class="s-day">{{ slot.date.strftime('%d') }}</div>
+                        <div class="s-month">{{ slot.date.strftime('%b') }}</div>
+                    </div>
+                    <div class="slot-info">
+                        <div class="s-time">
+                            {{ slot.start_time.strftime('%I:%M %p') if slot.start_time else '' }}
+                            —
+                            {{ slot.end_time.strftime('%I:%M %p') if slot.end_time else '' }}
+                        </div>
+                        <div class="s-label">{{ slot.label or 'Available' }}</div>
+                    </div>
+                    <a href="{{ url_for('meetup.delete_availability_route', slot_id=slot.id) }}"
+                       class="remove-btn"
+                       onclick="return confirm('Remove this slot?')">Remove</a>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="color:var(--text-muted); font-size:14px;">
+                    No availability slots added yet.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Friends -->
+    <div class="card">
+        <div class="card-title">
+            Friends
+            <span style="font-size:12px; color:var(--text-muted);">
+                {{ friends|length }} connected
+            </span>
+        </div>
+
+        <!-- Search users -->
+        <div class="search-users-box">
+            <input type="text" id="userSearch"
+                   placeholder="Search by name or email to add friend..." />
+            <div class="search-results" id="searchResults"></div>
+        </div>
+
+        <!-- Friend list -->
+        {% if friends %}
+            {% for friend in friends %}
+            <div class="friend-item">
+                <div class="friend-avatar">
+                    {{ friend.full_name[0].upper() }}
+                </div>
+                <div class="friend-info">
+                    <div class="f-name">{{ friend.full_name }}</div>
+                    <div class="f-email">{{ friend.email }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="color:var(--text-muted); font-size:14px;">
+                No friends added yet. Search above to connect!
+            </p>
+        {% endif %}
+
+        <!-- Pending requests -->
+        {% if pending_requests %}
+        <div style="margin-top:20px;">
+            <p style="font-size:13px; font-weight:700; margin-bottom:10px; color:var(--primary);">
+                📩 Pending Requests ({{ pending_requests|length }})
+            </p>
+            {% for req in pending_requests %}
+            <div class="invite-item">
+                <div class="friend-avatar">{{ req.full_name[0].upper() }}</div>
+                <div class="invite-info">
+                    <div class="i-title">{{ req.full_name }}</div>
+                    <div class="i-from">{{ req.email }}</div>
+                </div>
+                <div class="invite-actions">
+                    <form method="POST"
+                          action="{{ url_for('meetup.respond_friend_request_route', request_id=req.id) }}"
+                          style="display:inline;">
+                        <input type="hidden" name="action" value="accept" />
+                        <button type="submit" class="accept-btn">Accept</button>
+                    </form>
+                    <form method="POST"
+                          action="{{ url_for('meetup.respond_friend_request_route', request_id=req.id) }}"
+                          style="display:inline;">
+                        <input type="hidden" name="action" value="reject" />
+                        <button type="submit" class="decline-btn">Decline</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Schedule a Meetup -->
+    <div class="card">
+        <div class="card-title">Schedule a Meetup</div>
+        <form method="POST" action="{{ url_for('meetup.create_schedule_route') }}">
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" name="title"
+                       placeholder="e.g. Weekend Coffee" required />
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="description" rows="2"
+                          placeholder="Optional details..."></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" name="proposed_date" required />
+                </div>
+                <div class="form-group">
+                    <label>Time</label>
+                    <input type="time" name="proposed_time" required />
+                </div>
+            </div>
+
+            {% if friends %}
+            <div class="form-group">
+                <label>Invite Friends</label>
+                {% for friend in friends %}
+                <label class="friend-checkbox">
+                    <input type="checkbox" name="invite_friends"
+                           value="{{ friend.id }}" />
+                    {{ friend.full_name }}
+                </label>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <button type="submit" class="btn-primary">Schedule & Invite</button>
+        </form>
+    </div>
+
+    <!-- Find Common Time -->
+    <div class="card">
+        <div class="card-title">Find Common Availability</div>
+        {% if friends %}
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+            Select friends to find when everyone is free.
+        </p>
+        {% for friend in friends %}
+        <label class="friend-checkbox">
+            <input type="checkbox" class="common-check"
+                   value="{{ friend.id }}" />
+            {{ friend.full_name }}
+        </label>
+        {% endfor %}
+
+        <button onclick="findCommonSlots()"
+                style="margin-top:16px; width:100%;"
+                class="btn-primary">
+            🔍 Find Common Slots
+        </button>
+
+        <div id="commonSlots" style="margin-top:16px;"></div>
+        {% else %}
+        <p style="color:var(--text-muted); font-size:14px;">
+            Add friends first to find common availability.
+        </p>
+        {% endif %}
+    </div>
+
+    <!-- My Schedules -->
+    <div class="card full-width">
+        <div class="card-title">Scheduled Meetups</div>
+
+        <!-- Pending invites -->
+        {% if invites %}
+        <div style="margin-bottom:20px;">
+            <p style="font-size:13px; font-weight:700;
+                      color:var(--primary); margin-bottom:10px;">
+                📩 Meetup Invites ({{ invites|length }})
+            </p>
+            {% for invite in invites %}
+            <div class="invite-item">
+                <div class="schedule-icon">📅</div>
+                <div class="invite-info">
+                    <div class="i-title">{{ invite.title }}</div>
+                    <div class="i-from">
+                        From {{ invite.organizer_name }} —
+                        {{ invite.proposed_date.strftime('%b %d, %Y') }}
+                        at {{ invite.proposed_time.strftime('%I:%M %p')
+                             if invite.proposed_time else '' }}
+                    </div>
+                </div>
+                <div class="invite-actions">
+                    <form method="POST"
+                          action="{{ url_for('meetup.respond_invite_route', invite_id=invite.id) }}"
+                          style="display:inline;">
+                        <input type="hidden" name="action" value="accepted" />
+                        <button type="submit" class="accept-btn">Accept</button>
+                    </form>
+                    <form method="POST"
+                          action="{{ url_for('meetup.respond_invite_route', invite_id=invite.id) }}"
+                          style="display:inline;">
+                        <input type="hidden" name="action" value="declined" />
+                        <button type="submit" class="decline-btn">Decline</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- All schedules -->
+        {% if schedules %}
+            {% for schedule in schedules %}
+            <div class="schedule-item">
+                <div class="schedule-icon">📅</div>
+                <div class="schedule-info">
+                    <div class="sc-title">{{ schedule.title }}</div>
+                    <div class="sc-time">
+                        {{ schedule.proposed_date.strftime('%B %d, %Y') }}
+                        at
+                        {{ schedule.proposed_time.strftime('%I:%M %p')
+                           if schedule.proposed_time else '' }}
+                        — by {{ schedule.organizer_name }}
+                    </div>
+                </div>
+                <span class="status-badge
+                    {% if schedule.status == 'confirmed' %}badge-confirmed
+                    {% elif schedule.status == 'cancelled' %}badge-cancelled
+                    {% else %}badge-pending{% endif %}">
+                    {{ schedule.status.capitalize() }}
+                </span>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="color:var(--text-muted); font-size:14px;">
+                No meetups scheduled yet.
+            </p>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Hidden form for sending friend requests -->
+<form id="friendRequestForm" method="POST"
+      action="{{ url_for('meetup.send_friend_request_route') }}"
+      style="display:none;">
+    <input type="hidden" name="friend_id" id="friendIdInput" />
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ── User search ────────────────────────────────────────
+    const searchInput   = document.getElementById('userSearch');
+    const searchResults = document.getElementById('searchResults');
+
+    searchInput.addEventListener('input', function() {
+        const q = this.value.trim();
+        if (q.length < 2) {
+            searchResults.style.display = 'none';
+            return;
+        }
+
+        fetch(`/meetup/search-users?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(users => {
+                if (users.length === 0) {
+                    searchResults.style.display = 'none';
+                    return;
+                }
+                searchResults.innerHTML = users.map(u => `
+                    <div class="search-result-item"
+                         onclick="sendFriendRequest(${u.id}, '${u.name}')">
+                        <strong>${u.name}</strong>
+                        <span style="color:var(--text-muted); font-size:12px;">
+                            ${u.email}
+                        </span>
+                    </div>
+                `).join('');
+                searchResults.style.display = 'block';
+            });
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target)) {
+            searchResults.style.display = 'none';
+        }
+    });
+
+    function sendFriendRequest(id, name) {
+        if (confirm(`Send friend request to ${name}?`)) {
+            document.getElementById('friendIdInput').value = id;
+            document.getElementById('friendRequestForm').submit();
+        }
+        searchResults.style.display = 'none';
+        searchInput.value = '';
+    }
+
+    // ── Common availability ────────────────────────────────
+    function findCommonSlots() {
+        const checked = [...document.querySelectorAll('.common-check:checked')]
+                        .map(el => el.value);
+
+        if (checked.length === 0) {
+            alert('Please select at least one friend.');
+            return;
+        }
+
+        const params = checked.map(id => `friends[]=${id}`).join('&');
+
+        fetch(`/meetup/common-availability?${params}`)
+            .then(r => r.json())
+            .then(slots => {
+                const container = document.getElementById('commonSlots');
+                if (slots.length === 0) {
+                    container.innerHTML = `
+                        <p style="color:var(--text-muted); font-size:14px;">
+                            No common availability found.
+                            Try adding more slots!
+                        </p>`;
+                    return;
+                }
+                container.innerHTML = `
+                    <p style="font-size:13px; font-weight:700;
+                              color:#166534; margin-bottom:8px;">
+                        ✅ ${slots.length} common slot(s) found!
+                    </p>
+                    ${slots.map(s => `
+                        <div class="common-slot">
+                            📅 ${s.date}
+                            &nbsp;•&nbsp;
+                            ${s.start_time} – ${s.end_time}
+                        </div>
+                    `).join('')}
+                `;
+            });
+    }
+
+    // Set min date for date inputs
+    document.querySelectorAll('input[type="date"]').forEach(input => {
+        input.min = new Date().toISOString().split('T')[0];
+    });
+</script>
+{% endblock %}

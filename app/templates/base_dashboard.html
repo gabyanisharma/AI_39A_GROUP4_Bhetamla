@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>{% block title %}Bhetamल{% endblock %}</title>
+    <title>{% block title %}Bhetamla{% endblock %}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -73,7 +73,6 @@
             font-weight: 700;
             color: var(--primary);
         }
-
         .nav-item {
             display: flex;
             align-items: center;
@@ -100,9 +99,7 @@
             width: 22px;
             text-align: center;
         }
-
         .sidebar-spacer { flex: 1; }
-
         .new-meetup-btn {
             display: flex;
             align-items: center;
@@ -124,13 +121,11 @@
             background: var(--primary-dark);
             transform: translateY(-1px);
         }
-
         .sidebar-bottom-links {
             display: flex;
             flex-direction: column;
             gap: 2px;
         }
-
         .sidebar-user {
             display: flex;
             align-items: center;
@@ -164,7 +159,6 @@
             flex-direction: column;
             min-height: 100vh;
         }
-
         .topbar {
             height: 64px;
             background: var(--card);
@@ -245,7 +239,6 @@
             transition: background 0.2s;
         }
         .sos-btn:hover { background: #B91C1C; }
-
         .page-content {
             flex: 1;
             padding: 28px;
@@ -320,46 +313,46 @@
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-logo">
             <div class="logo-icon">📍</div>
-            <span>Bhetamल</span>
+            <span>Bhetamla</span>
         </div>
 
         <nav>
             <a href="{{ url_for('user.dashboard') }}"
                class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
-                <span class="nav-icon">🏠</span> Dashboard
+                <span class="nav-icon">🏠</span> {{ t.dashboard }}
             </a>
             <a href="{{ url_for('meetup.plan') }}"
                class="nav-item {% if active_page == 'plan' %}active{% endif %}">
-                <span class="nav-icon">➕</span> Plan Meetup
+                <span class="nav-icon">➕</span> {{ t.plan_meetup }}
             </a>
             <a href="{{ url_for('meetup.groups') }}"
                class="nav-item {% if active_page == 'groups' %}active{% endif %}">
-                <span class="nav-icon">👥</span> My Groups
+                <span class="nav-icon">👥</span> {{ t.my_groups }}
             </a>
             <a href="{{ url_for('place.saved') }}"
                class="nav-item {% if active_page == 'saved' %}active{% endif %}">
-                <span class="nav-icon">🔖</span> Saved Places
+                <span class="nav-icon">🔖</span> {{ t.saved_places }}
             </a>
-            <a href="{{ url_for('user.safety') }}"
+            <a href="{{ url_for('user.safety_page') }}"
                class="nav-item {% if active_page == 'safety' %}active{% endif %}">
-                <span class="nav-icon">🛡️</span> Safety Hub
+                <span class="nav-icon">🛡️</span> {{ t.safety_hub }}
             </a>
         </nav>
 
         <div class="sidebar-spacer"></div>
 
         <a href="{{ url_for('meetup.plan') }}" class="new-meetup-btn">
-            ➕ New Meetup
+            ➕ {{ t.new_meetup }}
         </a>
 
         <div class="sidebar-bottom-links">
-            <a href="{{ url_for('user.settings') }}"
+            <a href="{{ url_for('user.settings_page') }}"
                class="nav-item {% if active_page == 'settings' %}active{% endif %}">
-                <span class="nav-icon">⚙️</span> Settings
+                <span class="nav-icon">⚙️</span> {{ t.settings }}
             </a>
-            <a href="{{ url_for('user.support') }}"
+            <a href="{{ url_for('user.support_page') }}"
                class="nav-item">
-                <span class="nav-icon">❓</span> Support
+                <span class="nav-icon">❓</span> {{ t.support }}
             </a>
         </div>
 
@@ -368,36 +361,36 @@
                  alt="Profile" />
             <div class="user-info">
                 <div class="user-name">{{ session.get('user_name', 'User') }}</div>
-                <div class="user-role">Verified Member</div>
+                <div class="user-role">{{ t.verified_member }}</div>
             </div>
         </div>
     </aside>
 
     <!-- ── MAIN AREA ── -->
     <div class="main-wrapper">
-
-        <!-- Top Bar -->
         <header class="topbar">
             <div class="search-box">
                 <span class="search-icon">🔍</span>
-                <input type="text" placeholder="Search meetups, friends, or places..." />
+                <input type="text" placeholder="{{ t.search }}" />
             </div>
             <div class="topbar-actions">
-                <a href="{{ url_for('user.safety') }}" class="sos-btn">✳️ SOS</a>
-                <a href="{{ url_for('user.notifications') }}" class="icon-btn">
+                <a href="{{ url_for('user.safety_page') }}" class="sos-btn">✳️ SOS</a>
+                <a href="{{ url_for('user.notifications_page') }}" class="icon-btn">
                     🔔
                     <span class="badge">3</span>
                 </a>
-                <a href="{{ url_for('user.profile') }}" class="icon-btn">👤</a>
+                <a href="{{ url_for('user.profile_page') }}" class="icon-btn">👤</a>
             </div>
         </header>
 
-        <!-- Page Content -->
         <main class="page-content">
             {% block content %}{% endblock %}
         </main>
     </div>
-
+    <script>
+        const theme = "{{ session.get('theme', 'light') }}";
+        document.documentElement.setAttribute('data-theme', theme);
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>
