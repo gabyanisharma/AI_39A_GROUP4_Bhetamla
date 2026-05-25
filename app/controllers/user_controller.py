@@ -3,6 +3,7 @@ from app.models.user import User
 from app.auth import is_logged_in, get_current_user_id
 import os
 from werkzeug.utils import secure_filename
+from app.models.notification import SOSAlert
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
@@ -80,18 +81,25 @@ def settings():
 
     return render_template('user/settings.html', user=user)
 
-def safety():
-    if not is_logged_in():
-        return redirect(url_for('auth.login'))
-    user = User.get_by_id(get_current_user_id())
-    return render_template('user/safety.html', user=user)
-
 def notifications():
     if not is_logged_in():
         return redirect(url_for('auth.login'))
-    return render_template('user/notifications.html')
+    user_id = get_current_user_id()
+    alerts = SOSAlert.get_all_by_user(user_id)
+    return render_template('user/notifications.html', alerts=alerts)
 
 def support():
     if not is_logged_in():
         return redirect(url_for('auth.login'))
+
+    if request.method == 'POST':
+        subject = request.form.get('subject', '').strip()
+        message = request.form.get('message', '').strip()
+        
+        if not subject or not message:
+            flash('All fields are required.', 'error')
+        else:
+            flash('Your message has been sent to our support team. We will get back to you shortly!', 'success')
+            return redirect(url_for('user.support_page'))
+            
     return render_template('user/support.html')

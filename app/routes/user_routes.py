@@ -22,7 +22,7 @@ def login_required(f):
 def dashboard():
     return render_template('user/dashboard.html')
 
-@user_bp.route('/profile')
+@user_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile_page():
     return profile()
@@ -42,7 +42,7 @@ def safety_page():
 def notifications_page():
     return notifications()
 
-@user_bp.route('/support')
+@user_bp.route('/support', methods=['GET', 'POST'])
 @login_required
 def support_page():
     return support()

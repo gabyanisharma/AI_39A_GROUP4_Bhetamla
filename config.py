@@ -10,6 +10,7 @@ class Config:
     MYSQL_USER     = os.getenv('MYSQL_USER', 'root')
     MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD', '')
     MYSQL_DB       = os.getenv('MYSQL_DB', 'bhetamla_db')
+    MYSQL_DATABASE = os.getenv('MYSQL_DATABASE', MYSQL_DB)
 
     MAIL_SERVER  = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
     MAIL_PORT    = int(os.getenv('MAIL_PORT', 587))

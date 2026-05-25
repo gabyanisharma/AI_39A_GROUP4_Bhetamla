@@ -1,10 +1,132 @@
 {% extends "base_dashboard.html" %}
 {% set active_page = 'support' %}
-{% block title %}Support — Bhetamल{% endblock %}
+{% block title %}Help & Support — Bhetamla{% endblock %}
+
+{% block extra_css %}
+<style>
+    .support-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+    }
+
+    .form-group input,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        font-size: 14px;
+        background: var(--bg);
+        color: var(--text);
+        outline: none;
+        transition: all 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+        border-color: var(--primary);
+    }
+
+    .btn-submit {
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .faq-item {
+        margin-bottom: 16px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .faq-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .faq-question {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 6px;
+    }
+
+    .faq-answer {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.5;
+    }
+
+    @media (max-width: 768px) {
+        .support-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<h1 style="font-size:22px; font-weight:700; margin-bottom:24px;">❓ Support</h1>
-<div class="card">
-    <div class="card-title">Need Help?</div>
-    <p style="color:var(--text-muted);">Contact us at support@bhetamla.com</p>
+<h1 style="font-size:22px; font-weight:700; margin-bottom:24px;">❓ Help & Support Desk</h1>
+
+<div class="support-grid">
+    <!-- Help Request Form -->
+    <div class="card">
+        <div class="card-title">📩 Submit Support Ticket</div>
+        
+        <form method="POST" action="{{ url_for('user.support_page') }}">
+            <div class="form-group">
+                <label for="subject">Request Subject</label>
+                <input type="text" id="subject" name="subject" placeholder="What do you need help with?" required>
+            </div>
+
+            <div class="form-group">
+                <label for="message">Detailed Message</label>
+                <textarea id="message" name="message" rows="5" placeholder="Provide details regarding your query..." required></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit">Submit Request</button>
+        </form>
+    </div>
+
+    <!-- Help FAQs -->
+    <div class="card">
+        <div class="card-title">📖 Frequently Asked Questions</div>
+        
+        <div class="faq-item">
+            <div class="faq-question">How does Bhetamla SOS coordinate my location?</div>
+            <div class="faq-answer">When you trigger the red SOS button, Bhetamla queries your browser GPS coordinates and dynamically formats them into a Google Maps locator link which is emailed to your circle of contacts.</div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">How many contacts can I add?</div>
+            <div class="faq-answer">Bhetamla supports up to 3 safety contacts. This ensures maximum alert efficiency without cluttering emergency responses.</div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Is my location monitored 24/7?</div>
+            <div class="faq-answer">No, your privacy is fully protected. Location details are only queried dynamically when you manually trigger an SOS alert and are never logged on active servers afterwards.</div>
+        </div>
+    </div>
 </div>
 {% endblock %}
