@@ -89,6 +89,7 @@
 <div class="settings-card card">
     <div class="card-title">⚙️ Application Settings</div>
     <form method="POST" action="{{ url_for('user.settings_page') }}">
+        <input type="hidden" name="action" value="update_preferences">
         <!-- Theme Preference -->
         <div class="form-group">
             <label for="theme">UI Color Theme</label>

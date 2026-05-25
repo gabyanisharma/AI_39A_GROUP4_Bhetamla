@@ -25,6 +25,8 @@ def settings():
 
     if request.method == 'POST':
         action = request.form.get('action')
+        if not action and ('theme' in request.form or 'language' in request.form):
+            action = 'update_preferences'
 
         if action == 'update_profile':
             full_name          = request.form.get('full_name', '').strip()

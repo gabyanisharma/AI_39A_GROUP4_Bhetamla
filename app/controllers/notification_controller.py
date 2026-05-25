@@ -4,6 +4,7 @@ from app.models.user import User
 from app.auth import get_current_user_id, is_logged_in
 from app import mail
 from flask_mail import Message
+from config import Config
 import secrets
 
 def safety():
@@ -65,7 +66,7 @@ def trigger_sos():
     contacts = EmergencyContact.get_by_user(user_id)
 
     # Get location from request
-    data      = request.get_json()
+    data      = request.get_json(silent=True) or {}
     latitude  = data.get('latitude')
     longitude = data.get('longitude')
     message   = data.get('message', 'I need help! This is an emergency.')
@@ -78,6 +79,15 @@ def trigger_sos():
 
     # Send email to all emergency contacts
     maps_link = f"https://maps.google.com/?q={latitude},{longitude}" if latitude else "Location unavailable"
+
+    if not Config.MAIL_USERNAME or not Config.MAIL_PASSWORD:
+        print('Mail skipped: MAIL_USERNAME / MAIL_PASSWORD not configured.')
+        return jsonify({
+            'success':    True,
+            'alert_id':   alert_id,
+            'cancel_pin': cancel_pin,
+            'message':    'SOS alert saved successfully!'
+        })
 
     for contact in contacts:
         try:
@@ -113,7 +123,7 @@ def cancel_sos():
         return jsonify({'success': False}), 401
 
     user_id  = get_current_user_id()
-    data     = request.get_json()
+    data     = request.get_json(silent=True) or {}
     pin      = data.get('pin', '')
     alert    = SOSAlert.get_active(user_id)
 
