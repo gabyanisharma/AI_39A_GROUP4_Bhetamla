@@ -31,6 +31,7 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
             font-family: 'Inter', sans-serif;
             background: var(--bg);
@@ -351,7 +352,7 @@
                 <span class="nav-icon">⚙️</span> {{ t.settings }}
             </a>
             <a href="{{ url_for('user.support_page') }}"
-               class="nav-item">
+               class="nav-item {% if active_page == 'support' %}active{% endif %}">
                 <span class="nav-icon">❓</span> {{ t.support }}
             </a>
         </div>
@@ -374,7 +375,7 @@
                 <input type="text" placeholder="{{ t.search }}" />
             </div>
             <div class="topbar-actions">
-                <a href="{{ url_for('user.safety_page') }}" class="sos-btn">✳️ SOS</a>
+                <a href="{{ url_for('user.safety_page') }}" class="sos-btn">🚨 SOS</a>
                 <a href="{{ url_for('user.notifications_page') }}" class="icon-btn">
                     🔔
                     <span class="badge">3</span>

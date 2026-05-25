@@ -1,48 +1,96 @@
-import mysql.connector
-from mysql.connector import Error
+import pymysql
 from config import Config
 
-def get_db_connection():
-    """Create and return a new database connection."""
+def create_database_if_not_exists():
+    connection = pymysql.connect(
+        host=Config.MYSQL_HOST,
+        user=Config.MYSQL_USER,
+        password=Config.MYSQL_PASSWORD,
+        cursorclass=pymysql.cursors.DictCursor
+    )
     try:
-        connection = mysql.connector.connect(
-            host=Config.MYSQL_HOST,
-            user=Config.MYSQL_USER,
-            password=Config.MYSQL_PASSWORD,
-            database=Config.MYSQL_DB
-        )
-        return connection
-    except Error as e:
-        print(f"Database connection error: {e}")
-        return None
+        with connection.cursor() as cursor:
+            cursor.execute(f"CREATE DATABASE IF NOT EXISTS {Config.MYSQL_DB}")
+        connection.commit()
+    finally:
+        connection.close()
+
+def get_db_connection():
+    return pymysql.connect(
+        host=Config.MYSQL_HOST,
+        user=Config.MYSQL_USER,
+        password=Config.MYSQL_PASSWORD,
+        database=Config.MYSQL_DB,
+        cursorclass=pymysql.cursors.DictCursor
+    )
 
 def execute_query(query, params=None, fetch=False):
-    """
-    Run a SQL query.
-    - fetch=False  → INSERT / UPDATE / DELETE  (returns lastrowid)
-    - fetch=True   → SELECT  (returns list of dicts)
-    """
     connection = get_db_connection()
-    if not connection:
-        return None
-
     try:
-        cursor = connection.cursor(dictionary=True)
-        cursor.execute(query, params or ())
-
-        if fetch:
-            result = cursor.fetchall()
-            return result
-        else:
-            connection.commit()
-            return cursor.lastrowid
-
-    except Error as e:
-        print(f"Query error: {e}")
-        connection.rollback()
-        return None
-
+        with connection.cursor() as cursor:
+            cursor.execute(query, params)
+            if fetch:
+                result = cursor.fetchall()
+                return result
+            else:
+                connection.commit()
+                return cursor.lastrowid
     finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
+        connection.close()
+
+def initialize_db():
+    """Run this once to create your database and tables if they don't exist."""
+    create_database_if_not_exists()
+    
+    queries = [
+        """CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            full_name VARCHAR(100) NOT NULL,
+            email VARCHAR(100) NOT NULL UNIQUE,
+            phone VARCHAR(20) DEFAULT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            verification_token VARCHAR(255) DEFAULT NULL,
+            is_verified BOOLEAN DEFAULT FALSE,
+            reset_token VARCHAR(255) DEFAULT NULL,
+            reset_token_expiry DATETIME DEFAULT NULL,
+            profile_pic VARCHAR(255) DEFAULT NULL,
+            theme_preference VARCHAR(20) DEFAULT 'light',
+            language_preference VARCHAR(20) DEFAULT 'en',
+            latitude DECIMAL(10,8) DEFAULT NULL,
+            longitude DECIMAL(11,8) DEFAULT NULL,
+            budget_preference VARCHAR(50) DEFAULT NULL,
+            cuisine_preference VARCHAR(50) DEFAULT NULL,
+            transport_preference VARCHAR(50) DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""",
+        """CREATE TABLE IF NOT EXISTS emergency_contacts (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            phone VARCHAR(20) NOT NULL,
+            relationship VARCHAR(50),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""",
+        """CREATE TABLE IF NOT EXISTS sos_alerts (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            latitude DECIMAL(10,8),
+            longitude DECIMAL(11,8),
+            message TEXT,
+            status ENUM('active', 'cancelled', 'resolved') DEFAULT 'active',
+            cancel_pin VARCHAR(10),
+            triggered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            cancelled_at TIMESTAMP NULL DEFAULT NULL
+        )""",
+        """INSERT INTO users (id, full_name, email, password_hash, is_verified)
+           VALUES (1, 'Bipin Maharjan', 'bipin@example.com', 'scrypt:32768:8:1$dM9wE09r7XyF$54303494e824147c45c36bcf72c3d5bbd1fb1de0e6dfb4c2b9a7b973a5a879008bc59160533dbb93ef2df7e8f5c88b9015949e29a2c317fa5cd7f1e73752fa97', TRUE)
+           ON DUPLICATE KEY UPDATE id=id"""
+    ]
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            for query in queries:
+                cursor.execute(query)
+        connection.commit()
+    finally:
+        connection.close()

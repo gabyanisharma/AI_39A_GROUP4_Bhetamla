@@ -75,6 +75,10 @@ TRANSLATIONS = {
         'delete':             'Delete',
         'edit':               'Edit',
         'back':               'Back',
+        'hello':              'Hello',
+        'meetup':             'Meetup',
+        'place':              'Place',
+        'notification':       'Notification',
     },
 
     'np': {
@@ -153,13 +157,21 @@ TRANSLATIONS = {
         'delete':             'मेटाउनुस्',
         'edit':               'सम्पादन',
         'back':               'पछाडि',
+        'hello':              'नमस्ते',
+        'meetup':             'भेटघाट',
+        'place':              'स्थान',
+        'notification':       'सूचना',
     }
 }
 
-def get_translations(language='en'):
+def get_translations(language='en', lang=None):
     """Return translation dict for given language."""
+    if lang is not None:
+        language = lang
     return TRANSLATIONS.get(language, TRANSLATIONS['en'])
 
-def t(key, language='en'):
+def t(key, language='en', lang=None):
     """Translate a single key."""
+    if lang is not None:
+        language = lang
     return TRANSLATIONS.get(language, TRANSLATIONS['en']).get(key, key)
