@@ -1,0 +1,107 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'plan' %}
+{% block title %}Plan Meetup — Bhetamla{% endblock %}
+
+{% block extra_css %}
+<style>
+    .meetup-card {
+        max-width: 700px;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    .coming-soon-badge {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        background: rgba(139, 92, 246, 0.15);
+        color: #8B5CF6;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 4px 10px;
+        border-radius: 12px;
+        letter-spacing: 0.05em;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        font-size: 14px;
+        background: var(--bg);
+        color: var(--text);
+        outline: none;
+    }
+
+    .btn-create {
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="meetup-card card">
+    <span class="coming-soon-badge">✨ Core Sprint 2 feature</span>
+    <div class="card-title">📅 Coordinate Safe Meetup</div>
+    
+    <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5;">
+        Coordinate meetups at verified safe community locations. Invite friends, integrate GPS directions, and activate continuous safety monitoring timers.
+    </p>
+
+    <form onsubmit="event.preventDefault(); alert('This premium coordination engine is part of the Sprint 2 rollout. Stay tuned!');">
+        <div class="form-group">
+            <label>Meetup Purpose</label>
+            <input type="text" placeholder="e.g. Study Group, Coffee Session" disabled>
+        </div>
+
+        <div class="form-group">
+            <label>Select Verified Safe Hub</label>
+            <select disabled>
+                <option>Select a safe community zone...</option>
+                <option>Civil Mall Active Ground Floor - Kathmandu</option>
+                <option>Lalitpur Community Library Center</option>
+                <option>Central Park Open Safe Hub - Pokhara</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div>
+                <label>Date</label>
+                <input type="date" disabled>
+            </div>
+            <div>
+                <label>Time</label>
+                <input type="time" disabled>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-create">Create Plan</button>
+    </form>
+</div>
+{% endblock %}

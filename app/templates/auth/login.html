@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — Bhetamla</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563EB;
+            --primary-dark: #1D4ED8;
+            --primary-light: #EFF6FF;
+            --bg-gradient: linear-gradient(135deg, #0F172A 0%, #1E1B4B 100%);
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text: #F1F5F9;
+            --text-muted: #94A3B8;
+            --border: rgba(255, 255, 255, 0.08);
+            --error: #EF4444;
+            --success: #10B981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Ambient Glow Blobs */
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 1;
+            opacity: 0.15;
+        }
+
+        .blob-1 {
+            width: 300px;
+            height: 300px;
+            background: #3B82F6;
+            top: -50px;
+            left: -50px;
+        }
+
+        .blob-2 {
+            width: 400px;
+            height: 400px;
+            background: #8B5CF6;
+            bottom: -100px;
+            right: -100px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+            z-index: 10;
+        }
+
+        .login-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 40px 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        }
+
+        .logo-text {
+            font-size: 22px;
+            font-weight: 800;
+            color: #FFFFFF;
+            letter-spacing: -0.5px;
+        }
+
+        .card-header {
+            margin-bottom: 28px;
+            text-align: center;
+        }
+
+        .card-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: #FFFFFF;
+        }
+
+        .card-header p {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 14px;
+            color: #FFFFFF;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .input-wrapper input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: var(--primary);
+            color: #FFFFFF;
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-submit:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        .footer-text {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .footer-text a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .footer-text a:hover {
+            text-decoration: underline;
+        }
+
+        /* Alert Banners */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: #FCA5A5;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .alert.success {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6EE7B7;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <div class="login-container">
+        <div class="login-card">
+            <div class="logo-section">
+                <div class="logo-icon">📍</div>
+                <span class="logo-text">Bhetamla</span>
+            </div>
+
+            <div class="card-header">
+                <h2>Welcome Back</h2>
+                <p>Log in to access your Bhetamla account</p>
+            </div>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert {% if category == 'error' %}error{% else %}success{% endif %}">
+                            <span>{% if category == 'error' %}🚨{% else %}✅{% endif %}</span>
+                            <span>{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('auth.login') }}">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <div class="input-wrapper">
+                        <input type="email" id="email" name="email" placeholder="name@domain.com" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="password" name="password" placeholder="••••••••" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit">Sign In</button>
+            </form>
+
+            <div class="footer-text">
+                Don't have an account? <a href="{{ url_for('auth.register') }}">Create account</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

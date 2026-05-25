@@ -1,0 +1,559 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'safety' %}
+{% block title %}Safety Hub — Bhetamla{% endblock %}
+
+{% block extra_css %}
+<style>
+    .safety-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .full-width {
+        grid-column: span 2;
+    }
+
+    /* SOS Button */
+    .sos-section {
+        text-align: center;
+        padding: 40px 20px;
+    }
+
+    .sos-big-btn {
+        width: 160px;
+        height: 160px;
+        border-radius: 50%;
+        background: #DC2626;
+        color: white;
+        font-size: 28px;
+        font-weight: 800;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 0 0 10px rgba(220, 38, 38, 0.2),
+            0 0 0 20px rgba(220, 38, 38, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin: 0 auto 20px;
+    }
+
+    .sos-big-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 14px rgba(220, 38, 38, 0.2),
+            0 0 0 28px rgba(220, 38, 38, 0.1);
+    }
+
+    .sos-big-btn.active {
+        background: #16A34A;
+        box-shadow: 0 0 0 10px rgba(22, 163, 74, 0.2),
+            0 0 0 20px rgba(22, 163, 74, 0.1);
+    }
+
+    .sos-big-btn .sos-icon {
+        font-size: 36px;
+    }
+
+    .sos-big-btn .sos-text {
+        font-size: 20px;
+        font-weight: 800;
+    }
+
+    .sos-desc {
+        color: var(--text-muted);
+        font-size: 14px;
+        margin-top: 8px;
+    }
+
+    /* Cancel PIN form */
+    .cancel-form {
+        display: none;
+        margin-top: 20px;
+        padding: 20px;
+        background: var(--bg);
+        border-radius: 14px;
+        border: 1.5px solid var(--border);
+    }
+
+    .cancel-form.show {
+        display: block;
+    }
+
+    .cancel-form h4 {
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+
+    .pin-input {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-bottom: 12px;
+    }
+
+    .pin-input input {
+        width: 50px;
+        height: 50px;
+        text-align: center;
+        font-size: 20px;
+        font-weight: 700;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        background: var(--card);
+        color: var(--text);
+        outline: none;
+    }
+
+    .pin-input input:focus {
+        border-color: var(--primary);
+    }
+
+    /* Status badge */
+    .alert-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 16px;
+    }
+
+    .status-active {
+        background: #FEE2E2;
+        color: #DC2626;
+    }
+
+    .status-inactive {
+        background: #DCFCE7;
+        color: #16A34A;
+    }
+
+    /* Contacts */
+    .contact-item {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .contact-item:last-child {
+        border-bottom: none;
+    }
+
+    .contact-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--primary-light);
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .contact-info {
+        flex: 1;
+    }
+
+    .contact-info .c-name {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .contact-info .c-rel {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .contact-info .c-phone {
+        font-size: 13px;
+        color: var(--primary);
+        margin-top: 2px;
+    }
+
+    .delete-btn {
+        background: #FEE2E2;
+        color: #DC2626;
+        border: none;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    /* Add contact form */
+    .add-contact-form {
+        margin-top: 16px;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .form-group {
+        margin-bottom: 14px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 6px;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        font-size: 14px;
+        background: var(--bg);
+        color: var(--text);
+        outline: none;
+    }
+
+    .form-group input:focus {
+        border-color: var(--primary);
+    }
+
+    .btn-add {
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 11px 24px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    /* Alert history */
+    .alert-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .alert-item:last-child {
+        border-bottom: none;
+    }
+
+    .alert-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .dot-active {
+        background: #DC2626;
+    }
+
+    .dot-cancelled {
+        background: #94A3B8;
+    }
+
+    .dot-resolved {
+        background: #16A34A;
+    }
+
+    .alert-info {
+        flex: 1;
+    }
+
+    .alert-info .a-time {
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .alert-info .a-status {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    /* Privacy note */
+    .privacy-note {
+        background: #F0FFF4;
+        border: 1px solid #BBF7D0;
+        border-radius: 12px;
+        padding: 16px;
+        font-size: 13px;
+        color: #15803D;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        margin-top: 16px;
+    }
+
+    @media (max-width: 768px) {
+        .safety-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .full-width {
+            grid-column: span 1;
+        }
+
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 style="font-size:22px; font-weight:700; margin-bottom:24px;">🛡️ Safety Hub</h1>
+
+<div class="safety-grid">
+
+    <!-- SOS Button -->
+    <div class="card">
+        <div class="card-title">Emergency SOS</div>
+        <div class="sos-section">
+
+            {% if active_alert %}
+            <div class="alert-status status-active">
+                🔴 SOS Alert Active
+            </div>
+            {% else %}
+            <div class="alert-status status-inactive">
+                🟢 All Safe
+            </div>
+            {% endif %}
+
+            <button class="sos-big-btn {% if active_alert %}active{% endif %}" id="sosBtn" onclick="handleSOS()">
+                <span class="sos-icon">🆘</span>
+                <span class="sos-text">{% if active_alert %}ACTIVE{% else %}SOS{% endif %}</span>
+            </button>
+
+            <p class="sos-desc">
+                {% if active_alert %}
+                Alert sent! Emergency contacts notified.
+                {% else %}
+                Press to send your location to emergency contacts
+                {% endif %}
+            </p>
+
+            <!-- Cancel form -->
+            <div class="cancel-form {% if active_alert %}show{% endif %}" id="cancelForm">
+                <h4>🔐 Enter PIN to cancel alert</h4>
+                <div style="display:flex; gap:10px; justify-content:center; margin-bottom:12px;">
+                    <input type="text" maxlength="4" id="cancelPin" placeholder="PIN" style="width:100px; height:44px; text-align:center;
+                                  font-size:18px; font-weight:700;
+                                  border:1.5px solid var(--border);
+                                  border-radius:10px; background:var(--card);
+                                  color:var(--text); outline:none;" />
+                </div>
+                <button onclick="cancelSOS()" style="background:#16A34A; color:white; border:none;
+                               border-radius:10px; padding:10px 24px;
+                               font-size:14px; font-weight:600; cursor:pointer;">
+                    Cancel Alert
+                </button>
+            </div>
+        </div>
+
+        <div class="privacy-note">
+            🔒 <span>Your location is only shared during active SOS alerts and is never stored permanently.</span>
+        </div>
+    </div>
+
+    <!-- Emergency Contacts -->
+    <div class="card">
+        <div class="card-title">
+            Emergency Contacts
+            <span style="font-size:12px; color:var(--text-muted);">{{ contacts|length }}/3</span>
+        </div>
+
+        {% if contacts %}
+        {% for contact in contacts %}
+        <div class="contact-item">
+            <div class="contact-avatar">
+                {{ contact.name[0].upper() }}
+            </div>
+            <div class="contact-info">
+                <div class="c-name">{{ contact.name }}</div>
+                <div class="c-rel">{{ contact.relationship or 'Contact' }}</div>
+                <div class="c-phone">📞 {{ contact.phone }}</div>
+            </div>
+            <a href="{{ url_for('notification.delete_contact', contact_id=contact.id) }}" class="delete-btn"
+                onclick="return confirm('Remove this contact?')">
+                Remove
+            </a>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px;">
+            No emergency contacts added yet.
+        </p>
+        {% endif %}
+
+        {% if contacts|length < 3 %} <div class="add-contact-form">
+            <p style="font-size:13px; font-weight:600; margin-bottom:12px;">
+                ➕ Add Contact
+            </p>
+            <form method="POST" action="{{ url_for('notification.add_contact') }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" name="name" placeholder="Full name" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="tel" name="phone" placeholder="+977 98XXXXXXXX" required />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Relationship</label>
+                    <select name="relationship">
+                        <option value="Family">Family</option>
+                        <option value="Friend">Friend</option>
+                        <option value="Partner">Partner</option>
+                        <option value="Colleague">Colleague</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-add">Add Contact</button>
+            </form>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Alert History -->
+<div class="card full-width">
+    <div class="card-title">Alert History</div>
+    {% if alerts %}
+    {% for alert in alerts %}
+    <div class="alert-item">
+        <div class="alert-dot
+                    {% if alert.status == 'active' %}dot-active
+                    {% elif alert.status == 'cancelled' %}dot-cancelled
+                    {% else %}dot-resolved{% endif %}">
+        </div>
+        <div class="alert-info">
+            <div class="a-time">
+                {{ alert.triggered_at.strftime('%B %d, %Y at %I:%M %p') if alert.triggered_at else 'Unknown time' }}
+            </div>
+            <div class="a-status">
+                Status: {{ alert.status.capitalize() }}
+                {% if alert.latitude %}
+                —
+                <a href="https://maps.google.com/?q={{ alert.latitude }},{{ alert.longitude }}" target="_blank">View
+                    location</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color:var(--text-muted); font-size:14px;">No alerts triggered yet.</p>
+    {% endif %}
+</div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentAlertId = null;
+
+    function handleSOS() {
+        const btn = document.getElementById('sosBtn');
+
+        if (btn.classList.contains('active')) {
+            // Already active — show cancel form
+            document.getElementById('cancelForm').classList.toggle('show');
+            return;
+        }
+
+        // Confirm before triggering
+        if (!confirm('⚠️ Are you sure you want to trigger an SOS alert? Your location will be sent to your emergency contacts.')) {
+            return;
+        }
+
+        // Get location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                position => triggerSOS(position.coords.latitude, position.coords.longitude),
+                () => triggerSOS(null, null)
+            );
+        } else {
+            triggerSOS(null, null);
+        }
+    }
+
+    function triggerSOS(lat, lng) {
+        fetch('/notification/trigger-sos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                latitude: lat,
+                longitude: lng,
+                message: 'I need help! This is an emergency.'
+            })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    currentAlertId = data.alert_id;
+                    const btn = document.getElementById('sosBtn');
+                    btn.classList.add('active');
+                    btn.querySelector('.sos-text').textContent = 'ACTIVE';
+                    document.getElementById('cancelForm').classList.add('show');
+                    alert(`🚨 SOS Alert sent!\n\nYour PIN to cancel: ${data.cancel_pin}\n\nKeep this PIN safe!`);
+                    window.location.reload();
+                } else {
+                    alert('Failed to send SOS. Please call emergency services directly.');
+                }
+            })
+            .catch(() => alert('Failed to send SOS. Please call emergency services directly.'));
+    }
+
+    function cancelSOS() {
+        const pin = document.getElementById('cancelPin').value;
+
+        if (!pin || pin.length !== 4) {
+            alert('Please enter the 4-digit PIN.');
+            return;
+        }
+
+        fetch('/notification/cancel-sos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: pin })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const btn = document.getElementById('sosBtn');
+                    btn.classList.remove('active');
+                    btn.querySelector('.sos-text').textContent = 'SOS';
+                    document.getElementById('cancelForm').classList.remove('show');
+                    document.getElementById('cancelPin').value = '';
+                    alert('✅ SOS alert cancelled successfully.');
+                    window.location.reload();
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            });
+    }
+</script>
+{% endblock %}
