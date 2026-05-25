@@ -13,6 +13,14 @@ class User:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def __getitem__(self, key):
+        if hasattr(self, key):
+            return getattr(self, key)
+        raise KeyError(key)
+
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
     @staticmethod
     def create(full_name, email, phone, password):
         password_hash = generate_password_hash(password)

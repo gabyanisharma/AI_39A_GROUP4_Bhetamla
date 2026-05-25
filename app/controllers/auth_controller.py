@@ -135,6 +135,10 @@ def reset_password(token):
 # ─── Private email helpers ─────────────────────────────────────────────────
 
 def _send_verification_email(user):
+    if not Config.MAIL_USERNAME or not Config.MAIL_PASSWORD:
+        print('Mail skipped: MAIL_USERNAME / MAIL_PASSWORD not configured.')
+        return
+
     token = user['verification_token']
     link  = url_for('auth.verify_email', token=token, _external=True)
     msg   = Message('Verify your Bhetamल account', recipients=[user['email']])
@@ -151,6 +155,10 @@ def _send_verification_email(user):
 
 
 def _send_reset_email(user, token):
+    if not Config.MAIL_USERNAME or not Config.MAIL_PASSWORD:
+        print('Mail skipped: MAIL_USERNAME / MAIL_PASSWORD not configured.')
+        return
+
     link = url_for('auth.reset_password', token=token, _external=True)
     msg  = Message('Reset your Bhetamल password', recipients=[user['email']])
     msg.html = f"""
