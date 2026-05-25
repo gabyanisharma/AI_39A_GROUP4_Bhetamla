@@ -1,0 +1,177 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'profile' %}
+{% block title %}Profile — Bhetamल{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-header {
+        background: linear-gradient(135deg, #2563EB, #1D4ED8);
+        border-radius: 20px;
+        padding: 36px;
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        margin-bottom: 24px;
+        color: white;
+    }
+    .profile-avatar {
+        position: relative;
+        width: 90px; height: 90px;
+    }
+    .profile-avatar img {
+        width: 90px; height: 90px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid rgba(255,255,255,0.4);
+    }
+    .verified-badge {
+        position: absolute; bottom: 0; right: 0;
+        background: #16A34A;
+        border-radius: 50%;
+        width: 24px; height: 24px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px;
+        border: 2px solid white;
+    }
+    .profile-info h2 { font-size: 22px; font-weight: 700; }
+    .profile-info .location { opacity: 0.85; font-size: 14px; margin-top: 4px; }
+    .profile-tags { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .profile-tag {
+        background: rgba(255,255,255,0.2);
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 12px; font-weight: 600;
+    }
+    .profile-actions { margin-left: auto; display: flex; flex-direction: column; gap: 10px; }
+    .btn-white {
+        background: white; color: var(--primary);
+        border: none; border-radius: 10px;
+        padding: 10px 20px; font-size: 14px; font-weight: 600;
+        cursor: pointer; text-decoration: none;
+        display: inline-flex; align-items: center; gap: 6px;
+    }
+
+    /* Stats row */
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .stat-card {
+        background: var(--card);
+        border-radius: 14px;
+        padding: 20px;
+        text-align: center;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+    }
+    .stat-card .stat-value { font-size: 26px; font-weight: 700; color: var(--primary); }
+    .stat-card .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+    /* Info grid */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .info-item { margin-bottom: 16px; }
+    .info-item .label {
+        font-size: 12px; font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 4px;
+    }
+    .info-item .value { font-size: 15px; font-weight: 500; color: var(--text); }
+
+    /* Security */
+    .security-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .security-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 14px;
+        background: var(--bg);
+        border-radius: 12px;
+        font-size: 13px; font-weight: 500;
+    }
+    .security-item .check { color: #16A34A; font-size: 16px; }
+
+    @media (max-width: 768px) {
+        .stats-row { grid-template-columns: repeat(2, 1fr); }
+        .info-grid, .security-grid { grid-template-columns: 1fr; }
+        .profile-header { flex-direction: column; text-align: center; }
+        .profile-actions { margin-left: 0; flex-direction: row; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Profile Header -->
+<div class="profile-header">
+    <div class="profile-avatar">
+        <img src="https://ui-avatars.com/api/?name={{ user.full_name }}&background=ffffff&color=2563EB&size=90"
+             alt="{{ user.full_name }}" />
+        <div class="verified-badge">✓</div>
+    </div>
+    <div class="profile-info">
+        <h2>{{ user.full_name }}</h2>
+        <div class="location">📍 Kathmandu, Nepal</div>
+        <div class="profile-tags">
+            <span class="profile-tag">PREMIUM MEMBER</span>
+            <span class="profile-tag">SAFETY VERIFIED</span>
+        </div>
+    </div>
+    <div class="profile-actions">
+        <a href="{{ url_for('user.settings_page') }}" class="btn-white">✏️ Edit Profile</a>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-value">0</div>
+        <div class="stat-label">Meetups</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">0</div>
+        <div class="stat-label">Friends</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">0</div>
+        <div class="stat-label">Places Saved</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">0</div>
+        <div class="stat-label">Badges Earned</div>
+    </div>
+</div>
+
+<!-- Info + Security -->
+<div class="info-grid">
+    <div class="card">
+        <div class="card-title">Personal Information</div>
+        <div class="info-item">
+            <div class="label">Full Name</div>
+            <div class="value">{{ user.full_name }}</div>
+        </div>
+        <div class="info-item">
+            <div class="label">Email Address</div>
+            <div class="value">{{ user.email }}</div>
+        </div>
+        <div class="info-item">
+            <div class="label">Phone Number</div>
+            <div class="value">{{ user.phone or 'Not set' }}</div>
+        </div>
+        <div class="info-item">
+            <div class="label">Member Since</div>
+            <div class="value">{{ user.created_at.strftime('%B %Y') if user.created_at else 'N/A' }}</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Security Level <span style="color:#16A34A; font-size:13px;">100% Secure</span></div>
+        <div class="security-grid">
+            <div class="security-item"><span class="check">✅</span> Email Verified</div>
+            <div class="security-item"><span class="check">✅</span> Phone Added</div>
+            <div class="security-item" style="opacity:0.5;">⬜ Biometric Auth</div>
+            <div class="security-item" style="opacity:0.5;">⬜ Physical ID</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

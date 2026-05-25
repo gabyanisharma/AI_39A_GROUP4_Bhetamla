@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Login — Bhetamल{% endblock %}
+{% block title %}{{ t.login }} — Bhetamla{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -27,9 +27,8 @@
     .logo-img { font-size: 40px; }
     .logo h1 { font-size: 28px; font-weight: 700; color: var(--primary); margin-top: 8px; }
     .logo p  { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
-    .divider { text-align: center; color: var(--text-muted); font-size: 13px; margin: 20px 0; }
-    .register-link { text-align: center; margin-top: 24px; font-size: 14px; color: var(--text-muted); }
     .forgot-link { text-align: right; font-size: 13px; margin-top: -10px; margin-bottom: 18px; }
+    .register-link { text-align: center; margin-top: 24px; font-size: 14px; color: var(--text-muted); }
 
     .auth-right {
         display: flex;
@@ -75,28 +74,28 @@
         <div class="auth-card">
             <div class="logo">
                 <div class="logo-img">📍</div>
-                <h1>Bhetamल</h1>
+                <h1>Bhetamla</h1>
                 <p>Coordinate with effortless ease</p>
             </div>
 
             <form method="POST" action="{{ url_for('auth.login') }}">
                 <div class="form-group">
-                    <label>Email Address</label>
+                    <label>{{ t.email }}</label>
                     <input type="email" name="email" placeholder="hello@example.com" required />
                 </div>
                 <div class="form-group">
-                    <label>Password</label>
+                    <label>{{ t.password }}</label>
                     <input type="password" name="password" placeholder="Enter your password" required />
                 </div>
                 <div class="forgot-link">
-                    <a href="{{ url_for('auth.forgot_password') }}">Forgot password?</a>
+                    <a href="{{ url_for('auth.forgot_password') }}">{{ t.forgot_password }}</a>
                 </div>
-                <button type="submit" class="btn btn-primary">Continue with Email</button>
+                <button type="submit" class="btn btn-primary">{{ t.continue_email }}</button>
             </form>
 
             <div class="register-link">
-                Don't have an account?
-                <a href="{{ url_for('auth.register') }}">Sign up for free</a>
+                {{ t.no_account }}
+                <a href="{{ url_for('auth.register') }}">{{ t.sign_up }}</a>
             </div>
         </div>
     </div>
