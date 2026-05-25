@@ -1,0 +1,124 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'notifications' %}
+{% block title %}Notifications — Bhetamla{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notif-card {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .notif-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin-top: 16px;
+    }
+
+    .notif-item {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        transition: transform 0.15s;
+    }
+
+    .notif-item:hover {
+        transform: scale(1.01);
+    }
+
+    .notif-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .notif-icon.blue { background: rgba(37, 99, 235, 0.1); color: var(--primary); }
+    .notif-icon.red { background: rgba(220, 38, 38, 0.1); color: var(--error); }
+    .notif-icon.green { background: rgba(22, 163, 74, 0.1); color: var(--success); }
+
+    .notif-content {
+        flex: 1;
+    }
+
+    .notif-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 4px;
+    }
+
+    .notif-text {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.4;
+    }
+
+    .notif-time {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="notif-card card">
+    <div class="card-title">
+        <span>🔔 Notification Log</span>
+        <span style="font-size: 12px; font-weight: 500; color: var(--text-muted);">Recent alerts</span>
+    </div>
+
+    <div class="notif-list">
+        <!-- Notification 1 -->
+        <div class="notif-item">
+            <div class="notif-icon blue">🛡️</div>
+            <div class="notif-content">
+                <div class="notif-title">Safety Status Active</div>
+                <p class="notif-text">Your Bhetamla account is now set up and actively monitoring. Your default coordinates are secured.</p>
+                <div class="notif-time">Just now</div>
+            </div>
+        </div>
+
+        <!-- SOS Log History -->
+        {% if alerts %}
+            {% for alert in alerts %}
+                <div class="notif-item">
+                    <div class="notif-icon {% if alert.status == 'active' %}red{% else %}green{% endif %}">🚨</div>
+                    <div class="notif-content">
+                        <div class="notif-title">SOS Alert triggered — {{ alert.status|upper }}</div>
+                        <p class="notif-text">
+                            An SOS alert was triggered. Message: "{{ alert.message or 'No message provided' }}". 
+                            {% if alert.latitude %}
+                                Latitude: {{ alert.latitude }}, Longitude: {{ alert.longitude }}.
+                            {% endif %}
+                        </p>
+                        <div class="notif-time">
+                            {{ alert.triggered_at.strftime('%B %d, %Y at %I:%M %p') if alert.triggered_at else 'Prior alert' }}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Notification 2 -->
+        <div class="notif-item">
+            <div class="notif-icon green">🔑</div>
+            <div class="notif-content">
+                <div class="notif-title">Account Security Setup</div>
+                <p class="notif-text">Password successfully loaded and secure keys active. Always maintain strong credentials.</p>
+                <div class="notif-time">1 hour ago</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
