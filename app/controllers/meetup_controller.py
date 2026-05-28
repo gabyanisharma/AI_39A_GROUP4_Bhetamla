@@ -1,3 +1,5 @@
+import json
+import os
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from app.models.base_model import (
     Friend, AvailabilitySlot, MeetupSchedule, ScheduleInvite
@@ -17,6 +19,8 @@ def scheduler():
     pending  = Friend.get_pending_requests(user_id)
     sent     = Friend.get_sent_requests(user_id)
     invites  = ScheduleInvite.get_pending_by_user(user_id)
+
+    restaurants = get_restaurants_data()
 
     return render_template('meetup/scheduler.html',
                            friends=friends,
@@ -173,3 +177,11 @@ def get_common_availability():
         'end_time':   str(s['end_time']),
         'count':      s['available_count']
     } for s in slots])
+
+def get_restaurants_data():
+    file_path = os.path.join(os.getcwd(), 'data', 'restaurants.json')
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
