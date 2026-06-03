@@ -34,3 +34,6 @@ __pycache__/
 
 # Ignore logs
 *.log
+
+run_stderr.log
+run_stdout.log
