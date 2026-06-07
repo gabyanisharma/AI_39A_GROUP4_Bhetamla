@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 from flask import (render_template, request, redirect,
                    url_for, flash, jsonify, session)
 from app.models.meetup import Meetup, MeetupMember, PlaceSuggestion
@@ -8,7 +7,6 @@ from app.auth import get_current_user_id, is_logged_in
 from app.controllers.notification_controller import send_notification
 from app.models.place import Restaurant, RestaurantReview
 import math
-
 
 # ── Midpoint calculation ───────────────────────────────────────────
 def calculate_midpoint(locations):
@@ -93,8 +91,7 @@ def create_meetup():
 
         # Add creator as member with their location
         MeetupMember.add(meetup_id, user_id,
-                         user_lat, user_lng, user_address,
-                         status='accepted')
+                         user_lat, user_lng, user_address)
 
         # Invite friends
         for friend_id in invite_ids:
@@ -110,7 +107,7 @@ def create_meetup():
             )
 
         flash('Meetup created successfully!', 'success')
-        return redirect(url_for('meetup.view_meetup_route',
+        return redirect(url_for('meetup.view_meetup',
                                 meetup_id=meetup_id))
 
     return redirect(url_for('meetup.plan'))
@@ -141,7 +138,6 @@ def view_meetup(meetup_id):
     midpoint_lat = midpoint_lng = None
     if len(locations) >= 2:
         midpoint_lat, midpoint_lng = calculate_midpoint(locations)
-        Meetup.update_midpoint(meetup_id, midpoint_lat, midpoint_lng, '')
 
         # Calculate distance from midpoint for each member
         for loc in locations:
@@ -171,7 +167,7 @@ def update_location(meetup_id):
     if not is_logged_in():
         return jsonify({'success': False}), 401
 
-    data    = request.get_json(silent=True) or {}
+    data    = request.get_json()
     lat     = data.get('latitude')
     lng     = data.get('longitude')
     address = data.get('address', '')
@@ -249,7 +245,7 @@ def add_suggestion(meetup_id):
 
         if not place_name:
             flash('Place name is required.', 'error')
-            return redirect(url_for('meetup.view_meetup_route',
+            return redirect(url_for('meetup.view_meetup',
                                     meetup_id=meetup_id))
 
         PlaceSuggestion.add(
@@ -258,7 +254,7 @@ def add_suggestion(meetup_id):
         )
         flash('Place suggestion added!', 'success')
 
-    return redirect(url_for('meetup.view_meetup_route',
+    return redirect(url_for('meetup.view_meetup',
                             meetup_id=meetup_id))
 
 
@@ -277,7 +273,7 @@ def respond_meetup(meetup_id):
         MeetupMember.decline(meetup_id, user_id)
         flash('Meetup declined.', 'info')
 
-    return redirect(url_for('meetup.view_meetup_route',
+    return redirect(url_for('meetup.view_meetup',
                             meetup_id=meetup_id))
 
 
@@ -295,42 +291,44 @@ def saved_places():
     return render_template('place/saved.html', places=places)
 
 
+def _build_filters(args):
+    """Helper to build filter dictionary from request args."""
+    filters = {}
+    if args.get('cuisine'): filters['cuisine'] = args.get('cuisine')
+    if args.get('price_range'): filters['price_range'] = args.get('price_range')
+    if args.get('ambience'): filters['ambience'] = args.get('ambience')
+    if args.get('min_rating'): filters['min_rating'] = float(args.get('min_rating'))
+    if args.get('max_budget'):
+        try:
+            filters['max_budget'] = float(args.get('max_budget'))
+        except (ValueError, TypeError):
+            pass
+    return filters
+
 # ── Restaurant list page ───────────────────────────────────────────
 def restaurants():
     if not is_logged_in():
         return redirect(url_for('auth.login'))
 
-    # Get filters from query string
-    filters = {}
-    cuisine     = request.args.get('cuisine')
-    price_range = request.args.get('price_range')
-    ambience    = request.args.get('ambience')
-    min_rating  = request.args.get('min_rating')
-    meetup_id   = request.args.get('meetup_id')
-    search_q    = request.args.get('q')
+    filters = _build_filters(request.args)
+    meetup_id = request.args.get('meetup_id')
+    search_q = request.args.get('q')
 
-    if cuisine:     filters['cuisine']     = cuisine
-    if price_range: filters['price_range'] = price_range
-    if ambience:    filters['ambience']    = ambience
-    if min_rating:  filters['min_rating']  = float(min_rating)
-
-    # If meetup_id provided, get restaurants near midpoint
+    # Get budget info for UI
+    budget_min, budget_max = Restaurant.get_budget_range()
+    group_budget = None
+    
     midpoint_lat = midpoint_lng = None
     restaurant_list = []
 
+    # Handle Meetup context
     if meetup_id:
         meetup = Meetup.get_by_id(meetup_id)
-        if meetup and meetup['midpoint_lat']:
+        group_budget = meetup.get('group_budget') if meetup else None
+        if meetup and meetup.get('midpoint_lat'):
             midpoint_lat = float(meetup['midpoint_lat'])
             midpoint_lng = float(meetup['midpoint_lng'])
-            radius       = float(request.args.get('radius', 3.0))
-            restaurant_list = Restaurant.get_near_midpoint(
-                midpoint_lat, midpoint_lng, radius, filters
-            )
-        elif request.args.get('midpoint_lat') and request.args.get('midpoint_lng'):
-            midpoint_lat = float(request.args.get('midpoint_lat'))
-            midpoint_lng = float(request.args.get('midpoint_lng'))
-            radius       = float(request.args.get('radius', 3.0))
+            radius = float(request.args.get('radius', 3.0))
             restaurant_list = Restaurant.get_near_midpoint(
                 midpoint_lat, midpoint_lng, radius, filters
             )
@@ -339,17 +337,35 @@ def restaurants():
     else:
         restaurant_list = Restaurant.get_all(filters)
 
-    cuisines = Restaurant.get_cuisines()
-
     return render_template('place/restaurants.html',
                            restaurants=restaurant_list,
-                           cuisines=cuisines,
+                           cuisines=Restaurant.get_cuisines(),
                            filters=filters,
                            midpoint_lat=midpoint_lat,
                            midpoint_lng=midpoint_lng,
                            meetup_id=meetup_id,
-                           search_q=search_q or '')
+                           search_q=search_q or '',
+                           budget_min=budget_min,
+                           budget_max=budget_max,
+                           group_budget=group_budget)
 
+# ── API for AJAX filtering ─────────────────────────────────────────
+def api_filter_restaurants():
+    """AJAX endpoint to return JSON list of restaurants."""
+    filters = _build_filters(request.args)
+    rows = Restaurant.get_all(filters=filters, limit=200)
+
+    def serialize(r):
+        return {
+            'id': int(r.get('id')),
+            'name': r.get('name'),
+            'description': r.get('description'),
+            'avg_cost_per_person': float(r.get('avg_cost_per_person') or 0),
+            'rating': float(r.get('rating') or 0),
+            'thumbnail_url': r.get('thumbnail_url')
+        }
+
+    return jsonify([serialize(r) for r in (rows or [])])
 
 # ── Restaurant detail page ─────────────────────────────────────────
 def restaurant_detail(restaurant_id):
@@ -435,62 +451,3 @@ def remove_saved_place(place_id):
     )
     flash('Place removed.', 'info')
     return redirect(url_for('place.saved'))
-=======
-from flask import render_template, request, jsonify, redirect, url_for
-from app.models.place import Restaurant
-from app.auth import is_logged_in
-
-
-def _build_filters(args):
-	filters = {}
-	if args.get('max_budget'):
-		try:
-			filters['max_budget'] = float(args.get('max_budget'))
-		except (ValueError, TypeError):
-			pass
-	return filters
-
-
-def restaurants():
-	if not is_logged_in():
-		return redirect(url_for('auth.login'))
-
-	# Budget range for slider
-	budget_min, budget_max = Restaurant.get_budget_range()
-
-	# Optional meetup context for group budget
-	meetup_id = request.args.get('meetup_id')
-	group_budget = None
-	if meetup_id:
-		try:
-			from app.models.meetup import Meetup
-			meetup = Meetup.get_by_id(meetup_id)
-			group_budget = meetup.get('group_budget') if meetup else None
-		except ImportError:
-			group_budget = None
-
-	return render_template('place/restaurants.html',
-						   budget_min=budget_min,
-						   budget_max=budget_max,
-						   group_budget=group_budget)
-
-
-def api_filter_restaurants():
-	# AJAX endpoint to return JSON list of restaurants
-	args = request.args
-	filters = _build_filters(args)
-	rows = Restaurant.get_all(filters=filters, limit=200)
-
-	def serialize(r):
-		return {
-			'id': int(r.get('id')),
-			'name': r.get('name'),
-			'description': r.get('description'),
-			'avg_cost_per_person': float(r.get('avg_cost_per_person') or 0),
-			'rating': float(r.get('rating') or 0),
-			'thumbnail_url': r.get('thumbnail_url')
-		}
-
-	return jsonify([serialize(r) for r in (rows or [])])
-
->>>>>>> f5cac7472e9f8369ce88e39c2cfba52bb6dd62b4

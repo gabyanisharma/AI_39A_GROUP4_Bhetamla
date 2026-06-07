@@ -7,6 +7,20 @@ USE bhetamla_db;
 
 
 -- =========================================
+-- EMAIL VERIFICATION
+-- =========================================
+-- 1. Turn off safe updates
+-- SET SQL_SAFE_UPDATES = 0;
+-- 2. Run your update query
+-- UPDATE users SET is_verified = 1;
+-- 3. Turn safe updates back on (recommended for safety)
+-- SET SQL_SAFE_UPDATES = 1;
+-- 4. Check your results
+-- SELECT id, email, is_verified FROM users;
+-- to unverify
+-- UPDATE users SET is_verified = 0 WHERE email = 'testuser@example.com';
+
+-- =========================================
 -- USERS TABLE
 -- =========================================
 
@@ -356,6 +370,7 @@ CREATE TABLE IF NOT EXISTS restaurants (
     id INT AUTO_INCREMENT PRIMARY KEY,
 
     name VARCHAR(255) NOT NULL,
+    description TEXT,
     address VARCHAR(255),
 
     latitude DECIMAL(10,8),
@@ -365,12 +380,14 @@ CREATE TABLE IF NOT EXISTS restaurants (
     cuisine VARCHAR(100),
 
     price_range ENUM('budget', 'mid', 'expensive') DEFAULT 'mid',
+    avg_cost_per_person DECIMAL(10,2),
 
     rating DECIMAL(3,2) DEFAULT 0,
     review_count INT DEFAULT 0,
 
     ambience VARCHAR(100),
     image_url VARCHAR(255),
+    thumbnail_url VARCHAR(255),
 
     opening_time TIME,
     closing_time TIME,

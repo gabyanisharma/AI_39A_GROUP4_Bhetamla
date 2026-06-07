@@ -268,7 +268,7 @@
         <div class="meetup-list">
             {% if meetups %}
                 {% for m in meetups %}
-                    <a href="{{ url_for('meetup.view_meetup_route', meetup_id=m.id) }}" class="meetup-item">
+                    <a href="{{ url_for('meetup.view_meetup', meetup_id=m.id) }}" class="meetup-item">
                         <div class="meetup-item-header">
                             <span class="meetup-title">{{ m.title }}</span>
                             <span class="meetup-status status-{{ m.status }}">{{ m.status }}</span>

@@ -33,3 +33,4 @@ db.sqlite3
 
 run_stderr.log
 run_stdout.log
+notes.txt

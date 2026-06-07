@@ -115,16 +115,13 @@ def _repair_existing_schema(cursor):
     _ensure_column(cursor, 'meetups', 'meetup_date', "meetup_date DATE NULL")
     _ensure_column(cursor, 'meetups', 'meetup_time', "meetup_time TIME NULL")
     _ensure_column(cursor, 'restaurants', 'image_url', "image_url VARCHAR(255) NULL")
+    _ensure_column(cursor, 'restaurants', 'description', "description TEXT NULL")
+    _ensure_column(cursor, 'restaurants', 'avg_cost_per_person', "avg_cost_per_person DECIMAL(10,2) NULL")
+    _ensure_column(cursor, 'restaurants', 'thumbnail_url', "thumbnail_url VARCHAR(255) NULL")
 
 
 def _seed_demo_data(cursor):
     users = [
-        (
-            'Bipin Maharjan',
-            'bipin@example.com',
-            '9800000001',
-            'scrypt:32768:8:1$dM9wE09r7XyF$54303494e824147c45c36bcf72c3d5bbd1fb1de0e6dfb4c2b9a7b973a5a879008bc59160533dbb93ef2df7e8f5c88b9015949e29a2c317fa5cd7f1e73752fa97',
-        ),
         (
             'John Doe',
             'john.doe@example.com',
@@ -154,17 +151,16 @@ def _seed_demo_data(cursor):
         FROM users john
         JOIN users bipin
           ON john.email = 'john.doe@example.com'
-         AND bipin.email = 'bipin@example.com'
         """
     )
 
     restaurants = [
-        ('Himalayan Java Coffee', 'Tridevi Marg, Thamel', 27.7153, 85.3123, 'Cafe', 'Coffee', 'mid', 4.6, 128, 'casual', '07:00:00', '21:00:00'),
-        ('Bhojan Griha', 'Dillibazar, Kathmandu', 27.7070, 85.3283, 'Restaurant', 'Nepali', 'mid', 4.5, 94, 'family_friendly', '11:00:00', '22:00:00'),
-        ('Roadhouse Cafe', 'Bhatbhateni, Kathmandu', 27.7219, 85.3302, 'Restaurant', 'Italian', 'mid', 4.4, 151, 'casual', '10:00:00', '22:30:00'),
-        ('OR2K', 'Mandala Street, Thamel', 27.7150, 85.3119, 'Restaurant', 'Mediterranean', 'mid', 4.3, 212, 'casual', '09:00:00', '22:00:00'),
-        ('Krishnarpan', 'Battisputali, Kathmandu', 27.7045, 85.3490, 'Restaurant', 'Nepali', 'expensive', 4.8, 76, 'fine_dining', '18:00:00', '22:00:00'),
-        ('Korean Kitchen Picnic', 'Jhamsikhel, Lalitpur', 27.6762, 85.3159, 'Restaurant', 'Korean', 'mid', 4.2, 88, 'casual', '10:30:00', '21:30:00'),
+        ('Himalayan Java Coffee', 'Tridevi Marg, Thamel', 27.7153, 85.3123, 'Cafe', 'Coffee', 'mid', 4.6, 128, 'casual', '07:00:00', '21:00:00', 'Reliable coffee spot for study sessions and casual meetups.', 650),
+        ('Bhojan Griha', 'Dillibazar, Kathmandu', 27.7070, 85.3283, 'Restaurant', 'Nepali', 'mid', 4.5, 94, 'family_friendly', '11:00:00', '22:00:00', 'Traditional Nepali dining in a restored heritage building.', 1200),
+        ('Roadhouse Cafe', 'Bhatbhateni, Kathmandu', 27.7219, 85.3302, 'Restaurant', 'Italian', 'mid', 4.4, 151, 'casual', '10:00:00', '22:30:00', 'Pizza, pasta, and easy group seating near Bhatbhateni.', 1100),
+        ('OR2K', 'Mandala Street, Thamel', 27.7150, 85.3119, 'Restaurant', 'Mediterranean', 'mid', 4.3, 212, 'casual', '09:00:00', '22:00:00', 'Vegetarian-friendly Thamel favorite with relaxed seating.', 950),
+        ('Krishnarpan', 'Battisputali, Kathmandu', 27.7045, 85.3490, 'Restaurant', 'Nepali', 'expensive', 4.8, 76, 'fine_dining', '18:00:00', '22:00:00', 'Premium Nepali tasting-menu experience for special plans.', 3500),
+        ('Korean Kitchen Picnic', 'Jhamsikhel, Lalitpur', 27.6762, 85.3159, 'Restaurant', 'Korean', 'mid', 4.2, 88, 'casual', '10:30:00', '21:30:00', 'Comfortable Korean restaurant for small groups.', 1000),
     ]
 
     for row in restaurants:
@@ -185,6 +181,8 @@ def _seed_demo_data(cursor):
                     ambience = %s,
                     opening_time = %s,
                     closing_time = %s,
+                    description = %s,
+                    avg_cost_per_person = %s,
                     is_active = TRUE
                 WHERE id = %s
                 """,
@@ -196,8 +194,9 @@ def _seed_demo_data(cursor):
                 INSERT INTO restaurants
                     (name, address, latitude, longitude, category, cuisine,
                      price_range, rating, review_count, ambience,
-                     opening_time, closing_time, is_active)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
+                     opening_time, closing_time, description,
+                     avg_cost_per_person, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
                 """,
                 row
             )
