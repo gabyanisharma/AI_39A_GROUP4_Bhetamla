@@ -76,12 +76,25 @@
         padding: 4px 10px;
         border-radius: 12px;
     }
+
+    .btn-decline {
+        background: #FEE2E2;
+        color: #DC2626;
+        border: none;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="places-card card">
-    <span class="coming-soon-badge">✨ Map Integration Beta</span>
+    <span class="coming-soon-badge">✨ Safe Meetup Zones</span>
     <div class="card-title">🔖 Saved Safe Places</div>
     
     <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5;">
@@ -89,29 +102,31 @@
     </p>
 
     <div class="place-grid">
-        <!-- Place 1 Mockup -->
-        <div class="place-item">
-            <div class="place-header">
-                <h4>Civil Mall Plaza</h4>
-                <p>Sundhara, Kathmandu — Active shopping hub with robust security presence.</p>
-            </div>
-            <div class="place-footer">
-                <span class="badge-safe">🛡️ Verified Safe Zone</span>
-                <span style="font-size:12px; color:var(--text-muted);">2.4 km away</span>
-            </div>
-        </div>
-
-        <!-- Place 2 Mockup -->
-        <div class="place-item">
-            <div class="place-header">
-                <h4>Patan Durbar Square Library</h4>
-                <p>Lalitpur — Active tourist zone, well-lit, highly public courtyard space.</p>
-            </div>
-            <div class="place-footer">
-                <span class="badge-safe">🛡️ Verified Safe Zone</span>
-                <span style="font-size:12px; color:var(--text-muted);">0.8 km away</span>
-            </div>
-        </div>
+        {% if places %}
+            {% for place in places %}
+                <div class="place-item">
+                    <div class="place-header">
+                        <h4>{{ place.place_name }}</h4>
+                        <p>{{ place.address or 'No address provided.' }}</p>
+                        {% if place.latitude and place.longitude %}
+                        <p style="font-size:11px; font-family:monospace; color:var(--text-muted); margin-top: 4px;">
+                            Coords: {{ place.latitude }}, {{ place.longitude }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    <div class="place-footer">
+                        <span class="badge-safe">🛡️ Verified Safe Zone</span>
+                        <a href="{{ url_for('place.remove', place_id=place.id) }}" class="btn-decline">
+                            ✕ Remove
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p style="grid-column: span 2; color: var(--text-muted); text-align: center; padding: 40px 0; font-size: 14px;">
+                You haven't saved any places yet. Search for <a href="{{ url_for('place.restaurants_page') }}" style="color:var(--primary);">restaurants</a> or view suggested locations to bookmark them!
+            </p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

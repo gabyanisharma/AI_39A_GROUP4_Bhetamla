@@ -5,6 +5,7 @@
 CREATE DATABASE IF NOT EXISTS bhetamla_db;
 USE bhetamla_db;
 
+
 -- =========================================
 -- USERS TABLE
 -- =========================================
@@ -41,8 +42,7 @@ CREATE TABLE IF NOT EXISTS users (
     longitude DECIMAL(11,8),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 
@@ -104,8 +104,7 @@ CREATE TABLE IF NOT EXISTS sos_alerts (
 
     message TEXT,
 
-    status ENUM('active', 'cancelled', 'resolved')
-    DEFAULT 'active',
+    status ENUM('active', 'cancelled', 'resolved') DEFAULT 'active',
 
     cancel_pin VARCHAR(10),
 
@@ -128,8 +127,7 @@ CREATE TABLE IF NOT EXISTS friends (
     user_id INT NOT NULL,
     friend_id INT NOT NULL,
 
-    status ENUM('pending', 'accepted', 'rejected')
-    DEFAULT 'pending',
+    status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -145,7 +143,6 @@ CREATE TABLE IF NOT EXISTS friends (
 
     CHECK (user_id <> friend_id)
 );
-
 
 
 -- =========================================
@@ -189,8 +186,7 @@ CREATE TABLE IF NOT EXISTS meetup_schedules (
     proposed_date DATE NOT NULL,
     proposed_time TIME NOT NULL,
 
-    status ENUM('pending', 'confirmed', 'cancelled')
-    DEFAULT 'pending',
+    status ENUM('pending', 'confirmed', 'cancelled') DEFAULT 'pending',
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -210,8 +206,7 @@ CREATE TABLE IF NOT EXISTS schedule_invites (
     schedule_id INT NOT NULL,
     user_id INT NOT NULL,
 
-    status ENUM('pending', 'accepted', 'declined')
-    DEFAULT 'pending',
+    status ENUM('pending', 'accepted', 'declined') DEFAULT 'pending',
 
     responded_at TIMESTAMP NULL,
 
@@ -259,4 +254,158 @@ CREATE TABLE IF NOT EXISTS notifications (
     REFERENCES users(id)
     ON DELETE CASCADE
 );
+
+
+-- =========================================
+-- MEETUPS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS meetups (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    group_id INT,
+
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+
+    created_by INT NOT NULL,
+
+    status ENUM('planned', 'active', 'completed', 'cancelled') DEFAULT 'planned',
+
+    midpoint_lat DECIMAL(10,8),
+    midpoint_lng DECIMAL(11,8),
+    midpoint_address VARCHAR(255),
+
+    meetup_date DATE,
+    meetup_time TIME,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (created_by)
+    REFERENCES users(id)
+    ON DELETE CASCADE
+);
+
+
+-- =========================================
+-- MEETUP MEMBERS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS meetup_members (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    meetup_id INT NOT NULL,
+    user_id INT NOT NULL,
+
+    latitude DECIMAL(10,8),
+    longitude DECIMAL(11,8),
+    address VARCHAR(255),
+
+    status ENUM('invited', 'accepted', 'declined') DEFAULT 'invited',
+
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (meetup_id)
+    REFERENCES meetups(id)
+    ON DELETE CASCADE,
+
+    FOREIGN KEY (user_id)
+    REFERENCES users(id)
+    ON DELETE CASCADE,
+
+    UNIQUE KEY unique_member (meetup_id, user_id)
+);
+
+
+-- =========================================
+-- PLACE SUGGESTIONS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS place_suggestions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    meetup_id INT NOT NULL,
+
+    place_name VARCHAR(255) NOT NULL,
+    address VARCHAR(255),
+
+    latitude DECIMAL(10,8),
+    longitude DECIMAL(11,8),
+
+    rating DECIMAL(3,2),
+
+    suggested_by INT,
+
+    suggested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (meetup_id)
+    REFERENCES meetups(id)
+    ON DELETE CASCADE,
+
+    FOREIGN KEY (suggested_by)
+    REFERENCES users(id)
+    ON DELETE SET NULL
+);
+
+
+-- =========================================
+-- RESTAURANTS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS restaurants (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    name VARCHAR(255) NOT NULL,
+    address VARCHAR(255),
+
+    latitude DECIMAL(10,8),
+    longitude DECIMAL(11,8),
+
+    category VARCHAR(100),
+    cuisine VARCHAR(100),
+
+    price_range ENUM('budget', 'mid', 'expensive') DEFAULT 'mid',
+
+    rating DECIMAL(3,2) DEFAULT 0,
+    review_count INT DEFAULT 0,
+
+    ambience VARCHAR(100),
+    image_url VARCHAR(255),
+
+    opening_time TIME,
+    closing_time TIME,
+
+    is_active BOOLEAN DEFAULT TRUE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- =========================================
+-- RESTAURANT REVIEWS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS restaurant_reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    restaurant_id INT NOT NULL,
+    user_id INT NOT NULL,
+
+    rating DECIMAL(3,2) NOT NULL,
+    review TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (restaurant_id)
+    REFERENCES restaurants(id)
+    ON DELETE CASCADE,
+
+    FOREIGN KEY (user_id)
+    REFERENCES users(id)
+    ON DELETE CASCADE,
+
+    UNIQUE KEY unique_review (restaurant_id, user_id)
+);
+
+
 

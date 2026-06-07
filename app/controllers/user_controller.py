@@ -88,7 +88,13 @@ def notifications():
         return redirect(url_for('auth.login'))
     user_id = get_current_user_id()
     alerts = SOSAlert.get_all_by_user(user_id)
-    return render_template('user/notifications.html', alerts=alerts)
+    
+    # Get general notifications and mark them all as read
+    from app.models.notification import Notification
+    db_notifications = Notification.get_by_user(user_id)
+    Notification.mark_all_as_read(user_id)
+    
+    return render_template('user/notifications.html', alerts=alerts, db_notifications=db_notifications)
 
 def support():
     if not is_logged_in():

@@ -65,3 +65,50 @@ class SOSAlert:
             ORDER BY triggered_at DESC
         """
         return execute_query(query, (user_id,), fetch=True)
+
+
+class Notification:
+
+    @staticmethod
+    def create(user_id, title, message, type='general', link=None):
+        query = """
+            INSERT INTO notifications (user_id, title, message, type, link)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        return execute_query(query, (user_id, title, message, type, link))
+
+    @staticmethod
+    def get_by_user(user_id):
+        query = """
+            SELECT * FROM notifications
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+        """
+        return execute_query(query, (user_id,), fetch=True)
+
+    @staticmethod
+    def get_unread_count(user_id):
+        query = """
+            SELECT COUNT(*) as count FROM notifications
+            WHERE user_id = %s AND is_read = FALSE
+        """
+        results = execute_query(query, (user_id,), fetch=True)
+        return results[0]['count'] if results else 0
+
+    @staticmethod
+    def mark_as_read(notification_id, user_id):
+        query = """
+            UPDATE notifications
+            SET is_read = TRUE, read_at = NOW()
+            WHERE id = %s AND user_id = %s
+        """
+        return execute_query(query, (notification_id, user_id))
+
+    @staticmethod
+    def mark_all_as_read(user_id):
+        query = """
+            UPDATE notifications
+            SET is_read = TRUE, read_at = NOW()
+            WHERE user_id = %s AND is_read = FALSE
+        """
+        return execute_query(query, (user_id,))
