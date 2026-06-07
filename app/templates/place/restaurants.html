@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 {% extends "base_dashboard.html" %}
 {% set active_page = 'restaurants' %}
 {% block title %}Restaurants — Bhetamla{% endblock %}
@@ -306,51 +305,10 @@
             position: static;
         }
     }
-=======
-{% extends 'base.html' %}
-
-{% block extra_css %}
-<style>
-/* Budget slider */
-.budget-display {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-top: 8px;
-}
-.budget-current {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text);
-    margin: 4px 0;
-}
-.budget-warning {
-    font-size: 11px;
-    color: #DC2626;
-    margin-top: 4px;
-}
-.restaurant-card { position: relative; display:block; padding:12px; background:var(--card); border-radius:10px; border:1px solid var(--border); margin-bottom:10px; }
-.restaurant-card.over-budget { opacity: 0.55; }
-.restaurant-card.over-budget::after {
-    content: '⚠️ Over Budget';
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    background: #DC2626;
-    color: white;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 3px 8px;
-}
-.cost-badge { position:absolute; right:12px; top:12px; background:var(--primary-light); color:var(--primary); padding:6px 10px; border-radius:8px; font-weight:600; }
-.budget-banner { background: linear-gradient(135deg, #065F46, #047857); border-radius: 14px; padding: 14px 18px; color: white; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
->>>>>>> f5cac7472e9f8369ce88e39c2cfba52bb6dd62b4
 </style>
 {% endblock %}
 
 {% block content %}
-<<<<<<< HEAD
 <h1 style="font-size:22px; font-weight:700; margin-bottom:24px;">
     🍽️ Restaurants in Kathmandu
 </h1>
@@ -702,121 +660,3 @@ Pass all dynamic data to JS as JSON inside hidden
     }
 </script>
 {% endblock %}
-=======
-<div class="container" style="max-width:980px; margin:20px auto;">
-
-  {% if group_budget %}
-  <div class="budget-banner">
-    <div>Group budget: <strong>Rs {{ group_budget }}</strong> per person</div>
-  </div>
-  {% endif %}
-
-  <div style="display:flex; gap:18px;">
-    <aside style="width:260px;">
-      <div class="filter-section">
-        <div class="filter-label">💰 Max Budget (per person)</div>
-        <div class="budget-current" id="budgetDisplay">No limit</div>
-        <input type="range" id="budgetSlider" min="0" step="50" value="0">
-        <div class="budget-display">
-            <span id="budgetMin">Free</span>
-            <span id="budgetMax"></span>
-        </div>
-        <div class="budget-warning" id="budgetWarning" style="display:none;">
-            ⚠️ Some restaurants exceed this budget
-        </div>
-      </div>
-    </aside>
-
-    <main style="flex:1;">
-      <div id="restaurantList"></div>
-    </main>
-  </div>
-</div>
-
-<script>
-const SD = {
-    "budgetMin": {{ budget_min | float }},
-    "budgetMax": {{ budget_max | float }}
-};
-
-let state = { maxBudget: 0 };
-
-const budgetSlider  = document.getElementById('budgetSlider');
-const budgetDisplay = document.getElementById('budgetDisplay');
-const budgetMin     = document.getElementById('budgetMin');
-const budgetMax     = document.getElementById('budgetMax');
-const budgetWarning = document.getElementById('budgetWarning');
-
-budgetSlider.min   = SD.budgetMin || 0;
-budgetSlider.max   = SD.budgetMax || 5000;
-budgetSlider.step  = Math.max(50, Math.round((budgetSlider.max - budgetSlider.min) / 100));
-budgetSlider.value = budgetSlider.max;
-budgetMin.textContent = SD.budgetMin > 0 ? 'Rs ' + SD.budgetMin : 'Free';
-budgetMax.textContent = 'Rs ' + budgetSlider.max;
-
-budgetSlider.addEventListener('input', function() {
-    const v = parseFloat(this.value);
-    const atMax = v >= parseFloat(this.max);
-    state.maxBudget = atMax ? 0 : v;
-    budgetDisplay.textContent = atMax ? 'No limit' : 'Rs ' + v + '/person';
-    applyBudgetHighlight();
-    scheduleFilter();
-});
-
-function applyBudgetHighlight() {
-    const limit = state.maxBudget;
-    let hasOver = false;
-    document.querySelectorAll('.restaurant-card').forEach(card => {
-        const cost = parseFloat(card.dataset.cost || 0);
-        if (limit > 0 && cost > limit) {
-            card.classList.add('over-budget');
-            hasOver = true;
-        } else {
-            card.classList.remove('over-budget');
-        }
-    });
-    budgetWarning.style.display = hasOver ? 'block' : 'none';
-}
-
-function scheduleFilter() {
-    // Debounced fetch
-    if (window._budgetTimer) clearTimeout(window._budgetTimer);
-    window._budgetTimer = setTimeout(fetchAndRender, 250);
-}
-
-async function fetchAndRender() {
-    const params = new URLSearchParams();
-    if (state.maxBudget > 0) params.set('max_budget', state.maxBudget);
-    const res = await fetch('/place/api/restaurants?' + params.toString());
-    const data = await res.json();
-    renderList(data);
-    applyBudgetHighlight();
-}
-
-function renderList(list) {
-    const container = document.getElementById('restaurantList');
-    if (!list || list.length === 0) {
-        container.innerHTML = '<div>No restaurants found.</div>';
-        return;
-    }
-    container.innerHTML = list.map(r => {
-        const over = (state.maxBudget > 0 && r.avg_cost_per_person > 0 && r.avg_cost_per_person > state.maxBudget);
-        const costBadge = r.avg_cost_per_person ? `<div class="cost-badge">~Rs ${r.avg_cost_per_person}/person</div>` : '';
-        return `\
-            <a href="/place/restaurant/${r.id}" class="restaurant-card${over ? ' over-budget' : ''}" data-id="${r.id}" data-cost="${r.avg_cost_per_person}">\
-                <div style="font-weight:700">${r.name}</div>\
-                <div style="font-size:13px; color:var(--text-muted); margin-top:6px">${r.description || ''}</div>\
-                ${costBadge}\
-            </a>`;
-    }).join('');
-}
-
-// initial load
-fetchAndRender();
-
-// expose for debug
-window._applyBudgetHighlight = applyBudgetHighlight;
-</script>
-
-{% endblock %}
->>>>>>> f5cac7472e9f8369ce88e39c2cfba52bb6dd62b4

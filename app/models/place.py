@@ -1,117 +1,147 @@
-from app.database import execute_query
-<<<<<<< HEAD
 import math
+
+from app.database import execute_query
 
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     """Calculate distance in km between two points."""
-    R = 6371
-    lat1, lon1, lat2, lon2 = map(math.radians,
-                                  [lat1, lon1, lat2, lon2])
+    radius_km = 6371
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
     dlat = lat2 - lat1
     dlon = lon2 - lon1
-    a = (math.sin(dlat/2)**2 +
-         math.cos(lat1) * math.cos(lat2) *
-         math.sin(dlon/2)**2)
-    return R * 2 * math.asin(math.sqrt(a))
-=======
->>>>>>> f5cac7472e9f8369ce88e39c2cfba52bb6dd62b4
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    )
+    return radius_km * 2 * math.asin(math.sqrt(a))
 
 
 class Restaurant:
 
-<<<<<<< HEAD
     @staticmethod
-    def get_all(filters=None):
-        """Get all active restaurants with optional filters."""
-        query  = "SELECT * FROM restaurants WHERE is_active = TRUE"
+    def _select_clause():
+        return """
+            SELECT id, name, description, address, latitude, longitude,
+                   category, cuisine, price_range, avg_cost_per_person,
+                   rating, review_count, ambience, image_url, thumbnail_url,
+                   opening_time, closing_time, is_active, created_at
+            FROM restaurants
+        """
+
+    @staticmethod
+    def _apply_filters(query, params, filters):
+        filters = filters or {}
+
+        if filters.get('cuisine'):
+            query += " AND cuisine = %s"
+            params.append(filters['cuisine'])
+
+        if filters.get('price_range'):
+            query += " AND price_range = %s"
+            params.append(filters['price_range'])
+
+        if filters.get('ambience'):
+            query += " AND ambience = %s"
+            params.append(filters['ambience'])
+
+        if filters.get('min_rating'):
+            query += " AND rating >= %s"
+            params.append(float(filters['min_rating']))
+
+        if filters.get('category'):
+            query += " AND category = %s"
+            params.append(filters['category'])
+
+        if filters.get('max_budget'):
+            query += " AND (avg_cost_per_person IS NULL OR avg_cost_per_person <= %s)"
+            params.append(float(filters['max_budget']))
+
+        return query, params
+
+    @staticmethod
+    def get_budget_range():
+        query = """
+            SELECT MIN(avg_cost_per_person) AS min_cost,
+                   MAX(avg_cost_per_person) AS max_cost
+            FROM restaurants
+            WHERE is_active = TRUE AND avg_cost_per_person IS NOT NULL
+        """
+        results = execute_query(query, fetch=True)
+        if results and results[0].get('max_cost') is not None:
+            return (
+                float(results[0].get('min_cost') or 0),
+                float(results[0].get('max_cost') or 5000),
+            )
+        return 0, 5000
+
+    @staticmethod
+    def get_all(filters=None, limit=None):
+        query = Restaurant._select_clause() + " WHERE is_active = TRUE"
         params = []
-
-        if filters:
-            if filters.get('cuisine'):
-                query += " AND cuisine = %s"
-                params.append(filters['cuisine'])
-
-            if filters.get('price_range'):
-                query += " AND price_range = %s"
-                params.append(filters['price_range'])
-
-            if filters.get('ambience'):
-                query += " AND ambience = %s"
-                params.append(filters['ambience'])
-
-            if filters.get('min_rating'):
-                query += " AND rating >= %s"
-                params.append(filters['min_rating'])
-
-            if filters.get('category'):
-                query += " AND category = %s"
-                params.append(filters['category'])
-
-        query += " ORDER BY rating DESC"
-        return execute_query(query, params if params else None,
-                             fetch=True)
+        query, params = Restaurant._apply_filters(query, params, filters)
+        query += " ORDER BY rating DESC, name ASC"
+        if limit:
+            query += " LIMIT %s"
+            params.append(int(limit))
+        return execute_query(query, tuple(params) if params else None, fetch=True)
 
     @staticmethod
     def get_by_id(restaurant_id):
-        query = "SELECT * FROM restaurants WHERE id = %s"
+        query = Restaurant._select_clause() + " WHERE id = %s"
         results = execute_query(query, (restaurant_id,), fetch=True)
         return results[0] if results else None
 
     @staticmethod
     def get_nearby(lat, lng, radius_km=3.0, filters=None):
-        """Get restaurants within radius_km of given coordinates."""
         all_restaurants = Restaurant.get_all(filters)
         nearby = []
 
-        for r in all_restaurants:
-            if r['latitude'] and r['longitude']:
-                dist = calculate_distance(
-                    float(lat), float(lng),
-                    float(r['latitude']), float(r['longitude'])
+        for restaurant in all_restaurants:
+            if restaurant.get('latitude') and restaurant.get('longitude'):
+                distance = calculate_distance(
+                    float(lat),
+                    float(lng),
+                    float(restaurant['latitude']),
+                    float(restaurant['longitude']),
                 )
-                if dist <= radius_km:
-                    r['distance_km'] = round(dist, 2)
-                    nearby.append(r)
+                if distance <= radius_km:
+                    restaurant['distance_km'] = round(distance, 2)
+                    nearby.append(restaurant)
 
-        # Sort by distance
-        nearby.sort(key=lambda x: x['distance_km'])
+        nearby.sort(key=lambda item: item['distance_km'])
         return nearby
 
     @staticmethod
-    def get_near_midpoint(mid_lat, mid_lng,
-                          radius_km=3.0, filters=None):
-        """Get restaurants near a meetup midpoint."""
-        return Restaurant.get_nearby(
-            mid_lat, mid_lng, radius_km, filters
-        )
+    def get_near_midpoint(mid_lat, mid_lng, radius_km=3.0, filters=None):
+        return Restaurant.get_nearby(mid_lat, mid_lng, radius_km, filters)
 
     @staticmethod
-    def search(query_str):
-        query = """
-            SELECT * FROM restaurants
+    def search(query_str, filters=None, limit=50):
+        query = Restaurant._select_clause() + """
             WHERE is_active = TRUE
-            AND (name LIKE %s OR cuisine LIKE %s
-                 OR address LIKE %s OR category LIKE %s)
-            ORDER BY rating DESC
-            LIMIT 20
+              AND (name LIKE %s OR cuisine LIKE %s
+                   OR address LIKE %s OR category LIKE %s
+                   OR description LIKE %s)
         """
-        s = f"%{query_str}%"
-        return execute_query(query, (s, s, s, s), fetch=True)
+        like = f"%{query_str}%"
+        params = [like, like, like, like, like]
+        query, params = Restaurant._apply_filters(query, params, filters)
+        query += " ORDER BY rating DESC, name ASC LIMIT %s"
+        params.append(int(limit))
+        return execute_query(query, tuple(params), fetch=True)
 
     @staticmethod
     def get_cuisines():
         query = """
             SELECT DISTINCT cuisine FROM restaurants
-            WHERE is_active = TRUE
+            WHERE is_active = TRUE AND cuisine IS NOT NULL
             ORDER BY cuisine
         """
         results = execute_query(query, fetch=True)
-        return [r['cuisine'] for r in results] if results else []
+        return [row['cuisine'] for row in results] if results else []
 
     @staticmethod
     def update_rating(restaurant_id):
-        """Recalculate average rating from reviews."""
         query = """
             UPDATE restaurants r
             SET rating = (
@@ -126,9 +156,7 @@ class Restaurant:
             )
             WHERE r.id = %s
         """
-        return execute_query(query,
-                             (restaurant_id, restaurant_id,
-                              restaurant_id))
+        return execute_query(query, (restaurant_id, restaurant_id, restaurant_id))
 
 
 class RestaurantReview:
@@ -140,13 +168,10 @@ class RestaurantReview:
             (restaurant_id, user_id, rating, review)
             VALUES (%s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
-            rating=%s, review=%s
+            rating = VALUES(rating),
+            review = VALUES(review)
         """
-        result = execute_query(
-            query,
-            (restaurant_id, user_id, rating, review,
-             rating, review)
-        )
+        result = execute_query(query, (restaurant_id, user_id, rating, review))
         Restaurant.update_rating(restaurant_id)
         return result
 
@@ -165,71 +190,7 @@ class RestaurantReview:
     def get_by_user(user_id, restaurant_id):
         query = """
             SELECT * FROM restaurant_reviews
-            WHERE user_id=%s AND restaurant_id=%s
+            WHERE user_id = %s AND restaurant_id = %s
         """
-        results = execute_query(query, (user_id, restaurant_id),
-                                fetch=True)
+        results = execute_query(query, (user_id, restaurant_id), fetch=True)
         return results[0] if results else None
-=======
-	@staticmethod
-	def get_budget_range():
-		"""Return (min, max) of avg_cost_per_person."""
-		query = """
-			SELECT MIN(avg_cost_per_person) as min_cost,
-				   MAX(avg_cost_per_person) as max_cost
-			FROM restaurants
-			WHERE is_active = TRUE AND avg_cost_per_person IS NOT NULL
-		"""
-		results = execute_query(query, fetch=True)
-		if results and results[0].get('max_cost') is not None:
-			return float(results[0].get('min_cost') or 0), float(results[0].get('max_cost'))
-		return 0, 5000
-
-	@staticmethod
-	def get_all(filters=None, limit=100):
-		"""Return list of restaurants applying optional filters.
-
-		Supported filters: max_budget (float)
-		"""
-		filters = filters or {}
-		params = []
-		query = """
-			SELECT id, name, description, avg_cost_per_person,
-				   rating, is_active, thumbnail_url
-			FROM restaurants
-			WHERE is_active = TRUE
-		"""
-
-		if filters.get('max_budget'):
-			query += " AND (avg_cost_per_person IS NULL OR avg_cost_per_person <= %s)"
-			params.append(float(filters['max_budget']))
-
-		query += " ORDER BY rating DESC LIMIT %s"
-		params.append(limit)
-
-		return execute_query(query, tuple(params), fetch=True)
-
-	@staticmethod
-	def search(q, filters=None, limit=50):
-		filters = filters or {}
-		params = []
-		query = """
-			SELECT id, name, description, avg_cost_per_person,
-				   rating, is_active, thumbnail_url
-			FROM restaurants
-			WHERE is_active = TRUE
-			  AND (name LIKE %s OR description LIKE %s)
-		"""
-		like = f"%{q}%"
-		params.extend((like, like))
-
-		if filters.get('max_budget'):
-			query += " AND (avg_cost_per_person IS NULL OR avg_cost_per_person <= %s)"
-			params.append(float(filters['max_budget']))
-
-		query += " ORDER BY rating DESC LIMIT %s"
-		params.append(limit)
-
-		return execute_query(query, tuple(params), fetch=True)
-
->>>>>>> f5cac7472e9f8369ce88e39c2cfba52bb6dd62b4

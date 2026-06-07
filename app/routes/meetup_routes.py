@@ -7,7 +7,7 @@ from app.controllers.meetup_controller import (
     get_restaurants_data
 )
 from app.controllers.place_controller import (
-    plan_meetup, create_meetup, view_meetup,
+    plan_meetup, create_meetup, view_meetup as view_meetup_ctrl,
     update_location, get_midpoint, add_suggestion,
     respond_meetup
 )
@@ -26,14 +26,8 @@ def create():
 
 @meetup_bp.route('/view/<int:meetup_id>')
 @login_required
-def view_meetup_route(meetup_id):
-    return view_meetup(meetup_id)
-
-meetup_bp.add_url_rule(
-    '/view/<int:meetup_id>',
-    'view_meetup',
-    view_meetup_route
-)
+def view_meetup(meetup_id):
+    return view_meetup_ctrl(meetup_id)
 
 @meetup_bp.route('/update-location/<int:meetup_id>', methods=['POST'])
 @login_required
@@ -104,5 +98,3 @@ def respond_invite_route(invite_id):
 @login_required
 def common_availability():
     return get_common_availability()
-
-
