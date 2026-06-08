@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
     role ENUM('user', 'admin') DEFAULT 'user',
 
     is_verified BOOLEAN DEFAULT FALSE,
-    verification_token VARCHAR(255),
+    verification_token VARCH AR(255),
 
     reset_token VARCHAR(255),
     reset_token_expiry DATETIME,
