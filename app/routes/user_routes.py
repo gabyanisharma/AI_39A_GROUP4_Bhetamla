@@ -2,7 +2,7 @@ from flask import Blueprint, redirect, url_for, render_template, session
 from functools import wraps
 from app.auth import is_logged_in
 from app.controllers.user_controller import (
-    profile, settings, notifications, support
+    profile, settings, support
 )
 from app.controllers.notification_controller import safety
 
@@ -40,6 +40,7 @@ def safety_page():
 @user_bp.route('/notifications')
 @login_required
 def notifications_page():
+    from app.controllers.notification_controller import notifications
     return notifications()
 
 @user_bp.route('/support', methods=['GET', 'POST'])
