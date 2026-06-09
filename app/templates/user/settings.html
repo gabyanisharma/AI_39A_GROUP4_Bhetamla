@@ -1,117 +1,213 @@
 {% extends "base_dashboard.html" %}
 {% set active_page = 'settings' %}
-{% block title %}Settings — Bhetamla{% endblock %}
+{% block title %}{{ t.settings }} — Bhetamla{% endblock %}
 
 {% block extra_css %}
 <style>
-    .settings-card {
-        max-width: 600px;
-        margin: 0 auto;
+    .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .full-width { grid-column: span 2; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label {
+        display: block; font-size: 12px; font-weight: 600;
+        color: var(--text-muted); text-transform: uppercase;
+        letter-spacing: 0.05em; margin-bottom: 6px;
     }
-    .form-group {
-        margin-bottom: 24px;
-        padding-bottom: 20px;
+    .form-group input,
+    .form-group select {
+        width: 100%; padding: 11px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 10px; font-size: 14px;
+        background: var(--bg); color: var(--text);
+        outline: none; transition: border-color 0.2s;
+    }
+    .form-group input:focus,
+    .form-group select:focus { border-color: var(--primary); }
+    .btn-save {
+        background: var(--primary); color: white;
+        border: none; border-radius: 10px;
+        padding: 12px 28px; font-size: 14px; font-weight: 600;
+        cursor: pointer; transition: background 0.2s;
+    }
+    .btn-save:hover { background: var(--primary-dark); }
+
+    .toggle-row {
+        display: flex; align-items: center;
+        justify-content: space-between;
+        padding: 14px 0;
         border-bottom: 1px solid var(--border);
     }
-    .form-group:last-of-type {
-        border-bottom: none;
-    }
-    .form-group label {
-        display: block;
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--text);
-        margin-bottom: 6px;
-    }
-    .form-group .label-desc {
-        font-size: 12px;
-        color: var(--text-muted);
-        margin-bottom: 12px;
-        line-height: 1.4;
-    }
-    .select-input {
-        width: 100%;
-        padding: 12px 16px;
-        border: 1.5px solid var(--border);
-        border-radius: 12px;
-        font-size: 14px;
-        background: var(--bg);
-        color: var(--text);
-        outline: none;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    .select-input:focus {
-        border-color: var(--primary);
-    }
-    .btn-submit {
-        background: var(--primary);
-        color: white;
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-info .toggle-title { font-size: 14px; font-weight: 600; }
+    .toggle-info .toggle-desc  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .toggle {
+        position: relative; width: 44px; height: 24px;
+        background: var(--border); border-radius: 20px;
+        cursor: pointer; transition: background 0.2s;
         border: none;
-        border-radius: 12px;
-        padding: 12px 24px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.2s, transform 0.1s;
     }
-    .btn-submit:hover {
-        background: var(--primary-dark);
+    .toggle.on { background: var(--primary); }
+    .toggle::after {
+        content: '';
+        position: absolute; top: 3px; left: 3px;
+        width: 18px; height: 18px;
+        background: white; border-radius: 50%;
+        transition: transform 0.2s;
     }
-    .btn-submit:active {
-        transform: scale(0.98);
+    .toggle.on::after { transform: translateX(20px); }
+
+    .theme-options { display: flex; gap: 12px; }
+    .theme-opt {
+        flex: 1; padding: 14px;
+        border: 2px solid var(--border);
+        border-radius: 12px; text-align: center;
+        cursor: pointer; font-size: 13px; font-weight: 600;
+        transition: all 0.2s; background: var(--bg);
+        color: var(--text);
     }
-    .settings-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 12px;
-    }
-    .btn-logout {
-        background: #FEE2E2;
-        color: #DC2626;
-        border: none;
-        border-radius: 12px;
-        padding: 12px 24px;
-        font-size: 14px;
-        font-weight: 600;
-        text-decoration: none;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    .btn-logout:hover {
-        background: #FCA5A5;
+    .theme-opt:hover  { border-color: var(--primary); }
+    .theme-opt.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+
+    @media (max-width: 768px) {
+        .settings-grid { grid-template-columns: 1fr; }
+        .full-width { grid-column: span 1; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="settings-card card">
-    <div class="card-title">⚙️ Application Settings</div>
-    <form method="POST" action="{{ url_for('user.settings_page') }}">
-        <input type="hidden" name="action" value="update_preferences">
-        <!-- Theme Preference -->
-        <div class="form-group">
-            <label for="theme">UI Color Theme</label>
-            <div class="label-desc">Toggle between crisp Light appearance or low-light Dark visual layout modes.</div>
-            <select name="theme" id="theme" class="select-input">
-                <option value="light" {% if session.get('theme', 'light') == 'light' %}selected{% endif %}>☀️ Light Appearance</option>
-                <option value="dark" {% if session.get('theme') == 'dark' %}selected{% endif %}>🌙 Dark Appearance</option>
-            </select>
+<h1 style="font-size:22px; font-weight:700; margin-bottom:24px;">⚙️ {{ t.settings }}</h1>
+
+<div class="settings-grid">
+
+    <!-- Update Profile -->
+    <div class="card full-width">
+        <div class="card-title">{{ t.edit_profile }}</div>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="action" value="update_profile" />
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="form-group">
+                    <label>{{ t.full_name }}</label>
+                    <input type="text" name="full_name" value="{{ user.full_name }}" required />
+                </div>
+                <div class="form-group">
+                    <label>{{ t.phone }}</label>
+                    <input type="tel" name="phone" value="{{ user.phone or '' }}" />
+                </div>
+                <div class="form-group">
+                    <label>{{ t.budget }}</label>
+                    <input type="number" name="budget_preference" value="{{ user.budget_preference or 0 }}" />
+                </div>
+                <div class="form-group">
+                    <label>{{ t.transport }}</label>
+                    <select name="transport_preference">
+                        <option value="any"    {% if user.transport_preference == 'any' %}selected{% endif %}>Any</option>
+                        <option value="walk"   {% if user.transport_preference == 'walk' %}selected{% endif %}>Walking</option>
+                        <option value="bike"   {% if user.transport_preference == 'bike' %}selected{% endif %}>Bike</option>
+                        <option value="car"    {% if user.transport_preference == 'car' %}selected{% endif %}>Car</option>
+                        <option value="public" {% if user.transport_preference == 'public' %}selected{% endif %}>Public Transport</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>{{ t.cuisine }}</label>
+                    <input type="text" name="cuisine_preference" value="{{ user.cuisine_preference or '' }}" placeholder="e.g. Nepali, Italian" />
+                </div>
+                <div class="form-group">
+                    <label>{{ t.profile_picture }}</label>
+                    <input type="file" name="profile_pic" accept="image/*" />
+                </div>
+            </div>
+            <button type="submit" class="btn-save">{{ t.save_profile }}</button>
+        </form>
+    </div>
+
+    <!-- Theme & Language -->
+    <div class="card">
+        <div class="card-title">{{ t.appearance }}</div>
+        <form method="POST">
+            <input type="hidden" name="action" value="update_preferences" />
+            <div class="form-group">
+                <label>{{ t.theme }}</label>
+                <div class="theme-options">
+                    <label class="theme-opt {% if user.theme_preference == 'light' %}active{% endif %}">
+                        <input type="radio" name="theme" value="light" style="display:none"
+                               {% if user.theme_preference == 'light' %}checked{% endif %} />
+                        ☀️ {{ t.light }}
+                    </label>
+                    <label class="theme-opt {% if user.theme_preference == 'dark' %}active{% endif %}">
+                        <input type="radio" name="theme" value="dark" style="display:none"
+                               {% if user.theme_preference == 'dark' %}checked{% endif %} />
+                        🌙 {{ t.dark }}
+                    </label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>{{ t.language }}</label>
+                <select name="language">
+                    <option value="en" {% if user.language_preference == 'en' %}selected{% endif %}>🇬🇧 English</option>
+                    <option value="np" {% if user.language_preference == 'np' %}selected{% endif %}>🇳🇵 Nepali</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-save">{{ t.save_preferences }}</button>
+        </form>
+    </div>
+
+    <!-- Change Password -->
+    <div class="card">
+        <div class="card-title">{{ t.change_password }}</div>
+        <form method="POST">
+            <input type="hidden" name="action" value="change_password" />
+            <div class="form-group">
+                <label>{{ t.current_password }}</label>
+                <input type="password" name="current_password" placeholder="Enter current password" required />
+            </div>
+            <div class="form-group">
+                <label>{{ t.new_password }}</label>
+                <input type="password" name="new_password" placeholder="Min 6 characters" required />
+            </div>
+            <div class="form-group">
+                <label>{{ t.confirm_password }}</label>
+                <input type="password" name="confirm_password" placeholder="Repeat new password" required />
+            </div>
+            <button type="submit" class="btn-save">{{ t.change_password }}</button>
+        </form>
+    </div>
+
+    <!-- Notifications -->
+    <div class="card full-width">
+        <div class="card-title">{{ t.notifications }}</div>
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <div class="toggle-title">{{ t.meetup_reminders }}</div>
+                <div class="toggle-desc">Get notified before your meetups start</div>
+            </div>
+            <button class="toggle on" onclick="this.classList.toggle('on')"></button>
         </div>
-        <!-- Language Preference -->
-        <div class="form-group">
-            <label for="language">Localization Language</label>
-            <div class="label-desc">Choose your preferred language for the system interface and safety hubs.</div>
-            <select name="language" id="language" class="select-input">
-                <option value="en" {% if session.get('language', 'en') == 'en' %}selected{% endif %}>🇺🇸 English (US)</option>
-                <option value="np" {% if session.get('language') == 'np' %}selected{% endif %}>🇳🇵 नेपाली (Nepali)</option>
-            </select>
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <div class="toggle-title">{{ t.group_invites }}</div>
+                <div class="toggle-desc">Notify when someone invites you to a group</div>
+            </div>
+            <button class="toggle on" onclick="this.classList.toggle('on')"></button>
         </div>
-        <div class="settings-footer">
-            <button type="submit" class="btn-submit">Apply Settings</button>
-            <a href="{{ url_for('auth.logout') }}" class="btn-logout">Logout Account</a>
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <div class="toggle-title">{{ t.emergency_alerts }}</div>
+                <div class="toggle-desc">Always receive SOS alerts from your contacts</div>
+            </div>
+            <button class="toggle on"></button>
         </div>
-    </form>
+    </div>
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('.theme-opt').forEach(opt => {
+        opt.addEventListener('click', () => {
+            document.querySelectorAll('.theme-opt').forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+        });
+    });
+</script>
 {% endblock %}
