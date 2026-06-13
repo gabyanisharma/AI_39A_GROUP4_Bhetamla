@@ -7,6 +7,10 @@ Name: Amy Flame
 Email: amyflame11@gmail.com
 Password: P@$$w0rd123
 
+Name: Bipul Maharjan
+Email: bipulmaharjan22@gmail.com
+Password: P@$$w0rd123
+
 emergency contact:
 Name: Jane Doe
 Phone: 9800000000
