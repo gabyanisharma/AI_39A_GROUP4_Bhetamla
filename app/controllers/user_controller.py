@@ -92,7 +92,7 @@ def notifications():
     # Get general notifications and mark them all as read
     from app.models.notification import Notification
     db_notifications = Notification.get_by_user(user_id)
-    Notification.mark_all_as_read(user_id)
+    Notification.mark_all_read(user_id)
     
     return render_template('user/notifications.html', alerts=alerts, db_notifications=db_notifications)
 
