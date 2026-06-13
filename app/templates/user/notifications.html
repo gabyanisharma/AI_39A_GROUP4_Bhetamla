@@ -4,149 +4,252 @@
 
 {% block extra_css %}
 <style>
-    .notif-card {
-        max-width: 800px;
-        margin: 0 auto;
-    }
-
-    .notif-list {
+    .notif-header {
         display: flex;
-        flex-direction: column;
-        gap: 16px;
-        margin-top: 16px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
     }
+    .notif-header h1 { font-size: 22px; font-weight: 700; }
+    .clear-btn {
+        background: #FEE2E2; color: #DC2626;
+        border: none; border-radius: 10px;
+        padding: 8px 18px; font-size: 13px;
+        font-weight: 600; cursor: pointer;
+        text-decoration: none;
+        transition: background 0.2s;
+    }
+    .clear-btn:hover { background: #FECACA; }
+
+    .notif-list { display: flex; flex-direction: column; gap: 10px; }
 
     .notif-item {
-        background: var(--bg);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 16px;
+        background: var(--card);
+        border-radius: 14px;
+        padding: 18px 20px;
         display: flex;
-        gap: 16px;
         align-items: flex-start;
+        gap: 14px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
         transition: transform 0.15s;
+        position: relative;
     }
-
-    .notif-item:hover {
-        transform: scale(1.01);
+    .notif-item:hover { transform: translateX(4px); }
+    .notif-item.unread {
+        border-left: 4px solid var(--primary);
+        background: var(--primary-light);
     }
 
     .notif-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        flex-shrink: 0;
+        width: 42px; height: 42px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px; flex-shrink: 0;
+    }
+    .icon-meetup   { background: #DBEAFE; }
+    .icon-friend   { background: #FCE7F3; }
+    .icon-reminder { background: #FEF3C7; }
+    .icon-sos      { background: #FEE2E2; }
+    .icon-general  { background: #F1F5F9; }
+
+    .notif-body { flex: 1; }
+    .notif-body .n-title {
+        font-size: 14px; font-weight: 700;
+        color: var(--text); margin-bottom: 4px;
+    }
+    .notif-body .n-message {
+        font-size: 13px; color: var(--text-muted);
+        line-height: 1.5;
+    }
+    .notif-body .n-time {
+        font-size: 11px; color: var(--text-muted);
+        margin-top: 6px;
     }
 
-    .notif-icon.blue { background: rgba(37, 99, 235, 0.1); color: var(--primary); }
-    .notif-icon.red { background: rgba(220, 38, 38, 0.1); color: var(--error); }
-    .notif-icon.green { background: rgba(22, 163, 74, 0.1); color: var(--success); }
+    .notif-actions {
+        display: flex; flex-direction: column;
+        align-items: flex-end; gap: 6px;
+    }
+    .delete-notif {
+        background: none; border: none;
+        color: var(--text-muted); cursor: pointer;
+        font-size: 16px; padding: 4px;
+        border-radius: 6px;
+        transition: color 0.15s;
+    }
+    .delete-notif:hover { color: #DC2626; }
 
-    .notif-content {
-        flex: 1;
+    .unread-dot {
+        width: 8px; height: 8px;
+        background: var(--primary);
+        border-radius: 50%;
+        margin-top: 4px;
     }
 
-    .notif-title {
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--text);
-        margin-bottom: 4px;
-    }
-
-    .notif-text {
-        font-size: 13px;
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
         color: var(--text-muted);
-        line-height: 1.4;
     }
+    .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-state h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+    .empty-state p  { font-size: 14px; }
 
-    .notif-time {
-        font-size: 11px;
+    /* Filter tabs */
+    .filter-tabs {
+        display: flex; gap: 8px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    .filter-tab {
+        padding: 7px 16px;
+        border-radius: 20px;
+        font-size: 13px; font-weight: 600;
+        cursor: pointer; border: none;
+        background: var(--bg);
         color: var(--text-muted);
-        margin-top: 8px;
+        transition: all 0.15s;
+    }
+    .filter-tab.active {
+        background: var(--primary);
+        color: white;
+    }
+    .filter-tab:hover:not(.active) {
+        background: var(--primary-light);
+        color: var(--primary);
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="notif-card card">
-    <div class="card-title">
-        <span>🔔 Notification Log</span>
-        <span style="font-size: 12px; font-weight: 500; color: var(--text-muted);">Recent alerts</span>
-    </div>
-
-    <div class="notif-list">
-        <!-- Notification 1 -->
-        <div class="notif-item">
-            <div class="notif-icon blue">🛡️</div>
-            <div class="notif-content">
-                <div class="notif-title">Safety Status Active</div>
-                <p class="notif-text">Your Bhetamla account is now set up and actively monitoring. Your default coordinates are secured.</p>
-                <div class="notif-time">Just now</div>
-            </div>
-        </div>
-
-        <!-- General Notifications -->
-        {% if db_notifications %}
-            {% for notif in db_notifications %}
-                <div class="notif-item">
-                    <div class="notif-icon {% if notif.type == 'meetup' %}blue{% elif notif.type == 'sos' %}red{% else %}green{% endif %}">
-                        {% if notif.type == 'meetup' %}📅
-                        {% elif notif.type == 'friend' %}👥
-                        {% elif notif.type == 'sos' %}🚨
-                        {% elif notif.type == 'reminder' %}⏰
-                        {% else %}🔔{% endif %}
-                    </div>
-                    <div class="notif-content">
-                        <div class="notif-title">
-                            {% if notif.link %}
-                                <a href="{{ notif.link }}" style="text-decoration:none; color:inherit;">{{ notif.title }}</a>
-                            {% else %}
-                                {{ notif.title }}
-                            {% endif %}
-                        </div>
-                        <p class="notif-text">{{ notif.message }}</p>
-                        <div class="notif-time">
-                            {{ notif.created_at.strftime('%B %d, %Y at %I:%M %p') if notif.created_at else '' }}
-                        </div>
-                    </div>
-                </div>
-            {% endfor %}
-        {% endif %}
-
-        <!-- SOS Log History -->
-        {% if alerts %}
-            {% for alert in alerts %}
-                <div class="notif-item">
-                    <div class="notif-icon {% if alert.status == 'active' %}red{% else %}green{% endif %}">🚨</div>
-                    <div class="notif-content">
-                        <div class="notif-title">SOS Alert triggered — {{ alert.status|upper }}</div>
-                        <p class="notif-text">
-                            An SOS alert was triggered. Message: "{{ alert.message or 'No message provided' }}". 
-                            {% if alert.latitude %}
-                                Latitude: {{ alert.latitude }}, Longitude: {{ alert.longitude }}.
-                            {% endif %}
-                        </p>
-                        <div class="notif-time">
-                            {{ alert.triggered_at.strftime('%B %d, %Y at %I:%M %p') if alert.triggered_at else 'Prior alert' }}
-                        </div>
-                    </div>
-                </div>
-            {% endfor %}
-        {% endif %}
-
-        <!-- Notification 2 -->
-        <div class="notif-item">
-            <div class="notif-icon green">🔑</div>
-            <div class="notif-content">
-                <div class="notif-title">Account Security Setup</div>
-                <p class="notif-text">Password successfully loaded and secure keys active. Always maintain strong credentials.</p>
-                <div class="notif-time">1 hour ago</div>
-            </div>
-        </div>
+<div class="notif-header">
+    <h1>🔔 Notifications</h1>
+    {% if notifications %}
+    <a href="{{ url_for('notification.clear_all') }}"
+       class="clear-btn"
+       onclick="return confirm('Clear all notifications?')">
+        🗑️ Clear All
+    </a>
+    {% endif %}
+</div>
+<div id="peakHourAlert" class="notif-item unread" style="display: none; border-left: 4px solid #D97706; background: #FEF3C7; margin-bottom: 20px; align-items: center;">
+    <div class="notif-icon icon-reminder" style="background: #FDE68A;">⚡</div>
+    <div class="notif-body">
+        <div class="n-title" style="color: #92400E;">Peak Hours Active!</div>
+        <div class="n-message" style="color: #B45309;">Rides and travel fares are currently higher than usual due to peak hour traffic surges.</div>
     </div>
 </div>
+<div id="normalHourAlert" class="notif-item" style="display: none; border-left: 4px solid #16A34A; background: #DCFCE7; margin-bottom: 20px; align-items: center;">
+    <div class="notif-icon icon-general" style="background: #BBF7D0;">✅</div>
+    <div class="notif-body">
+        <div class="n-title" style="color: #14532D;">Standard Rates Active</div>
+        <div class="n-message" style="color: #166534;">Travel prices and fares are currently at normal, standard rates. No traffic surges active.</div>
+    </div>
+</div>
+<!-- Filter tabs -->
+<div class="filter-tabs">
+    <button class="filter-tab active" onclick="filterNotifs('all', this)">All</button>
+    <button class="filter-tab" onclick="filterNotifs('meetup', this)">📅 Meetups</button>
+    <button class="filter-tab" onclick="filterNotifs('friend', this)">👥 Friends</button>
+    <button class="filter-tab" onclick="filterNotifs('reminder', this)">⏰ Reminders</button>
+    <button class="filter-tab" onclick="filterNotifs('sos', this)">🆘 SOS</button>
+</div>
+
+{% if notifications %}
+<div class="notif-list" id="notifList">
+    {% for notif in notifications %}
+    <div class="notif-item {% if not notif.is_read %}unread{% endif %}"
+         data-type="{{ notif.type }}">
+
+        <!-- Icon -->
+        <div class="notif-icon
+            {% if notif.type == 'meetup' %}icon-meetup
+            {% elif notif.type == 'friend' %}icon-friend
+            {% elif notif.type == 'reminder' %}icon-reminder
+            {% elif notif.type == 'sos' %}icon-sos
+            {% else %}icon-general{% endif %}">
+            {% if notif.type == 'meetup' %}📅
+            {% elif notif.type == 'friend' %}👥
+            {% elif notif.type == 'reminder' %}⏰
+            {% elif notif.type == 'sos' %}🆘
+            {% else %}🔔{% endif %}
+        </div>
+
+        <!-- Body -->
+        <div class="notif-body">
+            <div class="n-title">{{ notif.title }}</div>
+            <div class="n-message">{{ notif.message }}</div>
+            <div class="n-time">
+               {{ notif.created_at.strftime('%B %d, %Y') if notif.created_at else '' }}
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="notif-actions">
+            <a href="{{ url_for('notification.delete_notification', notification_id=notif.id) }}"
+               class="delete-notif" title="Delete">✕</a>
+            {% if not notif.is_read %}
+            <div class="unread-dot"></div>
+            {% endif %}
+        </div>
+
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon">🔔</div>
+        <h3>You're all caught up!</h3>
+        <p>No notifications yet. We'll let you know when something happens.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Filter notifications by type
+    function filterNotifs(type, btn) {
+        document.querySelectorAll('.filter-tab').forEach(t =>
+            t.classList.remove('active'));
+        btn.classList.add('active');
+
+        document.querySelectorAll('.notif-item').forEach(item => {
+            // Protect both banner alerts from getting hidden by layout filters
+            if (item.id === 'peakHourAlert' || item.id === 'normalHourAlert') return;
+
+            if (type === 'all' || item.dataset.type === type) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    // Live Peak Hour Check Engine
+    function checkPeakHours() {
+        const now = new Date();
+        const hour = now.getHours();
+        
+        // Match ride_controller.py configurations: 8-10 AM or 5-8 PM (17-20)
+        const isPeak = (hour >= 8 && hour < 10) || (hour >= 17 && hour < 20);
+        
+        const peakBox = document.getElementById('peakHourAlert');
+        const normalBox = document.getElementById('normalHourAlert');
+
+        if (isPeak) {
+            if (peakBox) peakBox.style.display = 'flex';
+            if (normalBox) normalBox.style.display = 'none';
+        } else {
+            if (peakBox) peakBox.style.display = 'none';
+            if (normalBox) normalBox.style.display = 'flex';
+        }
+    }
+
+    // Run right away when page loads
+    document.addEventListener("DOMContentLoaded", checkPeakHours);
+</script>
 {% endblock %}
