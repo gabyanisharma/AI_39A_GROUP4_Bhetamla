@@ -391,6 +391,7 @@
 
 <body>
 
+    <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <div class="flash-container">
@@ -404,6 +405,7 @@
     {% endif %}
     {% endwith %}
 
+    <!-- ── SIDEBAR ── -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-logo">
             <div class="logo-icon">📍</div>
@@ -424,6 +426,10 @@
             <a href="{{ url_for('place.saved') }}" class="nav-item {% if active_page == 'saved' %}active{% endif %}">
                 <span class="nav-icon">🔖</span> {{ t.saved_places }}
             </a>
+            <a href="{{ url_for('place.restaurants_page') }}"
+                class="nav-item {% if active_page == 'restaurants' %}active{% endif %}">
+                <span class="nav-icon">🍽️</span> {{ t.get('restaurants', 'Restaurants') }}
+            </a>
             <a href="{{ url_for('user.safety_page') }}"
                 class="nav-item {% if active_page == 'safety' %}active{% endif %}">
                 <span class="nav-icon">🛡️</span> {{ t.safety_hub }}
@@ -441,10 +447,13 @@
                 class="nav-item {% if active_page == 'settings' %}active{% endif %}">
                 <span class="nav-icon">⚙️</span> {{ t.settings }}
             </a>
-            <a href="{{ url_for('user.support_page') }}"
-                class="nav-item {% if active_page == 'support' %}active{% endif %}">
+            <a href="{{ url_for('user.support_page') }}" class="nav-item">
                 <span class="nav-icon">❓</span> {{ t.support }}
             </a>
+            <a href="{{ url_for('auth.logout') }}" class="nav-item">
+                <span class="nav-icon">🚪</span> Logout
+            </a>
+
         </div>
 
         <div class="sidebar-user">
@@ -457,30 +466,55 @@
         </div>
     </aside>
 
+    <!-- ── MAIN AREA ── -->
     <div class="main-wrapper">
+
+        <!-- Top Bar -->
         <header class="topbar">
             <div class="search-box">
                 <span class="search-icon">🔍</span>
                 <input type="text" placeholder="{{ t.search }}" />
             </div>
             <div class="topbar-actions">
-                <a href="{{ url_for('user.safety_page') }}" class="sos-btn">🚨 SOS</a>
-                <a href="{{ url_for('user.notifications_page') }}" class="icon-btn">
+                <a href="{{ url_for('user.safety_page') }}" class="sos-btn">✳️ SOS</a>
+                <a href="{{ url_for('user.notifications_page') }}" class="icon-btn" id="notifBtn">
                     🔔
-                    <span class="badge">3</span>
+                    <span class="badge" id="notifBadge" style="display:none;">0</span>
                 </a>
                 <a href="{{ url_for('user.profile_page') }}" class="icon-btn">👤</a>
             </div>
         </header>
 
+        <!-- Page Content -->
         <main class="page-content">
             {% block content %}{% endblock %}
         </main>
     </div>
 
+    <!-- Theme + Notification count -->
     <script>
+        // Apply theme instantly
         const theme = "{{ session.get('theme', 'light') }}";
         document.documentElement.setAttribute('data-theme', theme);
+
+        // Fetch unread notification count
+        function updateNotifCount() {
+            fetch('/notification/unread-count')
+                .then(r => r.json())
+                .then(data => {
+                    const badge = document.getElementById('notifBadge');
+                    if (data.count > 0) {
+                        badge.textContent = data.count;
+                        badge.style.display = 'flex';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                })
+                .catch(() => { });
+        }
+
+        updateNotifCount();
+        setInterval(updateNotifCount, 30000);
     </script>
 
     {% block extra_js %}{% endblock %}

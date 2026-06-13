@@ -6,14 +6,48 @@ from app.controllers.meetup_controller import (
     create_schedule, respond_invite, get_common_availability,
     get_restaurants_data
 )
+from app.controllers.place_controller import (
+    plan_meetup, create_meetup, view_meetup as view_meetup_ctrl,
+    update_location, get_midpoint, add_suggestion,
+    respond_meetup
+)
 
 meetup_bp = Blueprint('meetup', __name__, url_prefix='/meetup')
 
 @meetup_bp.route('/plan')
 @login_required
 def plan():
-    restaurants = get_restaurants_data()
-    return render_template('meetup/plan.html', restaurants=restaurants)
+    return plan_meetup()
+
+@meetup_bp.route('/create', methods=['POST'])
+@login_required
+def create():
+    return create_meetup()
+
+@meetup_bp.route('/view/<int:meetup_id>')
+@login_required
+def view_meetup(meetup_id):
+    return view_meetup_ctrl(meetup_id)
+
+@meetup_bp.route('/update-location/<int:meetup_id>', methods=['POST'])
+@login_required
+def update_location_route(meetup_id):
+    return update_location(meetup_id)
+
+@meetup_bp.route('/midpoint/<int:meetup_id>')
+@login_required
+def midpoint_route(meetup_id):
+    return get_midpoint(meetup_id)
+
+@meetup_bp.route('/suggest/<int:meetup_id>', methods=['POST'])
+@login_required
+def suggest(meetup_id):
+    return add_suggestion(meetup_id)
+
+@meetup_bp.route('/respond/<int:meetup_id>', methods=['POST'])
+@login_required
+def respond(meetup_id):
+    return respond_meetup(meetup_id)
 
 @meetup_bp.route('/groups')
 @login_required
@@ -64,4 +98,3 @@ def respond_invite_route(invite_id):
 @login_required
 def common_availability():
     return get_common_availability()
-

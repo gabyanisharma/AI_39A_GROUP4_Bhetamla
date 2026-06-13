@@ -1,5 +1,5 @@
 from flask import render_template, request, redirect, url_for, flash, session, jsonify
-from app.models.notification import EmergencyContact, SOSAlert
+from app.models.notification import EmergencyContact, SOSAlert, Notification
 from app.models.user import User
 from app.auth import get_current_user_id, is_logged_in
 from app import mail
@@ -135,3 +135,18 @@ def cancel_sos():
 
     SOSAlert.cancel(alert['id'], user_id)
     return jsonify({'success': True, 'message': 'SOS alert cancelled.'})
+
+
+def send_notification(user_id, title, message, type='general', link=None):
+    """Create a database-backed notification for a user."""
+    return Notification.create(user_id, title, message, type, link)
+
+
+def unread_count():
+    """API endpoint to get unread notification count for current user."""
+    if not is_logged_in():
+        return jsonify({'count': 0})
+    user_id = get_current_user_id()
+    count = Notification.get_unread_count(user_id)
+    return jsonify({'count': count})
+

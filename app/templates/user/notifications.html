@@ -89,6 +89,34 @@
             </div>
         </div>
 
+        <!-- General Notifications -->
+        {% if db_notifications %}
+            {% for notif in db_notifications %}
+                <div class="notif-item">
+                    <div class="notif-icon {% if notif.type == 'meetup' %}blue{% elif notif.type == 'sos' %}red{% else %}green{% endif %}">
+                        {% if notif.type == 'meetup' %}📅
+                        {% elif notif.type == 'friend' %}👥
+                        {% elif notif.type == 'sos' %}🚨
+                        {% elif notif.type == 'reminder' %}⏰
+                        {% else %}🔔{% endif %}
+                    </div>
+                    <div class="notif-content">
+                        <div class="notif-title">
+                            {% if notif.link %}
+                                <a href="{{ notif.link }}" style="text-decoration:none; color:inherit;">{{ notif.title }}</a>
+                            {% else %}
+                                {{ notif.title }}
+                            {% endif %}
+                        </div>
+                        <p class="notif-text">{{ notif.message }}</p>
+                        <div class="notif-time">
+                            {{ notif.created_at.strftime('%B %d, %Y at %I:%M %p') if notif.created_at else '' }}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+
         <!-- SOS Log History -->
         {% if alerts %}
             {% for alert in alerts %}

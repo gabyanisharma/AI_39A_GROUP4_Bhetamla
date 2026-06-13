@@ -28,12 +28,9 @@ db.sqlite3
 # Environment secrets
 .env
 
-# Ignore cache and system files
-__pycache__/
-.DS_Store
-
 # Ignore logs
 *.log
 
 run_stderr.log
 run_stdout.log
+notes.txt

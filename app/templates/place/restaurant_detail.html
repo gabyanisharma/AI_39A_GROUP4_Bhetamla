@@ -1,0 +1,459 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'restaurants' %}
+{% block title %}{{ restaurant.name }} — Bhetamla{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 20px;
+    }
+
+    /* Hero */
+    .restaurant-hero {
+        height: 200px;
+        background: linear-gradient(135deg, #1E293B, #334155);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 80px;
+        margin-bottom: 20px;
+        position: relative;
+    }
+
+    .hero-badges {
+        position: absolute;
+        bottom: 16px;
+        left: 16px;
+        display: flex;
+        gap: 8px;
+    }
+
+    .hero-badge {
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        border-radius: 8px;
+        padding: 4px 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    /* Info grid */
+    .info-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .info-stat {
+        background: var(--bg);
+        border-radius: 12px;
+        padding: 14px;
+        text-align: center;
+        border: 1px solid var(--border);
+    }
+
+    .info-stat .i-val {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--primary);
+    }
+
+    .info-stat .i-lbl {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 4px;
+    }
+
+    /* Map */
+    #detailMap {
+        width: 100%;
+        height: 220px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        margin-bottom: 16px;
+    }
+
+    /* Reviews */
+    .review-item {
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .review-item:last-child {
+        border-bottom: none;
+    }
+
+    .review-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+
+    .reviewer-avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: var(--primary-light);
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .reviewer-info .r-name {
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .reviewer-info .r-date {
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+
+    .review-rating {
+        margin-left: auto;
+        color: #D97706;
+        font-weight: 700;
+        font-size: 13px;
+    }
+
+    .review-text {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.5;
+    }
+
+    /* Add review */
+    .star-rating {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+
+    .star-rating input {
+        display: none;
+    }
+
+    .star-rating label {
+        font-size: 28px;
+        cursor: pointer;
+        color: #E2E8F0;
+        transition: color 0.15s;
+    }
+
+    .star-rating label:hover,
+    .star-rating label.active {
+        color: #D97706;
+    }
+
+    .form-group {
+        margin-bottom: 14px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 6px;
+    }
+
+    .form-group textarea {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        font-size: 14px;
+        background: var(--bg);
+        color: var(--text);
+        outline: none;
+        resize: vertical;
+    }
+
+    .form-group textarea:focus {
+        border-color: var(--primary);
+    }
+
+    .submit-review-btn {
+        width: 100%;
+        padding: 11px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    /* Save place btn */
+    .save-place-btn {
+        width: 100%;
+        padding: 11px;
+        background: #DCFCE7;
+        color: #166534;
+        border: none;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+
+    @media (max-width: 900px) {
+        .detail-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .info-row {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Back -->
+<a href="{{ url_for('place.restaurants_page') }}" style="display:inline-flex; align-items:center; gap:6px;
+          font-size:14px; font-weight:600; color:var(--text-muted);
+          text-decoration:none; margin-bottom:20px;">
+    ← Back to Restaurants
+</a>
+
+<!-- Hero -->
+<div class="restaurant-hero">
+    {% if restaurant.cuisine == 'Coffee'
+    or restaurant.category == 'Cafe' %}☕
+    {% elif restaurant.cuisine == 'Nepali' %}🍛
+    {% elif restaurant.cuisine == 'Italian' %}🍕
+    {% elif restaurant.cuisine == 'Indian' %}🍲
+    {% elif restaurant.cuisine == 'Korean' %}🥢
+    {% else %}🍽️{% endif %}
+
+    <div class="hero-badges">
+        <span class="hero-badge">{{ restaurant.category }}</span>
+        <span class="hero-badge">{{ restaurant.cuisine }}</span>
+        <span class="hero-badge">
+            {% if restaurant.price_range == 'budget' %}💚 Budget
+            {% elif restaurant.price_range == 'mid' %}🟡 Mid
+            {% else %}🔴 Premium{% endif %}
+        </span>
+    </div>
+</div>
+
+<h1 style="font-size:24px; font-weight:700; margin-bottom:6px;">
+    {{ restaurant.name }}
+</h1>
+<p style="color:var(--text-muted); font-size:14px; margin-bottom:20px;">
+    📍 {{ restaurant.address or 'Kathmandu, Nepal' }}
+</p>
+
+<!-- Stats -->
+<div class="info-row">
+    <div class="info-stat">
+        <div class="i-val">⭐ {{ restaurant.rating }}</div>
+        <div class="i-lbl">Rating</div>
+    </div>
+    <div class="info-stat">
+        <div class="i-val">{{ restaurant.review_count }}</div>
+        <div class="i-lbl">Reviews</div>
+    </div>
+    <div class="info-stat">
+        <div class="i-val">
+            {{ restaurant.ambience.replace('_', ' ').title()
+            if restaurant.ambience else 'Casual' }}
+        </div>
+        <div class="i-lbl">Ambience</div>
+    </div>
+</div>
+
+<div class="detail-grid">
+
+    <!-- Left: Map + Reviews -->
+    <div>
+        <!-- Map -->
+        {% if restaurant.latitude and restaurant.longitude %}
+        <div id="detailMap" data-lat="{{ restaurant.latitude }}" data-lng="{{ restaurant.longitude }}"
+            data-name="{{ restaurant.name }}">
+        </div>
+        {% endif %}
+
+        <!-- Reviews -->
+        <div class="card">
+            <div class="card-title">
+                Reviews
+                <span style="font-size:12px; color:var(--text-muted);">
+                    {{ reviews|length }}
+                </span>
+            </div>
+
+            {% if reviews %}
+            {% for review in reviews %}
+            <div class="review-item">
+                <div class="review-header">
+                    <div class="reviewer-avatar">
+                        {{ review.full_name[0].upper() }}
+                    </div>
+                    <div class="reviewer-info">
+                        <div class="r-name">
+                            {{ review.full_name }}
+                        </div>
+                        <div class="r-date">
+                            {{ review.created_at.strftime('%b %d, %Y')
+                            if review.created_at else '' }}
+                        </div>
+                    </div>
+                    <div class="review-rating">
+                        ⭐ {{ review.rating }}
+                    </div>
+                </div>
+                {% if review.review %}
+                <div class="review-text">{{ review.review }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <p style="color:var(--text-muted); font-size:14px;">
+                No reviews yet. Be the first!
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right: Add Review + Save -->
+    <div>
+
+        <!-- Add review -->
+        <div class="card" style="margin-bottom:16px;">
+            <div class="card-title">
+                {% if user_review %}Edit Your Review
+                {% else %}Write a Review{% endif %}
+            </div>
+
+            <form method="POST" action="{{ url_for('place.add_review_page',
+                                     restaurant_id=restaurant.id) }}">
+                <div class="form-group">
+                    <label>Your Rating</label>
+                    <div class="star-rating" id="starRating">
+                        {% for i in range(5, 0, -1) %}
+                        <input type="radio" name="rating" id="star{{ i }}" value="{{ i }}" {% if user_review and
+                            user_review.rating|int==i %} checked{% endif %} />
+                        <label for="star{{ i }}" class="{% if user_review and
+                                  user_review.rating|int >= i %}
+                                  active{% endif %}">
+                            ★
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Your Review (optional)</label>
+                    <textarea name="review" rows="3" placeholder="Share your experience...">
+{{ user_review.review if user_review else '' }}</textarea>
+                </div>
+                <button type="submit" class="submit-review-btn">
+                    {% if user_review %}Update Review
+                    {% else %}Submit Review{% endif %}
+                </button>
+            </form>
+        </div>
+
+        <!-- Save place -->
+        <div class="card">
+            <div class="card-title">Save this Place</div>
+            <p style="font-size:13px; color:var(--text-muted);
+                       margin-bottom:12px;">
+                Save for quick access when planning meetups.
+            </p>
+            <form method="POST" action="{{ url_for('place.save') }}">
+                <input type="hidden" name="place_name" value="{{ restaurant.name }}" />
+                <input type="hidden" name="address" value="{{ restaurant.address }}" />
+                <input type="hidden" name="latitude" value="{{ restaurant.latitude }}" />
+                <input type="hidden" name="longitude" value="{{ restaurant.longitude }}" />
+                <button type="submit" class="save-place-btn">
+                    🔖 Save Place
+                </button>
+            </form>
+
+            {% if restaurant.latitude and restaurant.longitude %}
+            <a href="https://maps.google.com/?q={{ restaurant.latitude }},{{ restaurant.longitude }}" target="_blank"
+                style="display:block; text-align:center;
+                      margin-top:10px; font-size:13px;
+                      color:var(--primary);">
+                🗺️ Open in Google Maps
+            </a>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    var mapEl = document.getElementById('detailMap');
+    if (mapEl) {
+        var lat = parseFloat(mapEl.getAttribute('data-lat'));
+        var lng = parseFloat(mapEl.getAttribute('data-lng'));
+        var name = mapEl.getAttribute('data-name');
+
+        var map = L.map('detailMap', {
+            center: [lat, lng],
+            zoom: 16,
+            scrollWheelZoom: false
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap',
+            maxZoom: 19
+        }).addTo(map);
+
+        var iconHtml = '<div style="background:#D97706;border:3px solid white;'
+            + 'border-radius:50%;width:36px;height:36px;display:flex;'
+            + 'align-items:center;justify-content:center;font-size:16px;'
+            + 'box-shadow:0 2px 8px rgba(0,0,0,0.3);">&#127869;</div>';
+
+        var icon = L.divIcon({
+            html: iconHtml,
+            className: '',
+            iconSize: [36, 36],
+            iconAnchor: [18, 18]
+        });
+
+        L.marker([lat, lng], { icon: icon })
+            .addTo(map)
+            .bindPopup('<strong>' + name + '</strong>')
+            .openPopup();
+    }
+
+    var labels = document.querySelectorAll('#starRating label');
+
+    labels.forEach(function (label, index) {
+        label.addEventListener('mouseover', function () {
+            labels.forEach(function (l, i) {
+                l.style.color = i <= index ? '#D97706' : '#E2E8F0';
+            });
+        });
+        label.addEventListener('mouseout', function () {
+            labels.forEach(function (l) { l.style.color = ''; });
+        });
+        label.addEventListener('click', function () {
+            labels.forEach(function (l, i) {
+                l.classList.toggle('active', i <= index);
+            });
+        });
+    });
+</script>
+{% endblock %}
