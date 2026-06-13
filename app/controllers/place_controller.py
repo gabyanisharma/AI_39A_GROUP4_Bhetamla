@@ -6,6 +6,7 @@ from app.models.user import User
 from app.auth import get_current_user_id, is_logged_in
 from app.controllers.notification_controller import send_notification
 from app.models.place import Restaurant, RestaurantReview
+from app.models.meetup_route import MeetupRoute
 import math
 
 # ── Midpoint calculation ───────────────────────────────────────────
@@ -125,11 +126,16 @@ def view_meetup(meetup_id):
 
     members     = MeetupMember.get_by_meetup(meetup_id)
     suggestions = PlaceSuggestion.get_by_meetup(meetup_id)
+    saved_route = MeetupRoute.get_by_meetup(meetup_id)
     user_id     = get_current_user_id()
 
     # Check if current user is a member
     is_member = any(m['user_id'] == user_id for m in members)
     is_creator = meetup['created_by'] == user_id
+    can_edit_route = is_creator or any(
+        m['user_id'] == user_id and m['status'] == 'accepted'
+        for m in members
+    )
 
     # Get member locations for midpoint display
     locations = MeetupMember.get_locations(meetup_id)
@@ -157,8 +163,10 @@ def view_meetup(meetup_id):
                            locations=locations,
                            midpoint_lat=midpoint_lat,
                            midpoint_lng=midpoint_lng,
+                           route_waypoints=saved_route['waypoints'] if saved_route else [],
                            is_member=is_member,
                            is_creator=is_creator,
+                           can_edit_route=can_edit_route,
                            user_id=user_id)
 
 
