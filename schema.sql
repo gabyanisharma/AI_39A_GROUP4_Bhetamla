@@ -425,4 +425,40 @@ CREATE TABLE IF NOT EXISTS restaurant_reviews (
 );
 
 
+-- =========================================
+-- RIDE ESTIMATES
+-- =========================================
 
+CREATE TABLE IF NOT EXISTS ride_estimates (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    meetup_id INT NOT NULL,
+    user_id INT NOT NULL,
+
+    from_lat DECIMAL(10,8),
+    from_lng DECIMAL(11,8),
+    from_address VARCHAR(255),
+
+    to_lat DECIMAL(10,8),
+    to_lng DECIMAL(11,8),
+    to_address VARCHAR(255),
+
+    distance_km DECIMAL(8,3),
+
+    pathao_bike_cost DECIMAL(10,2),
+    pathao_car_cost  DECIMAL(10,2),
+    taxi_cost        DECIMAL(10,2),
+    walk_minutes     INT,
+
+    is_peak_hour BOOLEAN DEFAULT FALSE,
+
+    calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (meetup_id)
+        REFERENCES meetups(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id)
+        REFERENCES users(id)  ON DELETE CASCADE,
+
+    UNIQUE KEY unique_ride_estimate (meetup_id, user_id)
+);
