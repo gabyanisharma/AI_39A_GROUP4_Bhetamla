@@ -332,6 +332,64 @@ CREATE TABLE IF NOT EXISTS meetup_members (
 
 
 -- =========================================
+-- MEETUP ROUTES
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS meetup_routes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    meetup_id INT NOT NULL,
+    created_by INT NOT NULL,
+
+    travel_mode ENUM('driving', 'walking', 'cycling') DEFAULT 'driving',
+
+    distance_m INT,
+    duration_s INT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (meetup_id)
+    REFERENCES meetups(id)
+    ON DELETE CASCADE,
+
+    FOREIGN KEY (created_by)
+    REFERENCES users(id)
+    ON DELETE CASCADE,
+
+    UNIQUE KEY unique_meetup_route (meetup_id)
+);
+
+
+-- =========================================
+-- MEETUP ROUTE WAYPOINTS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS meetup_route_waypoints (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    route_id INT NOT NULL,
+    sequence_index INT NOT NULL,
+
+    label VARCHAR(100) NOT NULL,
+    address VARCHAR(255),
+
+    latitude DECIMAL(10,8) NOT NULL,
+    longitude DECIMAL(11,8) NOT NULL,
+
+    source ENUM('geocoder', 'map_click', 'manual', 'dragged') DEFAULT 'manual',
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (route_id)
+    REFERENCES meetup_routes(id)
+    ON DELETE CASCADE,
+
+    UNIQUE KEY unique_route_sequence (route_id, sequence_index)
+);
+
+
+-- =========================================
 -- PLACE SUGGESTIONS
 -- =========================================
 
@@ -423,6 +481,53 @@ CREATE TABLE IF NOT EXISTS restaurant_reviews (
 
     UNIQUE KEY unique_review (restaurant_id, user_id)
 );
+-- ============================================================
+--  Bhetamल — Fare Drop Alert Feature
+--  Run this against your existing bhetamla MySQL database
+-- ============================================================
+
+-- Travel Estimate table (matches ER diagram)
+-- If you already have this, skip this block
+CREATE TABLE IF NOT EXISTS travel_estimate (
+    travelID      INT AUTO_INCREMENT PRIMARY KEY,
+    meetupID      INT NOT NULL,
+    userID        INT NOT NULL,
+    mode          ENUM('car','bike','public','walk') NOT NULL DEFAULT 'car',
+    travelTime    INT COMMENT 'minutes',
+    distance      DECIMAL(8,2) COMMENT 'km',
+    estimatedCost DECIMAL(10,2),
+    createdAt     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (meetupID) REFERENCES meetups(id) ON DELETE CASCADE,
+    FOREIGN KEY (userID)   REFERENCES users(id)     ON DELETE CASCADE
+);
+
+-- Fare Alert subscriptions  (NEW)
+CREATE TABLE IF NOT EXISTS fare_alert (
+    alertID       INT AUTO_INCREMENT PRIMARY KEY,
+    userID        INT NOT NULL,
+    meetupID      INT NOT NULL,
+    mode          ENUM('car','bike','public','walk') NOT NULL DEFAULT 'car',
+    targetFare    DECIMAL(10,2) NOT NULL COMMENT 'Alert when fare drops to or below this',
+    currentFare   DECIMAL(10,2)           COMMENT 'Last checked fare',
+    isActive      TINYINT(1) DEFAULT 1,
+    isTriggered   TINYINT(1) DEFAULT 0    COMMENT '1 once the alert has fired',
+    createdAt     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    triggeredAt   DATETIME,
+    FOREIGN KEY (userID)   REFERENCES users(id)     ON DELETE CASCADE,
+    FOREIGN KEY (meetupID) REFERENCES meetups(id) ON DELETE CASCADE
+);
+
+-- Fare price history  (NEW — powers the sparkline chart)
+CREATE TABLE IF NOT EXISTS fare_history (
+    historyID     INT AUTO_INCREMENT PRIMARY KEY,
+    meetupID      INT NOT NULL,
+    mode          ENUM('car','bike','public','walk') NOT NULL,
+    fare          DECIMAL(10,2) NOT NULL,
+    recordedAt    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (meetupID) REFERENCES meetups(id) ON DELETE CASCADE
+);
+
+-- Indexes for fast lookups are created conditionally in app/database.py
 
 
 -- =========================================
