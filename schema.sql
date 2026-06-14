@@ -332,6 +332,64 @@ CREATE TABLE IF NOT EXISTS meetup_members (
 
 
 -- =========================================
+-- MEETUP ROUTES
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS meetup_routes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    meetup_id INT NOT NULL,
+    created_by INT NOT NULL,
+
+    travel_mode ENUM('driving', 'walking', 'cycling') DEFAULT 'driving',
+
+    distance_m INT,
+    duration_s INT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (meetup_id)
+    REFERENCES meetups(id)
+    ON DELETE CASCADE,
+
+    FOREIGN KEY (created_by)
+    REFERENCES users(id)
+    ON DELETE CASCADE,
+
+    UNIQUE KEY unique_meetup_route (meetup_id)
+);
+
+
+-- =========================================
+-- MEETUP ROUTE WAYPOINTS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS meetup_route_waypoints (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    route_id INT NOT NULL,
+    sequence_index INT NOT NULL,
+
+    label VARCHAR(100) NOT NULL,
+    address VARCHAR(255),
+
+    latitude DECIMAL(10,8) NOT NULL,
+    longitude DECIMAL(11,8) NOT NULL,
+
+    source ENUM('geocoder', 'map_click', 'manual', 'dragged') DEFAULT 'manual',
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (route_id)
+    REFERENCES meetup_routes(id)
+    ON DELETE CASCADE,
+
+    UNIQUE KEY unique_route_sequence (route_id, sequence_index)
+);
+
+
+-- =========================================
 -- PLACE SUGGESTIONS
 -- =========================================
 
@@ -472,4 +530,40 @@ CREATE TABLE IF NOT EXISTS fare_history (
 -- Indexes for fast lookups are created conditionally in app/database.py
 
 
+-- =========================================
+-- RIDE ESTIMATES
+-- =========================================
 
+CREATE TABLE IF NOT EXISTS ride_estimates (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    meetup_id INT NOT NULL,
+    user_id INT NOT NULL,
+
+    from_lat DECIMAL(10,8),
+    from_lng DECIMAL(11,8),
+    from_address VARCHAR(255),
+
+    to_lat DECIMAL(10,8),
+    to_lng DECIMAL(11,8),
+    to_address VARCHAR(255),
+
+    distance_km DECIMAL(8,3),
+
+    pathao_bike_cost DECIMAL(10,2),
+    pathao_car_cost  DECIMAL(10,2),
+    taxi_cost        DECIMAL(10,2),
+    walk_minutes     INT,
+
+    is_peak_hour BOOLEAN DEFAULT FALSE,
+
+    calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (meetup_id)
+        REFERENCES meetups(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id)
+        REFERENCES users(id)  ON DELETE CASCADE,
+
+    UNIQUE KEY unique_ride_estimate (meetup_id, user_id)
+);
