@@ -1,216 +1,38 @@
 {% extends "base_dashboard.html" %}
 {% set active_page = 'notifications' %}
-{% block title %}Notifications — Bhetamla{% endblock %}
+{% block title %}Notifications — Bhetamल{% endblock %}
 
-{% block extra_css %}
-<style>
-    .notif-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 24px;
-    }
-    .notif-header h1 { font-size: 22px; font-weight: 700; }
-    .clear-btn {
-        background: #FEE2E2; color: #DC2626;
-        border: none; border-radius: 10px;
-        padding: 8px 18px; font-size: 13px;
-        font-weight: 600; cursor: pointer;
-        text-decoration: none;
-        transition: background 0.2s;
-    }
-    .clear-btn:hover { background: #FECACA; }
-
-    .notif-list { display: flex; flex-direction: column; gap: 10px; }
-
-    .notif-item {
-        background: var(--card);
-        border-radius: 14px;
-        padding: 18px 20px;
-        display: flex;
-        align-items: flex-start;
-        gap: 14px;
-        border: 1px solid var(--border);
-        box-shadow: var(--shadow);
-        transition: transform 0.15s;
-        position: relative;
-    }
-    .notif-item:hover { transform: translateX(4px); }
-    .notif-item.unread {
-        border-left: 4px solid var(--primary);
-        background: var(--primary-light);
-    }
-
-    .notif-icon {
-        width: 42px; height: 42px;
-        border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 20px; flex-shrink: 0;
-    }
-    .icon-meetup   { background: #DBEAFE; }
-    .icon-friend   { background: #FCE7F3; }
-    .icon-reminder { background: #FEF3C7; }
-    .icon-sos      { background: #FEE2E2; }
-    .icon-general  { background: #F1F5F9; }
-
-    .notif-body { flex: 1; }
-    .notif-body .n-title {
-        font-size: 14px; font-weight: 700;
-        color: var(--text); margin-bottom: 4px;
-    }
-    .notif-body .n-message {
-        font-size: 13px; color: var(--text-muted);
-        line-height: 1.5;
-    }
-    .notif-body .n-time {
-        font-size: 11px; color: var(--text-muted);
-        margin-top: 6px;
-    }
-
-    .notif-actions {
-        display: flex; flex-direction: column;
-        align-items: flex-end; gap: 6px;
-    }
-    .delete-notif {
-        background: none; border: none;
-        color: var(--text-muted); cursor: pointer;
-        font-size: 16px; padding: 4px;
-        border-radius: 6px;
-        transition: color 0.15s;
-    }
-    .delete-notif:hover { color: #DC2626; }
-
-    .unread-dot {
-        width: 8px; height: 8px;
-        background: var(--primary);
-        border-radius: 50%;
-        margin-top: 4px;
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-        color: var(--text-muted);
-    }
-    .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; }
-    .empty-state h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
-    .empty-state p  { font-size: 14px; }
-
-    /* Filter tabs */
-    .filter-tabs {
-        display: flex; gap: 8px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-    }
-    .filter-tab {
-        padding: 7px 16px;
-        border-radius: 20px;
-        font-size: 13px; font-weight: 600;
-        cursor: pointer; border: none;
-        background: var(--bg);
-        color: var(--text-muted);
-        transition: all 0.15s;
-    }
-    .filter-tab.active {
-        background: var(--primary);
-        color: white;
-    }
-    .filter-tab:hover:not(.active) {
-        background: var(--primary-light);
-        color: var(--primary);
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="notif-header">
-    <h1>🔔 Notifications</h1>
-    {% if notifications %}
-    <a href="{{ url_for('notification.clear_all') }}"
-       class="clear-btn"
-       onclick="return confirm('Clear all notifications?')">
-        🗑️ Clear All
-    </a>
-    {% endif %}
-</div>
-
-<!-- Filter tabs -->
-<div class="filter-tabs">
-    <button class="filter-tab active" onclick="filterNotifs('all', this)">All</button>
-    <button class="filter-tab" onclick="filterNotifs('meetup', this)">📅 Meetups</button>
-    <button class="filter-tab" onclick="filterNotifs('friend', this)">👥 Friends</button>
-    <button class="filter-tab" onclick="filterNotifs('reminder', this)">⏰ Reminders</button>
-    <button class="filter-tab" onclick="filterNotifs('sos', this)">🆘 SOS</button>
-</div>
-
-{% if notifications %}
-<div class="notif-list" id="notifList">
-    {% for notif in notifications %}
-    <div class="notif-item {% if not notif.is_read %}unread{% endif %}"
-         data-type="{{ notif.type }}">
-
-        <!-- Icon -->
-        <div class="notif-icon
-            {% if notif.type == 'meetup' %}icon-meetup
-            {% elif notif.type == 'friend' %}icon-friend
-            {% elif notif.type == 'reminder' %}icon-reminder
-            {% elif notif.type == 'sos' %}icon-sos
-            {% else %}icon-general{% endif %}">
-            {% if notif.type == 'meetup' %}📅
-            {% elif notif.type == 'friend' %}👥
-            {% elif notif.type == 'reminder' %}⏰
-            {% elif notif.type == 'sos' %}🆘
-            {% else %}🔔{% endif %}
-        </div>
-
-        <!-- Body -->
-        <div class="notif-body">
-            <div class="n-title">{{ notif.title }}</div>
-            <div class="n-message">{{ notif.message }}</div>
-            <div class="n-time">
-               {{ notif.created_at.strftime('%B %d, %Y') if notif.created_at else '' }}
-            </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="notif-actions">
-            <a href="{{ url_for('notification.delete_notification', notification_id=notif.id) }}"
-               class="delete-notif" title="Delete">✕</a>
-            {% if not notif.is_read %}
-            <div class="unread-dot"></div>
-            {% endif %}
-        </div>
-
+{% block page_content %}
+<div id="page-notifications" class="page active" style="flex-direction:column" role="main">
+  <div class="topbar">
+    <div class="topbar-search" style="padding:0 14px"><label style="display:flex;align-items:center;gap:10px;flex:1"><span style="font-size:14px">&#128269;</span><input type="search" placeholder="Search notifications..." style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
+    <div class="topbar-controls">
+      <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
     </div>
-    {% endfor %}
-</div>
-
-{% else %}
-<div class="card">
-    <div class="empty-state">
-        <div class="empty-icon">🔔</div>
-        <h3>You're all caught up!</h3>
-        <p>No notifications yet. We'll let you know when something happens.</p>
+  </div>
+  <div style="padding:28px;max-width:640px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+      <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--primary)">Notifications</h1>
+      {% if notifications %}
+      <a class="btn-sec" style="font-size:12px;padding:7px 14px;text-decoration:none" href="{{ url_for('notification.clear_all') }}">Clear all</a>
+      {% endif %}
     </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      {% for n in notifications %}
+      <div class="notif-item card" style="padding:14px;{% if n.is_read %}opacity:.6{% endif %}">
+        <div class="notif-dot" style="{% if n.is_read %}background:var(--border){% elif n.type == 'success' %}background:var(--green){% elif n.type == 'error' %}background:var(--red){% else %}background:var(--blue){% endif %}"></div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:13px">{{ n.title }}</div>
+          <div style="font-size:12px;color:var(--text);margin-top:2px">{{ n.message }}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">{{ n.created_at }}</div>
+        </div>
+        {% if n.link %}<a href="{{ n.link }}" style="font-size:12px;color:var(--blue);font-weight:600;text-decoration:none;align-self:center">View</a>{% endif %}
+        <a href="{{ url_for('notification.delete_notification', notification_id=n.id) }}" style="font-size:14px;color:var(--muted);text-decoration:none;align-self:center;margin-left:8px" aria-label="Delete">✕</a>
+      </div>
+      {% else %}
+      <div class="card" style="text-align:center;color:var(--muted);padding:32px">No notifications yet.</div>
+      {% endfor %}
+    </div>
+  </div>
 </div>
-{% endif %}
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    // Filter notifications by type
-    function filterNotifs(type, btn) {
-        document.querySelectorAll('.filter-tab').forEach(t =>
-            t.classList.remove('active'));
-        btn.classList.add('active');
-
-        document.querySelectorAll('.notif-item').forEach(item => {
-            if (type === 'all' || item.dataset.type === type) {
-                item.style.display = 'flex';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    }
-</script>
 {% endblock %}
