@@ -5,6 +5,8 @@ from app.controllers.user_controller import (
     profile, settings, support
 )
 from app.controllers.notification_controller import safety
+from datetime import datetime
+from app.models.meetup import Meetup
 
 user_bp = Blueprint('user', __name__, url_prefix='/user')
 
@@ -20,7 +22,10 @@ def login_required(f):
 @user_bp.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template('user/dashboard.html')
+    user_id = session['user_id']
+    meetups = Meetup.get_by_user(user_id)
+    today = datetime.now().strftime('%A, %B %Y')
+    return render_template('user/dashboard.html', meetups=meetups, today=today)
 
 @user_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
