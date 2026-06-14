@@ -72,19 +72,21 @@ class Notification:
     @staticmethod
     def create(user_id, title, message, type='general', link=None):
         query = """
-            INSERT INTO notifications (user_id, title, message, type, link)
+            INSERT INTO notifications
+            (user_id, title, message, type, link)
             VALUES (%s, %s, %s, %s, %s)
         """
         return execute_query(query, (user_id, title, message, type, link))
 
     @staticmethod
-    def get_by_user(user_id):
+    def get_by_user(user_id, limit=20):
         query = """
             SELECT * FROM notifications
             WHERE user_id = %s
             ORDER BY created_at DESC
+            LIMIT %s
         """
-        return execute_query(query, (user_id,), fetch=True)
+        return execute_query(query, (user_id, limit), fetch=True)
 
     @staticmethod
     def get_unread_count(user_id):
@@ -96,19 +98,30 @@ class Notification:
         return results[0]['count'] if results else 0
 
     @staticmethod
-    def mark_as_read(notification_id, user_id):
+    def mark_read(notification_id, user_id):
         query = """
-            UPDATE notifications
-            SET is_read = TRUE, read_at = NOW()
+            UPDATE notifications SET is_read = TRUE
             WHERE id = %s AND user_id = %s
         """
         return execute_query(query, (notification_id, user_id))
 
     @staticmethod
-    def mark_all_as_read(user_id):
+    def mark_all_read(user_id):
         query = """
-            UPDATE notifications
-            SET is_read = TRUE, read_at = NOW()
-            WHERE user_id = %s AND is_read = FALSE
+            UPDATE notifications SET is_read = TRUE
+            WHERE user_id = %s
         """
-        return execute_query(query, (user_id,))
+        return execute_query(query, (user_id,))
+
+    @staticmethod
+    def delete(notification_id, user_id):
+        query = """
+            DELETE FROM notifications
+            WHERE id = %s AND user_id = %s
+        """
+        return execute_query(query, (notification_id, user_id))
+
+    @staticmethod
+    def delete_all(user_id):
+        query = "DELETE FROM notifications WHERE user_id = %s"
+        return execute_query(query, (user_id,))

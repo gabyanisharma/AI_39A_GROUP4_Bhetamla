@@ -163,11 +163,41 @@ def fare_drop_notification(user_id, mode, fare, target_fare, saving, meetup_id, 
     return Notification.create(user_id, title, message, type='reminder', link=link)
 
 
-def unread_count():
-    """API endpoint to get unread notification count for current user."""
+def get_unread_count():
     if not is_logged_in():
         return jsonify({'count': 0})
-    user_id = get_current_user_id()
-    count = Notification.get_unread_count(user_id)
+    count = Notification.get_unread_count(get_current_user_id())
     return jsonify({'count': count})
 
+def notifications():
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+
+    user_id = get_current_user_id()
+    notifs  = Notification.get_by_user(user_id)
+    Notification.mark_all_read(user_id)
+
+    return render_template('user/notifications.html',
+                           notifications=notifs)
+
+
+def mark_read(notification_id):
+    if not is_logged_in():
+        return jsonify({'success': False})
+    Notification.mark_read(notification_id, get_current_user_id())
+    return jsonify({'success': True})
+
+
+def delete_notification(notification_id):
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+    Notification.delete(notification_id, get_current_user_id())
+    return redirect(url_for('user.notifications_page'))
+
+
+def clear_all_notifications():
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+    Notification.delete_all(get_current_user_id())
+    flash('All notifications cleared.', 'info')
+    return redirect(url_for('user.notifications_page'))

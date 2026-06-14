@@ -32,6 +32,7 @@ def create_app():
     from app.routes.meetup_routes import meetup_bp
     from app.routes.place_routes import place_bp
     from app.controllers.fare_alert_controller import fare_alert_bp
+    from app.routes.ride_routes import ride_bp 
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
@@ -39,6 +40,7 @@ def create_app():
     app.register_blueprint(meetup_bp)
     app.register_blueprint(place_bp)
     app.register_blueprint(fare_alert_bp, url_prefix='/fare-alert')
+    app.register_blueprint(ride_bp)  
 
     @app.route('/')
     def index():
