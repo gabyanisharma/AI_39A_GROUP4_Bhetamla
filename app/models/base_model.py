@@ -29,7 +29,7 @@ class Friend:
     @staticmethod
     def get_friends(user_id):
         query = """
-            SELECT u.id, u.full_name, u.email, u.profile_pic, f.id as friendship_id
+            SELECT DISTINCT u.id, u.full_name, u.email, u.profile_pic, f.id as friendship_id
             FROM friends f
             JOIN users u ON (
                 CASE WHEN f.user_id = %s THEN f.friend_id ELSE f.user_id END = u.id
@@ -42,7 +42,7 @@ class Friend:
     @staticmethod
     def get_pending_requests(user_id):
         query = """
-            SELECT f.id, f.user_id, f.created_at,
+            SELECT DISTINCT f.id, f.user_id, f.created_at,
                    u.full_name, u.email, u.profile_pic
             FROM friends f
             JOIN users u ON f.user_id = u.id
@@ -53,7 +53,7 @@ class Friend:
     @staticmethod
     def get_sent_requests(user_id):
         query = """
-            SELECT f.id, f.friend_id, f.created_at,
+            SELECT DISTINCT f.id, f.friend_id, f.created_at,
                    u.full_name, u.email
             FROM friends f
             JOIN users u ON f.friend_id = u.id
@@ -64,7 +64,7 @@ class Friend:
     @staticmethod
     def are_friends(user_id, friend_id):
         query = """
-            SELECT id FROM friends
+            SELECT DISTINCT id FROM friends
             WHERE ((user_id = %s AND friend_id = %s)
                OR  (user_id = %s AND friend_id = %s))
             AND status = 'accepted'
@@ -75,7 +75,7 @@ class Friend:
     @staticmethod
     def search_users(query_str, current_user_id):
         query = """
-            SELECT id, full_name, email, profile_pic
+            SELECT DISTINCT id, full_name, email, profile_pic
             FROM users
             WHERE (full_name LIKE %s OR email LIKE %s)
             AND id != %s
@@ -126,7 +126,7 @@ class AvailabilitySlot:
             return []
         placeholders = ','.join(['%s'] * len(user_ids))
         query = f"""
-            SELECT date, start_time, end_time,
+            SELECT DISTINCT date, start_time, end_time,
                    COUNT(DISTINCT user_id) as available_count
             FROM availability_slots
             WHERE user_id IN ({placeholders})
