@@ -142,6 +142,27 @@ def send_notification(user_id, title, message, type='general', link=None):
     return Notification.create(user_id, title, message, type, link)
 
 
+MODE_ICONS = {'car': '🚗', 'bike': '🛵', 'public': '🚌', 'walk': '🚶'}
+
+
+def fare_drop_notification(user_id, mode, fare, target_fare, saving, meetup_id, meetup_title=None):
+    """
+    Create a rich fare-drop notification with saving details.
+    Returns the new notification row ID.
+    """
+    icon = MODE_ICONS.get(mode, '🚗')
+    title = f"📉 Fare Drop Alert — {icon} {mode.capitalize()}"
+    message = (
+        f"Great news! The {mode.capitalize()} fare for "
+        f"{'your meetup «' + meetup_title + '»' if meetup_title else 'your meetup'} "
+        f"has dropped to NPR {fare:,.0f} "
+        f"(target was NPR {target_fare:,.0f}). "
+        f"You save NPR {saving:,.0f}! 🎉"
+    )
+    link = f"/fare-alert/meetup/{meetup_id}"
+    return Notification.create(user_id, title, message, type='reminder', link=link)
+
+
 def unread_count():
     """API endpoint to get unread notification count for current user."""
     if not is_logged_in():

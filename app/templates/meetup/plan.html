@@ -268,25 +268,32 @@
         <div class="meetup-list">
             {% if meetups %}
                 {% for m in meetups %}
-                    <a href="{{ url_for('meetup.view_meetup', meetup_id=m.id) }}" class="meetup-item">
-                        <div class="meetup-item-header">
-                            <span class="meetup-title">{{ m.title }}</span>
-                            <span class="meetup-status status-{{ m.status }}">{{ m.status }}</span>
-                        </div>
-                        <div class="meetup-date-time">
-                            {% if m.meetup_date %}
-                                🗓️ {{ m.meetup_date.strftime('%b %d, %Y') }}
-                                {% if m.meetup_time %}
-                                    at {{ m.meetup_time }}
+                    <div style="position:relative; margin-bottom:12px;">
+                        <a href="{{ url_for('meetup.view_meetup', meetup_id=m.id) }}" class="meetup-item" style="margin-bottom:0; padding-right:110px;">
+                            <div class="meetup-item-header">
+                                <span class="meetup-title">{{ m.title }}</span>
+                                <span class="meetup-status status-{{ m.status }}">{{ m.status }}</span>
+                            </div>
+                            <div class="meetup-date-time">
+                                {% if m.meetup_date %}
+                                    🗓️ {{ m.meetup_date.strftime('%b %d, %Y') }}
+                                    {% if m.meetup_time %}
+                                        at {{ m.meetup_time }}
+                                    {% endif %}
+                                {% else %}
+                                    🗓️ Time unproposed
                                 {% endif %}
-                            {% else %}
-                                🗓️ Time unproposed
-                            {% endif %}
-                        </div>
-                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
-                            By: {{ m.creator_name or 'You' }}
-                        </div>
-                    </a>
+                            </div>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+                                By: {{ m.creator_name or 'You' }}
+                            </div>
+                        </a>
+                        <a href="{{ url_for('fare_alert.meetup_alerts', meetup_id=m.id) }}"
+                           class="btn-sec"
+                           style="position:absolute; right:16px; top:50%; transform:translateY(-50%); padding:5px 10px; font-size:11px; text-decoration:none; border-color:var(--success); color:var(--success); background:var(--card); border:1px solid; border-radius:6px; z-index:5; display:inline-flex; align-items:center; gap:4px; font-weight:600; cursor:pointer;">
+                          📉 Alert
+                        </a>
+                    </div>
                 {% endfor %}
             {% else %}
                 <p style="color:var(--text-muted); font-size:13px; text-align:center; padding: 20px 0;">
