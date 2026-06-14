@@ -70,7 +70,23 @@ def route_delete(meetup_id):
 @meetup_bp.route('/groups')
 @login_required
 def groups():
-    return render_template('meetup/groups.html')
+    from app.auth import get_current_user_id
+    from app.models.meetup import Meetup
+    from app.database import execute_query
+    user_id = get_current_user_id()
+    meetups = Meetup.get_by_user(user_id)
+    friends = execute_query(
+        """SELECT u.id, u.full_name, u.email
+           FROM friends f
+           JOIN users u ON (
+               CASE WHEN f.user_id = %s THEN f.friend_id = u.id
+               ELSE f.user_id = u.id END
+           )
+           WHERE (f.user_id = %s OR f.friend_id = %s)
+           AND f.status = 'accepted'""",
+        (user_id, user_id, user_id), fetch=True
+    ) or []
+    return render_template('meetup/groups.html', meetups=meetups, friends=friends)
 
 @meetup_bp.route('/scheduler')
 @login_required
