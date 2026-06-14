@@ -1,333 +1,162 @@
 {% extends "base_dashboard.html" %}
 {% set active_page = 'plan' %}
-{% block title %}Plan Meetup — Bhetamla{% endblock %}
+{% block title %}Plan Meetup — Bhetamल{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<style>
-    .plan-grid {
-        display: grid;
-        grid-template-columns: 1fr 360px;
-        gap: 24px;
-        margin-top: 20px;
-    }
+{% block page_content %}
+<div id="page-plan" class="page active" style="flex-direction:column" role="main">
+  <div class="topbar">
+    <div class="topbar-search" style="padding:0 14px"><label for="search-plan" style="display:flex;align-items:center;gap:10px;cursor:text;flex:1"><span aria-hidden="true" style="font-size:14px">&#128269;</span><input id="search-plan" type="search" placeholder="Search venues or friends..." aria-label="Search venues or friends" style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
+    <div class="topbar-controls">
+      <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
+    </div>
+    <button class="sos-btn" onclick="openModal('modal-sos')">&#10033; SOS</button>
+    <button aria-label="Notifications" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px">&#128276;</button>
+  </div>
 
-    /* Form Card */
-    .create-card {
-        padding: 24px;
-    }
-
-    .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-    }
-
-    .form-group {
-        margin-bottom: 16px;
-    }
-
-    .form-group label {
-        display: block;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 6px;
-    }
-
-    .form-group input, 
-    .form-group textarea, 
-    .form-group select {
-        width: 100%;
-        padding: 11px 14px;
-        border: 1.5px solid var(--border);
-        border-radius: 10px;
-        font-size: 14px;
-        background: var(--bg);
-        color: var(--text);
-        outline: none;
-    }
-
-    .form-group input:focus, 
-    .form-group textarea:focus, 
-    .form-group select:focus {
-        border-color: var(--primary);
-    }
-
-    .friends-checklist {
-        max-height: 150px;
-        overflow-y: auto;
-        border: 1.5px solid var(--border);
-        border-radius: 10px;
-        padding: 10px 14px;
-        background: var(--bg);
-    }
-
-    .friend-checkbox {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 0;
-        cursor: pointer;
-        font-size: 13px;
-    }
-
-    .friend-checkbox input {
-        cursor: pointer;
-    }
-
-    /* Map selection styling */
-    .map-container {
-        position: relative;
-        margin-bottom: 16px;
-    }
-
-    #planMap {
-        width: 100%;
-        height: 250px;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        z-index: 1;
-    }
-
-    .map-instructions {
-        position: absolute;
-        bottom: 10px;
-        left: 10px;
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        padding: 6px 12px;
-        border-radius: 8px;
-        font-size: 11px;
-        z-index: 1000;
-        pointer-events: none;
-    }
-
-    .btn-submit {
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        padding: 12px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        width: 100%;
-        transition: background 0.15s;
-    }
-
-    .btn-submit:hover {
-        background: #1D4ED8;
-    }
-
-    /* Meetup List Card */
-    .meetup-list-card {
-        padding: 24px;
-    }
-
-    .meetup-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin-top: 16px;
-    }
-
-    .meetup-item {
-        background: var(--bg);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 16px;
-        text-decoration: none;
-        color: var(--text);
-        display: block;
-        transition: transform 0.15s, box-shadow 0.15s;
-    }
-
-    .meetup-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    }
-
-    .meetup-item-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 6px;
-    }
-
-    .meetup-title {
-        font-size: 14px;
-        font-weight: 700;
-    }
-
-    .meetup-date-time {
-        font-size: 12px;
-        color: var(--text-muted);
-    }
-
-    .meetup-status {
-        font-size: 10px;
-        font-weight: 700;
-        padding: 2px 8px;
-        border-radius: 20px;
-        text-transform: uppercase;
-    }
-
-    .status-planned { background: #DBEAFE; color: #1E40AF; }
-    .status-active { background: #D1FAE5; color: #065F46; }
-    .status-completed { background: #E1F5FE; color: #01579B; }
-    .status-cancelled { background: #FEE2E2; color: #991B1B; }
-
-    @media (max-width: 900px) {
-        .plan-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<h1 style="font-size:22px; font-weight:700; margin-bottom:6px;">
-    📅 Plan a Safe Meetup
-</h1>
-<p style="color:var(--text-muted); font-size:14px; margin-bottom:20px;">
-    Coordinate midpoints and locate optimal well-lit meeting locations in Kathmandu Valley.
-</p>
-
-<div class="plan-grid">
-    <!-- Left: Create Meetup Form -->
-    <div class="card create-card">
-        <div class="card-title">✨ Create Meetup</div>
-        
-        <form method="POST" action="{{ url_for('meetup.create') }}">
-            <div class="form-group">
-                <label>Meetup Title</label>
-                <input type="text" name="title" placeholder="e.g. Project Discussion or Coffee Meetup" required />
-            </div>
-
-            <div class="form-group">
-                <label>Description (optional)</label>
-                <textarea name="description" rows="2" placeholder="e.g. Group study or weekend catch-up..."></textarea>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Proposed Date</label>
-                    <input type="date" name="meetup_date" required />
-                </div>
-                <div class="form-group">
-                    <label>Proposed Time</label>
-                    <input type="time" name="meetup_time" required />
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Invite Friends</label>
-                <div class="friends-checklist">
-                    {% if friends %}
-                        {% for friend in friends %}
-                            <label class="friend-checkbox">
-                                <input type="checkbox" name="invite_friends" value="{{ friend.id }}" />
-                                <span>{{ friend.full_name }}</span>
-                            </label>
-                        {% endfor %}
-                    {% else %}
-                        <p style="color:var(--text-muted); font-size:12px; margin: 4px 0;">
-                            No friends added yet. Go to <a href="{{ url_for('meetup.scheduler_page') }}" style="color:var(--primary);">Scheduler</a> to add friends!
-                        </p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>My Starting Location</label>
-                <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">
-                    Select your location on the map so the group midpoint can be calculated correctly.
-                </p>
-                <div class="map-container">
-                    <div id="planMap"></div>
-                    <div class="map-instructions">Click map or allow GPS to pinpoint location</div>
-                </div>
-                <input type="hidden" name="user_lat" id="userLat" />
-                <input type="hidden" name="user_lng" id="userLng" />
-                <input type="text" name="user_address" id="userAddress" placeholder="Latitude, Longitude or Address name" readonly required />
-            </div>
-
-            <button type="submit" class="btn-submit">
-                🚀 Create Meetup & Send Invites
-            </button>
-        </form>
+  <div style="flex:1;overflow-y:auto;padding:32px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px;">
+      <span style="font-size:22px;">📍</span>
+      <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--primary);letter-spacing:-.5px;">Plan a Meetup</h1>
     </div>
 
-    <!-- Right: My Meetups List -->
-    <div class="card meetup-list-card">
-        <div class="card-title">📅 My Meetups</div>
-        
-        <div class="meetup-list">
-            {% if meetups %}
-                {% for m in meetups %}
-                    <a href="{{ url_for('meetup.view_meetup', meetup_id=m.id) }}" class="meetup-item">
-                        <div class="meetup-item-header">
-                            <span class="meetup-title">{{ m.title }}</span>
-                            <span class="meetup-status status-{{ m.status }}">{{ m.status }}</span>
-                        </div>
-                        <div class="meetup-date-time">
-                            {% if m.meetup_date %}
-                                🗓️ {{ m.meetup_date.strftime('%b %d, %Y') }}
-                                {% if m.meetup_time %}
-                                    at {{ m.meetup_time }}
-                                {% endif %}
-                            {% else %}
-                                🗓️ Time unproposed
-                            {% endif %}
-                        </div>
-                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
-                            By: {{ m.creator_name or 'You' }}
-                        </div>
-                    </a>
-                {% endfor %}
-            {% else %}
-                <p style="color:var(--text-muted); font-size:13px; text-align:center; padding: 20px 0;">
-                    No meetups created yet. Plan one on the left!
-                </p>
-            {% endif %}
+    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
+
+      <!-- CREATE FORM -->
+      <div style="flex:1;min-width:320px;max-width:560px;background:var(--white);border-radius:20px;padding:30px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
+        <div style="font-weight:700;font-size:17px;color:var(--text);margin-bottom:22px;font-family:'Lora',serif;">Create New Meetup</div>
+
+        <!-- Location detect strip -->
+        <div id="pm-loc-strip" style="display:flex;align-items:center;gap:12px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:12px;padding:13px 16px;margin-bottom:20px;">
+          <span style="font-size:18px;flex-shrink:0;">📍</span>
+          <div style="flex:1;">
+            <div style="font-weight:600;font-size:13px;color:var(--text);" id="pm-loc-label">Location not set</div>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:1px;">Your starting point for midpoint calculation</div>
+          </div>
+          <button type="button" onclick="detectPMLocation()" style="background:none;border:none;color:var(--blue);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;padding:0;flex-shrink:0;">Detect</button>
         </div>
+
+        <form method="POST" action="{{ url_for('meetup.create') }}" id="create-meetup-form">
+          <!-- Hidden location fields, filled by JS -->
+          <input type="hidden" id="pm-lat" name="user_lat" />
+          <input type="hidden" id="pm-lng" name="user_lng" />
+          <input type="hidden" id="pm-addr" name="user_address" />
+
+          <div style="margin-bottom:16px;">
+            <label class="field-label" for="pm-title">MEETUP TITLE</label>
+            <input class="field-input" id="pm-title" name="title" placeholder="e.g. Weekend Coffee at Thamel" required />
+          </div>
+          <div style="margin-bottom:16px;">
+            <label class="field-label" for="pm-desc">DESCRIPTION (OPTIONAL)</label>
+            <textarea class="field-input" id="pm-desc" name="description" placeholder="What's the plan?" style="resize:vertical;min-height:90px;font-family:'DM Sans',sans-serif;"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div>
+              <label class="field-label" for="pm-date">DATE</label>
+              <input class="field-input" id="pm-date" name="meetup_date" type="date" />
+            </div>
+            <div>
+              <label class="field-label" for="pm-time">TIME</label>
+              <input class="field-input" id="pm-time" name="meetup_time" type="time" />
+            </div>
+          </div>
+
+          <div style="margin-bottom:24px;">
+            <label class="field-label">INVITE FRIENDS</label>
+            {% if friends %}
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+              {% for f in friends %}
+              <label style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:8px;border-radius:10px;border:1.5px solid var(--border);">
+                <input type="checkbox" name="invite_friends" value="{{ f.id }}" style="width:16px;height:16px;accent-color:var(--blue);cursor:pointer;" />
+                <div class="avatar" style="width:32px;height:32px;background:var(--blue);font-size:12px;flex-shrink:0;">{{ f.full_name[:2]|upper }}</div>
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:var(--text);">{{ f.full_name }}</div>
+                  <div style="font-size:11px;color:var(--muted);">{{ f.email }}</div>
+                </div>
+              </label>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div style="margin-top:10px;padding:14px;background:var(--input-bg);border-radius:10px;font-size:13px;color:var(--muted);">
+              No friends yet — <a href="{{ url_for('meetup.groups') }}" style="color:var(--blue);font-weight:600;">add some from My Groups →</a>
+            </div>
+            {% endif %}
+          </div>
+
+          <button class="btn-primary" type="submit" style="width:100%;padding:15px;font-size:15px;border-radius:12px;">
+            🚀 Create Meetup
+          </button>
+        </form>
+      </div>
+
+      <!-- PAST MEETUPS SIDEBAR -->
+      <div style="width:320px;flex-shrink:0;background:var(--white);border-radius:20px;padding:24px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div style="font-weight:700;font-size:16px;font-family:'Lora',serif;color:var(--text);">My Meetups</div>
+          <span style="font-size:12px;color:var(--muted);font-weight:500;">{{ meetups|length }} total</span>
+        </div>
+        {% for m in meetups[:5] %}
+        <a href="{{ url_for('meetup.view_meetup', meetup_id=m.id) }}" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;border:1.5px solid var(--border);margin-bottom:10px;cursor:pointer;text-decoration:none;color:inherit;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:42px;height:42px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📅</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ m.title }}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">{{ m.meetup_date or 'Date not set' }}</div>
+          </div>
+          <span style="background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;flex-shrink:0;">Planned</span>
+        </a>
+        {% else %}
+        <div style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0;">No meetups yet.</div>
+        {% endfor %}
+        <a class="btn-sec" style="width:100%;justify-content:center;margin-top:14px;font-size:12.5px;text-decoration:none;display:flex;" href="{{ url_for('meetup.groups') }}">View All Meetups →</a>
+      </div>
+
     </div>
+  </div>
+</div>
+
+<!-- SOS Modal -->
+<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
+  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
+    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
+    <div style="font-size:48px;margin-bottom:10px">🆘</div>
+    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
+    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
+    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
+    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
+  </div>
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% block scripts %}
 <script>
-    const KTM_CENTER = [27.7172, 85.3240];
-    const map = L.map('planMap').setView(KTM_CENTER, 13);
+let pmLat = null, pmLng = null;
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-
-    let marker;
-
-    function setLocation(lat, lng) {
-        if (marker) map.removeLayer(marker);
-        marker = L.marker([lat, lng]).addTo(map);
-        
-        document.getElementById('userLat').value = lat.toFixed(6);
-        document.getElementById('userLng').value = lng.toFixed(6);
-        document.getElementById('userAddress').value = lat.toFixed(6) + ", " + lng.toFixed(6);
-    }
-
-    // Click to select
-    map.on('click', function(e) {
-        setLocation(e.latlng.lat, e.latlng.lng);
-    });
-
-    // Auto-locate user
-    map.locate({ setView: true, maxZoom: 15 });
-    map.on('locationfound', function(e) {
-        setLocation(e.latlng.lat, e.latlng.lng);
-    });
+function detectPMLocation() {
+  const label = document.getElementById('pm-loc-label');
+  label.textContent = 'Detecting...';
+  if (!navigator.geolocation) {
+    label.textContent = 'Geolocation not supported';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      pmLat = pos.coords.latitude;
+      pmLng = pos.coords.longitude;
+      document.getElementById('pm-lat').value = pmLat;
+      document.getElementById('pm-lng').value = pmLng;
+      // Reverse geocode using Nominatim (free, no API key needed)
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pmLat}&lon=${pmLng}&format=json`)
+        .then(r => r.json())
+        .then(d => {
+          const addr = d.display_name || `${pmLat.toFixed(4)}, ${pmLng.toFixed(4)}`;
+          label.textContent = addr;
+          document.getElementById('pm-addr').value = addr;
+        })
+        .catch(() => {
+          label.textContent = `${pmLat.toFixed(4)}, ${pmLng.toFixed(4)}`;
+        });
+    },
+    () => { label.textContent = 'Could not detect location'; }
+  );
+}
 </script>
 {% endblock %}
