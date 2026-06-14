@@ -423,6 +423,53 @@ CREATE TABLE IF NOT EXISTS restaurant_reviews (
 
     UNIQUE KEY unique_review (restaurant_id, user_id)
 );
+-- ============================================================
+--  Bhetamल — Fare Drop Alert Feature
+--  Run this against your existing bhetamla MySQL database
+-- ============================================================
+
+-- Travel Estimate table (matches ER diagram)
+-- If you already have this, skip this block
+CREATE TABLE IF NOT EXISTS travel_estimate (
+    travelID      INT AUTO_INCREMENT PRIMARY KEY,
+    meetupID      INT NOT NULL,
+    userID        INT NOT NULL,
+    mode          ENUM('car','bike','public','walk') NOT NULL DEFAULT 'car',
+    travelTime    INT COMMENT 'minutes',
+    distance      DECIMAL(8,2) COMMENT 'km',
+    estimatedCost DECIMAL(10,2),
+    createdAt     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (meetupID) REFERENCES meetups(id) ON DELETE CASCADE,
+    FOREIGN KEY (userID)   REFERENCES users(id)     ON DELETE CASCADE
+);
+
+-- Fare Alert subscriptions  (NEW)
+CREATE TABLE IF NOT EXISTS fare_alert (
+    alertID       INT AUTO_INCREMENT PRIMARY KEY,
+    userID        INT NOT NULL,
+    meetupID      INT NOT NULL,
+    mode          ENUM('car','bike','public','walk') NOT NULL DEFAULT 'car',
+    targetFare    DECIMAL(10,2) NOT NULL COMMENT 'Alert when fare drops to or below this',
+    currentFare   DECIMAL(10,2)           COMMENT 'Last checked fare',
+    isActive      TINYINT(1) DEFAULT 1,
+    isTriggered   TINYINT(1) DEFAULT 0    COMMENT '1 once the alert has fired',
+    createdAt     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    triggeredAt   DATETIME,
+    FOREIGN KEY (userID)   REFERENCES users(id)     ON DELETE CASCADE,
+    FOREIGN KEY (meetupID) REFERENCES meetups(id) ON DELETE CASCADE
+);
+
+-- Fare price history  (NEW — powers the sparkline chart)
+CREATE TABLE IF NOT EXISTS fare_history (
+    historyID     INT AUTO_INCREMENT PRIMARY KEY,
+    meetupID      INT NOT NULL,
+    mode          ENUM('car','bike','public','walk') NOT NULL,
+    fare          DECIMAL(10,2) NOT NULL,
+    recordedAt    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (meetupID) REFERENCES meetups(id) ON DELETE CASCADE
+);
+
+-- Indexes for fast lookups are created conditionally in app/database.py
 
 
 

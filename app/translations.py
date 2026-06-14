@@ -9,6 +9,7 @@ TRANSLATIONS = {
         'settings':      'Settings',
         'support':       'Support',
         'new_meetup':    'New Meetup',
+        'fare_alerts':   'Fare Alerts',
 
         # Dashboard
         'welcome':            'Hello',
@@ -91,6 +92,7 @@ TRANSLATIONS = {
         'settings':      'सेटिङ',
         'support':       'सहायता',
         'new_meetup':    'नयाँ भेट',
+        'fare_alerts':   'भाडा अलर्ट',
 
         # Dashboard
         'welcome':            'नमस्ते',

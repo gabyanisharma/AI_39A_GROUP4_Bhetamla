@@ -516,6 +516,17 @@
 
     {% if is_member %}
     <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">⚡ Quick Actions</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            <a href="{{ url_for('fare_alert.meetup_alerts', meetup_id=meetup.id) }}"
+               class="btn-primary"
+               style="width:100%; justify-content:center; padding:11px; font-size:13px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+              📉 Set Fare Drop Alert
+            </a>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
         <div class="card-title">📍 My Location</div>
         <div class="location-update">
             <p>Share your location to calculate the group midpoint in Kathmandu.</p>

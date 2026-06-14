@@ -434,6 +434,10 @@
                 class="nav-item {% if active_page == 'safety' %}active{% endif %}">
                 <span class="nav-icon">🛡️</span> {{ t.safety_hub }}
             </a>
+            <a href="{{ url_for('fare_alert.index') }}"
+                class="nav-item {% if active_page == 'fare_alert' %}active{% endif %}">
+                <span class="nav-icon">📉</span> {{ t.fare_alerts }}
+            </a>
         </nav>
 
         <div class="sidebar-spacer"></div>
