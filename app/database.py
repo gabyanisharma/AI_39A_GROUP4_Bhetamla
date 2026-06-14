@@ -97,9 +97,24 @@ def _column_exists(cursor, table, column):
     return cursor.fetchone() is not None
 
 
+def _table_exists(cursor, table):
+    cursor.execute("SHOW TABLES LIKE %s", (table,))
+    return cursor.fetchone() is not None
+
+
+def _index_exists(cursor, table, index_name):
+    cursor.execute("SHOW INDEX FROM `{}` WHERE Key_name = %s".format(table), (index_name,))
+    return cursor.fetchone() is not None
+
+
 def _ensure_column(cursor, table, column, definition):
     if not _column_exists(cursor, table, column):
         cursor.execute(f"ALTER TABLE `{table}` ADD COLUMN {definition}")
+
+
+def _ensure_index(cursor, table, index_name, definition):
+    if _table_exists(cursor, table) and not _index_exists(cursor, table, index_name):
+        cursor.execute(f"ALTER TABLE `{table}` ADD {definition}")
 
 
 def _repair_existing_schema(cursor):
@@ -118,6 +133,10 @@ def _repair_existing_schema(cursor):
     _ensure_column(cursor, 'restaurants', 'description', "description TEXT NULL")
     _ensure_column(cursor, 'restaurants', 'avg_cost_per_person', "avg_cost_per_person DECIMAL(10,2) NULL")
     _ensure_column(cursor, 'restaurants', 'thumbnail_url', "thumbnail_url VARCHAR(255) NULL")
+    _ensure_column(cursor, 'notifications', 'read_at', "read_at TIMESTAMP NULL")
+    _ensure_column(cursor, 'notifications', 'link', "link VARCHAR(255) NULL")
+    _ensure_index(cursor, 'fare_alert', 'idx_fare_alert_user', "INDEX idx_fare_alert_user (userID, isActive)")
+    _ensure_index(cursor, 'fare_history', 'idx_fare_history_meetup', "INDEX idx_fare_history_meetup (meetupID, mode, recordedAt)")
 
 
 def _seed_demo_data(cursor):
