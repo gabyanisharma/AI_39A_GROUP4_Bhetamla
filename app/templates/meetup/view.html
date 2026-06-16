@@ -3,6 +3,31 @@
 {% block title %}{{ meetup.title }} — Bhetamल{% endblock %}
 
 {% block page_content %}
+<!-- Leaflet map CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+<style>
+  #meetup-map {
+    width: 100%;
+    height: 380px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    z-index: 1;
+    margin-bottom: 16px;
+  }
+  .route-stops-list { display:grid; gap:8px; padding-left:18px; margin:0; }
+  .route-stop-item { background:var(--input-bg); border:1px solid var(--border); border-radius:10px; padding:10px; }
+  .route-stop-title { font-size:13px; font-weight:700; color:var(--text); }
+  .route-stop-meta { font-size:12px; color:var(--muted); margin-top:2px; word-break:break-word; }
+  .route-stop-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .route-stop-actions button { border:1px solid var(--border); background:white; color:var(--text); border-radius:8px; padding:5px 9px; font-size:11px; font-weight:600; cursor:pointer; }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); }
+    70%  { box-shadow: 0 0 0 12px rgba(220,38,38,0); }
+    100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+  }
+</style>
 <div class="page active" style="flex-direction:column" role="main">
   <div class="topbar">
     <div class="topbar-search" style="padding:0 14px"><label style="display:flex;align-items:center;gap:10px;flex:1"><span style="font-size:14px">&#128269;</span><input type="search" placeholder="Search..." style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
@@ -102,7 +127,73 @@
             Midpoint will appear once at least 2 members share their location.
           </div>
           {% endif %}
+        <!-- Map legend -->
+        <div style="display:flex;gap:16px;flex-wrap:wrap;padding:12px 16px;background:var(--input-bg);border-radius:10px;margin-bottom:12px;font-size:12px;font-weight:600;">
+            <div style="display:flex;align-items:center;gap:6px;"><div style="width:12px;height:12px;border-radius:50%;background:#2563EB;"></div>Members</div>
+            <div style="display:flex;align-items:center;gap:6px;"><div style="width:12px;height:12px;border-radius:50%;background:#DC2626;"></div>Midpoint</div>
+            <div style="display:flex;align-items:center;gap:6px;"><div style="width:12px;height:12px;border-radius:50%;background:#16A34A;"></div>Suggestions</div>
+        </div>
 
+        <!-- Map -->
+        <div id="meetup-map"></div>
+
+        <!-- Route Planner (only for members) -->
+        {% if is_member or route_waypoints %}
+        <div class="card" id="routePlanner" data-can-edit-route="{{ can_edit_route | tojson }}" style="margin-bottom:16px;">
+          <div style="font-weight:700;font-size:15px;margin-bottom:8px;">🗺️ Route Planner</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Search an address or click the map to add stops.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+              <button type="button" id="routeClickModeBtn" {% if not can_edit_route %}disabled{% endif %}
+                style="flex:1;padding:9px 14px;font-size:12px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">
+                Add by map click
+              </button>
+              <button type="button" id="routeClearBtn" {% if not can_edit_route %}disabled{% endif %}
+                style="flex:1;padding:9px 14px;font-size:12px;background:var(--input-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;font-weight:600;cursor:pointer;">
+                Clear
+              </button>
+              <button type="button" id="routeSaveBtn" {% if not can_edit_route %}disabled{% endif %}
+                style="flex:1;padding:9px 14px;font-size:12px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">
+                Save Route
+              </button>
+          </div>
+          {% if not can_edit_route %}
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Accept the meetup invitation before editing this route.</p>
+          {% endif %}
+          <ol id="routeStopsList" class="route-stops-list"></ol>
+          <p id="routeStatus" style="font-size:12px;margin-top:10px;"></p>
+        </div>
+          {% endif %}
+
+          <!-- JSON data islands for JS -->
+          <script type="application/json" id="meetup-data">
+          {
+              "midpointLat": {{ midpoint_lat | tojson }},
+              "midpointLng": {{ midpoint_lng | tojson }},
+              "hasMidpoint": {{ (midpoint_lat != none and midpoint_lng != none) | tojson }},
+              "meetupId":    {{ meetup.id | tojson }},
+              "memberLocations": [
+                  {% for loc in locations %}{
+                      "name": {{ loc.full_name | tojson }},
+                      "lat":  {{ loc.latitude }},
+                      "lng":  {{ loc.longitude }}
+                  }{% if not loop.last %},{% endif %}{% endfor %}
+              ],
+              "suggestions": [
+                  {% set ns = namespace(first=true) %}
+                  {% for s in suggestions %}{% if s.latitude and s.longitude %}
+                  {% if not ns.first %},{% endif %}{
+                      "name":    {{ s.place_name | tojson }},
+                      "address": {{ (s.address or '') | tojson }},
+                      "lat":     {{ s.latitude }},
+                      "lng":     {{ s.longitude }},
+                      "rating":  {% if s.rating %}{{ s.rating }}{% else %}null{% endif %}
+                  }{% set ns.first = false %}{% endif %}{% endfor %}
+              ]
+          }
+          </script>
+          <script type="application/json" id="saved-route-waypoints">
+          {{ route_waypoints | default([], true) | tojson }}
+          </script>
           <!-- Share my location -->
           {% if is_member %}
           <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">

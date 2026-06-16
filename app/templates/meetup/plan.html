@@ -34,6 +34,32 @@
           </div>
           <button type="button" onclick="detectPMLocation()" style="background:none;border:none;color:var(--blue);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;padding:0;flex-shrink:0;">Detect</button>
         </div>
+        <!-- Map for location picking -->
+        <div id="pm-map" style="width:100%;height:220px;border-radius:12px;border:1px solid var(--border);margin-bottom:16px;z-index:1;"></div>
+        <script>
+        (function(){
+            // Wait for Leaflet to load
+            function initPlanMap() {
+                if (typeof L === 'undefined') { setTimeout(initPlanMap, 100); return; }
+                const map = L.map('pm-map').setView([27.7172, 85.3240], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap contributors' }).addTo(map);
+                let marker;
+                function setLoc(lat, lng) {
+                    if (marker) map.removeLayer(marker);
+                    marker = L.marker([lat,lng]).addTo(map);
+                    document.getElementById('pm-lat').value = lat.toFixed(6);
+                    document.getElementById('pm-lng').value = lng.toFixed(6);
+                    document.getElementById('pm-loc-label').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+                        .then(r=>r.json()).then(d=>{ const addr=d.display_name||`${lat.toFixed(4)}, ${lng.toFixed(4)}`; document.getElementById('pm-loc-label').textContent=addr; document.getElementById('pm-addr').value=addr; }).catch(()=>{});
+                }
+                map.on('click', e => setLoc(e.latlng.lat, e.latlng.lng));
+                map.locate({ setView:true, maxZoom:15 });
+                map.on('locationfound', e => setLoc(e.latlng.lat, e.latlng.lng));
+            }
+            initPlanMap();
+        })();
+        </script>
 
         <form method="POST" action="{{ url_for('meetup.create') }}" id="create-meetup-form">
           <!-- Hidden location fields, filled by JS -->
@@ -127,6 +153,8 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script>
 let pmLat = null, pmLng = null;
 

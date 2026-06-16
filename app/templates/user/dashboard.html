@@ -136,4 +136,180 @@
     <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
   </div>
 </div>
+<!-- Leaflet + routing scripts -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script>
+(function() {
+    const MEETUP = JSON.parse(document.getElementById('meetup-data').textContent);
+    const KTM_CENTER = [27.7172, 85.3240];
+
+    const map = L.map('meetup-map', { center: KTM_CENTER, zoom: 13 });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19
+    }).addTo(map);
+
+    // Icons
+    const memberIcon = L.divIcon({ html: '<div style="background:#2563EB;border:3px solid white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.3);">👤</div>', className:'', iconSize:[32,32], iconAnchor:[16,16] });
+    const midpointIcon = L.divIcon({ html: '<div style="background:#DC2626;border:3px solid white;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 12px rgba(220,38,38,.5);animation:pulse 2s infinite;">⭐</div>', className:'', iconSize:[40,40], iconAnchor:[20,20] });
+    const suggestionIcon = L.divIcon({ html: '<div style="background:#16A34A;border:3px solid white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.3);">🍽️</div>', className:'', iconSize:[32,32], iconAnchor:[16,16] });
+
+    // Plot members
+    const memberLatLngs = [];
+    MEETUP.memberLocations.forEach(m => {
+        const ll = [m.lat, m.lng];
+        memberLatLngs.push(ll);
+        L.marker(ll, { icon: memberIcon }).addTo(map)
+            .bindPopup(`<strong>👤 ${m.name}</strong><br><span style="font-size:12px;color:#64748B">${m.lat.toFixed(4)}, ${m.lng.toFixed(4)}</span>`);
+    });
+
+    // Plot midpoint
+    if (MEETUP.hasMidpoint) {
+        const mid = [MEETUP.midpointLat, MEETUP.midpointLng];
+        L.marker(mid, { icon: midpointIcon }).addTo(map)
+            .bindPopup(`<strong style="color:#DC2626;">⭐ Meeting Midpoint</strong><br><span style="font-size:12px;color:#64748B">${MEETUP.midpointLat.toFixed(4)}, ${MEETUP.midpointLng.toFixed(4)}</span><br><a href="https://maps.google.com/?q=${MEETUP.midpointLat},${MEETUP.midpointLng}" target="_blank" style="font-size:12px;color:#2563EB;">Open in Google Maps</a>`)
+            .openPopup();
+        memberLatLngs.forEach(ll => L.polyline([ll, mid], { color:'#2563EB', weight:2, opacity:.5, dashArray:'6,6' }).addTo(map));
+        L.circle(mid, { color:'#DC2626', fillColor:'#DC2626', fillOpacity:.08, radius:300 }).addTo(map);
+        const allPts = [...memberLatLngs, mid];
+        allPts.length > 1 ? map.fitBounds(L.latLngBounds(allPts).pad(0.2)) : map.setView(mid, 13);
+    } else if (memberLatLngs.length > 0) {
+        memberLatLngs.length === 1 ? map.setView(memberLatLngs[0], 13) : map.fitBounds(L.latLngBounds(memberLatLngs).pad(0.2));
+    }
+
+    // Plot suggestions
+    MEETUP.suggestions.forEach(s => {
+        L.marker([s.lat, s.lng], { icon: suggestionIcon }).addTo(map)
+            .bindPopup(`<strong style="color:#16A34A;">🍽️ ${s.name}</strong><br><span style="font-size:12px;color:#64748B">${s.address}</span>${s.rating ? `<br><span style="font-size:12px;color:#D97706">⭐ ${s.rating}</span>` : ''}`);
+    });
+
+    // ── Route Planner ──
+    (function initRoutePlanner() {
+        const plannerEl = document.getElementById('routePlanner');
+        if (!plannerEl || !L.Routing) return;
+
+        const saveUrl = `/meetup/${MEETUP.meetupId}/route`;
+        const canEdit = plannerEl.dataset.canEditRoute === 'true';
+        const stopsList = document.getElementById('routeStopsList');
+        const statusEl  = document.getElementById('routeStatus');
+        const clickBtn  = document.getElementById('routeClickModeBtn');
+        const clearBtn  = document.getElementById('routeClearBtn');
+        const saveBtn   = document.getElementById('routeSaveBtn');
+        const bounds    = { minLat:27.55, maxLat:27.85, minLng:85.15, maxLng:85.55 };
+        const state     = { waypoints:[], clickMode:false, routeSummary:null };
+
+        function escHtml(v) { return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function setStatus(msg, type) { if (!statusEl) return; statusEl.textContent = msg||''; statusEl.style.color = type==='error' ? '#DC2626' : '#16A34A'; }
+        function inKtm(lat,lng) { return lat>=bounds.minLat&&lat<=bounds.maxLat&&lng>=bounds.minLng&&lng<=bounds.maxLng; }
+        function norm(raw, idx) {
+            const lat = Number(raw.latitude??raw.lat), lng = Number(raw.longitude??raw.lng);
+            return { sequence:idx, label:String(raw.label||`Stop ${idx+1}`).trim(), address:String(raw.address||'').trim(), lat, lng, source:raw.source||'manual' };
+        }
+
+        const routingControl = L.Routing.control({
+            waypoints:[], router:L.Routing.osrmv1({ serviceUrl:'https://router.project-osrm.org/route/v1', profile:'driving', timeout:15000 }),
+            addWaypoints:false, draggableWaypoints:canEdit, routeWhileDragging:canEdit,
+            showAlternatives:false, fitSelectedRoutes:true, show:false,
+            lineOptions:{ styles:[{color:'#1E293B',opacity:.25,weight:8},{color:'#2563EB',opacity:.95,weight:5}] },
+            createMarker:(i,wp) => L.marker(wp.latLng,{draggable:canEdit}).bindPopup(`Stop ${i+1}`)
+        }).addTo(map);
+
+        routingControl.on('routesfound', e => {
+            const r = e.routes[0];
+            state.routeSummary = { distance_m:Math.round(r.summary.totalDistance), duration_s:Math.round(r.summary.totalTime) };
+            setStatus(`Route ready: ${(state.routeSummary.distance_m/1000).toFixed(1)} km, ${Math.round(state.routeSummary.duration_s/60)} min`, 'success');
+        });
+        routingControl.on('routingerror', () => setStatus('Could not calculate route. Try moving a stop closer to a road.', 'error'));
+
+        routingControl.getPlan().on('waypointschanged', function() {
+            if (!canEdit) return;
+            const lrm = routingControl.getWaypoints().filter(wp => wp.latLng);
+            if (lrm.length !== state.waypoints.length) return;
+            state.waypoints = lrm.map((wp,i) => norm({...state.waypoints[i], lat:wp.latLng.lat, lng:wp.latLng.lng, source:'dragged'}, i));
+            renderStops();
+        });
+
+        function renderStops() {
+            if (!stopsList) return;
+            if (!state.waypoints.length) { stopsList.innerHTML = '<li class="route-stop-item"><div class="route-stop-meta">No stops added yet.</div></li>'; return; }
+            stopsList.innerHTML = state.waypoints.map((wp,i) => `
+                <li class="route-stop-item" data-index="${i}">
+                    <div class="route-stop-title">${escHtml(wp.label)}</div>
+                    <div class="route-stop-meta">${escHtml(wp.address||`${wp.lat.toFixed(5)}, ${wp.lng.toFixed(5)}`)}</div>
+                    <div class="route-stop-actions">
+                        <button type="button" data-action="up" ${!canEdit||i===0?'disabled':''}>Up</button>
+                        <button type="button" data-action="down" ${!canEdit||i===state.waypoints.length-1?'disabled':''}>Down</button>
+                        <button type="button" data-action="remove" ${!canEdit?'disabled':''}>Remove</button>
+                    </div>
+                </li>`).join('');
+        }
+
+        function refreshRoute() {
+            routingControl.setWaypoints(state.waypoints.map(wp => L.latLng(wp.lat, wp.lng)));
+            renderStops();
+            if (state.waypoints.length < 2) { state.routeSummary = null; setStatus('Add at least two stops to calculate a route.', 'error'); }
+        }
+
+        function addWaypoint(lat, lng, label, address, source) {
+            if (!canEdit) return;
+            if (!inKtm(lat,lng)) { setStatus('That stop is outside the Kathmandu planning area.', 'error'); return; }
+            state.waypoints.push(norm({lat,lng,label,address,source}, state.waypoints.length));
+            refreshRoute();
+        }
+
+        if (stopsList) {
+            stopsList.addEventListener('click', e => {
+                const btn = e.target.closest('button[data-action]');
+                if (!btn || btn.disabled) return;
+                const item = btn.closest('li[data-index]');
+                if (!item) return;
+                const idx = Number(item.dataset.index);
+                if (btn.dataset.action === 'up') { if(idx>0){[state.waypoints[idx],state.waypoints[idx-1]]=[state.waypoints[idx-1],state.waypoints[idx]];state.waypoints=state.waypoints.map(norm);refreshRoute();} }
+                if (btn.dataset.action === 'down') { if(idx<state.waypoints.length-1){[state.waypoints[idx],state.waypoints[idx+1]]=[state.waypoints[idx+1],state.waypoints[idx]];state.waypoints=state.waypoints.map(norm);refreshRoute();} }
+                if (btn.dataset.action === 'remove') { state.waypoints.splice(idx,1); state.waypoints=state.waypoints.map(norm); refreshRoute(); }
+            });
+        }
+
+        if (clickBtn) clickBtn.addEventListener('click', () => {
+            if (!canEdit) return;
+            state.clickMode = !state.clickMode;
+            clickBtn.textContent = state.clickMode ? 'Map click enabled' : 'Add by map click';
+            setStatus(state.clickMode ? 'Click anywhere on the map to add the next stop.' : '', 'success');
+        });
+
+        map.on('click', e => {
+            if (!state.clickMode || !canEdit) return;
+            addWaypoint(e.latlng.lat, e.latlng.lng, `Stop ${state.waypoints.length+1}`, '', 'map_click');
+        });
+
+        if (canEdit && L.Control && L.Control.Geocoder) {
+            L.Control.geocoder({ defaultMarkGeocode:false, geocoder:L.Control.Geocoder.nominatim({ geocodingQueryParams:{countrycodes:'np',viewbox:'85.15,27.55,85.55,27.85',bounded:1} }) })
+                .on('markgeocode', e => { addWaypoint(e.geocode.center.lat, e.geocode.center.lng, e.geocode.name||`Stop ${state.waypoints.length+1}`, e.geocode.name||'', 'geocoder'); map.setView(e.geocode.center, 15); })
+                .addTo(map);
+        }
+
+        if (clearBtn) clearBtn.addEventListener('click', () => {
+            if (!canEdit) return;
+            state.waypoints = []; state.routeSummary = null; refreshRoute();
+            fetch(saveUrl, {method:'DELETE'}).then(r=>r.json()).then(d=>{ if(!d.success) throw new Error(d.message); setStatus('Route cleared.','success'); }).catch(e=>setStatus(e.message,'error'));
+        });
+
+        if (saveBtn) saveBtn.addEventListener('click', () => {
+            if (!canEdit) return;
+            if (state.waypoints.length < 2) { setStatus('Please add at least two stops before saving.','error'); return; }
+            fetch(saveUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ travel_mode:'driving', route_summary:state.routeSummary, waypoints:state.waypoints.map((wp,i)=>({sequence_index:i,label:wp.label,address:wp.address,latitude:wp.lat,longitude:wp.lng,source:wp.source})) }) })
+                .then(r=>r.json()).then(d=>{ if(!d.success) throw new Error(d.message); setStatus('Route saved successfully.','success'); }).catch(e=>setStatus(e.message,'error'));
+        });
+
+        // Load saved waypoints
+        try {
+            const saved = JSON.parse(document.getElementById('saved-route-waypoints').textContent || '[]');
+            state.waypoints = saved.map(norm).filter(wp => Number.isFinite(wp.lat) && Number.isFinite(wp.lng));
+        } catch(e) { state.waypoints = []; }
+        state.waypoints.length ? refreshRoute() : (renderStops(), setStatus('Add at least two stops to calculate a route.','error'));
+    })();
+})();
+</script>
 {% endblock %}
