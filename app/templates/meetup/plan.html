@@ -2,6 +2,10 @@
 {% set active_page = 'plan' %}
 {% block title %}Plan Meetup — Bhetamल{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
 {% block page_content %}
 <div id="page-plan" class="page active" style="flex-direction:column" role="main">
   <div class="topbar">
@@ -19,23 +23,13 @@
       <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--primary);letter-spacing:-.5px;">Plan a Meetup</h1>
     </div>
 
-    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
+    <div style="display:flex;gap:24px;align-items:stretch;flex-wrap:wrap;min-height:75vh;">
 
       <!-- CREATE FORM -->
-      <div style="flex:1;min-width:320px;max-width:560px;background:var(--white);border-radius:20px;padding:30px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
+      <div style="flex:1;min-width:300px;max-width:380px;background:var(--white);border-radius:20px;padding:30px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);display:flex;flex-direction:column;">
         <div style="font-weight:700;font-size:17px;color:var(--text);margin-bottom:22px;font-family:'Lora',serif;">Create New Meetup</div>
 
-        <!-- Location detect strip -->
-        <div id="pm-loc-strip" style="display:flex;align-items:center;gap:12px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:12px;padding:13px 16px;margin-bottom:20px;">
-          <span style="font-size:18px;flex-shrink:0;">📍</span>
-          <div style="flex:1;">
-            <div style="font-weight:600;font-size:13px;color:var(--text);" id="pm-loc-label">Location not set</div>
-            <div style="font-size:11.5px;color:var(--muted);margin-top:1px;">Your starting point for midpoint calculation</div>
-          </div>
-          <button type="button" onclick="detectPMLocation()" style="background:none;border:none;color:var(--blue);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;padding:0;flex-shrink:0;">Detect</button>
-        </div>
-
-        <form method="POST" action="{{ url_for('meetup.create') }}" id="create-meetup-form">
+        <form method="POST" action="{{ url_for('meetup.create') }}" id="create-meetup-form" style="display:flex;flex-direction:column;flex:1;">
           <!-- Hidden location fields, filled by JS -->
           <input type="hidden" id="pm-lat" name="user_lat" />
           <input type="hidden" id="pm-lng" name="user_lng" />
@@ -82,13 +76,35 @@
             {% endif %}
           </div>
 
-          <button class="btn-primary" type="submit" style="width:100%;padding:15px;font-size:15px;border-radius:12px;">
+          <div style="flex:1;"></div>
+          <button class="btn-primary" type="submit" style="width:100%;padding:15px;font-size:15px;border-radius:12px;margin-top:10px;">
             🚀 Create Meetup
           </button>
         </form>
       </div>
 
+      <!-- MAP COLUMN -->
+      <div style="flex:2;min-width:400px;display:flex;flex-direction:column;background:var(--white);border-radius:20px;padding:24px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
+        <label class="field-label" style="font-size:15px;margin-bottom:6px;">MY STARTING LOCATION</label>
+        <div style="font-size:13px; color:var(--muted); margin-bottom:18px;">
+            Select your location on the map so the group midpoint can be calculated correctly.
+        </div>
+        <div style="width:100%; flex:1; min-height:450px; border-radius:16px; overflow:hidden; border:1.5px solid var(--border); margin-bottom:18px; box-shadow:0 4px 12px rgba(0,0,0,0.05);" id="planMap"></div>
+        <div id="pm-loc-strip" style="display:flex;align-items:center;gap:12px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:12px;padding:16px 20px;">
+          <span style="font-size:20px;flex-shrink:0;">📍</span>
+          <div style="flex:1;">
+            <div style="font-weight:600;font-size:14px;color:var(--text);" id="pm-loc-label">Location not set</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">Click map to set location manually</div>
+          </div>
+          <button type="button" onclick="detectPMLocation()" style="background:none;border:none;color:var(--blue);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;padding:0;flex-shrink:0;">Detect</button>
+        </div>
+      </div>
 
+      <!-- PAST MEETUPS SIDEBAR -->
+      <div style="width:320px;flex-shrink:0;background:var(--white);border-radius:20px;padding:24px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div style="font-weight:700;font-size:16px;font-family:'Lora',serif;color:var(--text);">My Meetups</div>
+          <span style="font-size:12px;color:var(--muted);font-weight:500;">{{ meetups|length }} total</span>
         </div>
         {% for m in meetups[:5] %}
         <a href="{{ url_for('meetup.view_meetup', meetup_id=m.id) }}" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;border:1.5px solid var(--border);margin-bottom:10px;cursor:pointer;text-decoration:none;color:inherit;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
@@ -122,9 +138,49 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 let pmLat = null, pmLng = null;
+const KTM_CENTER = [27.7172, 85.3240];
+const map = L.map('planMap').setView(KTM_CENTER, 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors', maxZoom: 19
+}).addTo(map);
+
+let marker;
+
+function setLocation(lat, lng, labelText = null) {
+    if (marker) map.removeLayer(marker);
+    marker = L.marker([lat, lng]).addTo(map);
+    map.setView([lat, lng], 15);
+    
+    document.getElementById('pm-lat').value = lat.toFixed(6);
+    document.getElementById('pm-lng').value = lng.toFixed(6);
+    
+    if (labelText) {
+        document.getElementById('pm-addr').value = labelText;
+        document.getElementById('pm-loc-label').textContent = labelText;
+    } else {
+        const fallback = lat.toFixed(6) + ", " + lng.toFixed(6);
+        document.getElementById('pm-addr').value = fallback;
+        document.getElementById('pm-loc-label').textContent = fallback;
+    }
+}
+
+map.on('click', function(e) {
+    pmLat = e.latlng.lat;
+    pmLng = e.latlng.lng;
+    const label = document.getElementById('pm-loc-label');
+    label.textContent = 'Detecting...';
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pmLat}&lon=${pmLng}&format=json`)
+        .then(r => r.json())
+        .then(d => {
+            const addr = d.display_name || `${pmLat.toFixed(4)}, ${pmLng.toFixed(4)}`;
+            setLocation(pmLat, pmLng, addr);
+        })
+        .catch(() => setLocation(pmLat, pmLng));
+});
 
 function detectPMLocation() {
   const label = document.getElementById('pm-loc-label');
@@ -137,19 +193,13 @@ function detectPMLocation() {
     pos => {
       pmLat = pos.coords.latitude;
       pmLng = pos.coords.longitude;
-      document.getElementById('pm-lat').value = pmLat;
-      document.getElementById('pm-lng').value = pmLng;
-      // Reverse geocode using Nominatim (free, no API key needed)
       fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pmLat}&lon=${pmLng}&format=json`)
         .then(r => r.json())
         .then(d => {
           const addr = d.display_name || `${pmLat.toFixed(4)}, ${pmLng.toFixed(4)}`;
-          label.textContent = addr;
-          document.getElementById('pm-addr').value = addr;
+          setLocation(pmLat, pmLng, addr);
         })
-        .catch(() => {
-          label.textContent = `${pmLat.toFixed(4)}, ${pmLng.toFixed(4)}`;
-        });
+        .catch(() => setLocation(pmLat, pmLng));
     },
     () => { label.textContent = 'Could not detect location'; }
   );
