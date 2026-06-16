@@ -1,4 +1,4 @@
-from import Blueprint, render_template, session, redirect, url_for
+from flask import Blueprint, render_template, session, redirect, url_for
 from app.routes.user_routes import login_required
 from app.controllers.meetup_controller import (
     scheduler, add_availability, delete_availability,
