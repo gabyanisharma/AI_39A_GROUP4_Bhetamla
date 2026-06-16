@@ -21,6 +21,24 @@ def create_app():
         lang = session.get('language', 'en')
         return dict(t=get_translations(lang), lang=lang)
 
+    @app.context_processor
+    def inject_notifications():
+        if session.get('user_id'):
+            from app.models.place import RestaurantOffer
+            user_id = session.get('user_id')
+            offers = RestaurantOffer.get_saved_by_user(user_id)
+            expiring_offers = []
+            if offers:
+                for o in offers:
+                    if o['remind_me']:
+                        expiring_offers.append({
+                            'title': 'Offer Expiring Soon!',
+                            'body': f"{o['title']} at {o['restaurant_name']} expires on {o['valid_until']}.",
+                            'time': 'Just now'
+                        })
+            return dict(header_notifications=expiring_offers)
+        return dict(header_notifications=[])
+
     # Initialize DB
     with app.app_context():
         initialize_db()

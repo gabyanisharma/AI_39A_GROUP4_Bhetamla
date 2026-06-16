@@ -1,11 +1,13 @@
 from flask import (render_template, request,
-                   redirect, url_for, flash, jsonify)
+                   redirect, url_for, flash, jsonify, session)
 from app.auth import get_current_user_id, is_logged_in
 from app.models.meetup import Meetup, MeetupMember
 from app.models.user import User
+from app.models.route import SavedRoute
 from app.database import execute_query
 import math
 from datetime import datetime
+
 
 
 # ── Kathmandu ride pricing constants ──────────────────────────────
@@ -213,3 +215,49 @@ def budget_split(meetup_id):
     }
 
     return jsonify({'success': True, 'data': split_data})
+
+
+# ── Route Planner page ─────────────────────────────────────────────
+def route_planner_page():
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+    user_id = get_current_user_id()
+    saved_routes = SavedRoute.get_by_user(user_id)
+    return render_template('ride/route_planner.html', saved_routes=saved_routes)
+
+
+# ── Save a multi-stop route (AJAX POST) ───────────────────────────
+def save_route():
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+
+    user_id = get_current_user_id()
+    data = request.get_json() or {}
+
+    route_name        = data.get('route_name', 'My Route').strip() or 'My Route'
+    waypoints         = data.get('waypoints', [])
+    optimize_by       = data.get('optimize_by', 'time')
+    total_distance_km = data.get('total_distance_km', 0)
+    total_duration_min= data.get('total_duration_min', 0)
+
+    if len(waypoints) < 2:
+        return jsonify({'success': False, 'message': 'Need at least 2 stops.'}), 400
+
+    SavedRoute.save(
+        user_id=user_id,
+        route_name=route_name,
+        waypoints=waypoints,
+        optimize_by=optimize_by,
+        total_distance_km=round(float(total_distance_km), 2),
+        total_duration_min=int(total_duration_min)
+    )
+    return jsonify({'success': True, 'message': f'Route "{route_name}" saved!'})
+
+
+# ── Delete a saved route (AJAX POST) ──────────────────────────────
+def delete_route(route_id):
+    if not is_logged_in():
+        return jsonify({'success': False}), 401
+    user_id = get_current_user_id()
+    SavedRoute.delete(route_id, user_id)
+    return jsonify({'success': True})

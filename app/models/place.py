@@ -194,3 +194,51 @@ class RestaurantReview:
         """
         results = execute_query(query, (user_id, restaurant_id), fetch=True)
         return results[0] if results else None
+
+class RestaurantOffer:
+    @staticmethod
+    def get_active_by_restaurant(restaurant_id):
+        query = """
+            SELECT * FROM restaurant_offers
+            WHERE restaurant_id = %s
+              AND is_active = TRUE
+              AND valid_until >= CURDATE()
+            ORDER BY valid_until ASC
+        """
+        return execute_query(query, (restaurant_id,), fetch=True)
+
+    @staticmethod
+    def save_offer(user_id, offer_id):
+        query = """
+            INSERT IGNORE INTO user_saved_offers (user_id, offer_id, remind_me)
+            VALUES (%s, %s, FALSE)
+        """
+        return execute_query(query, (user_id, offer_id))
+
+    @staticmethod
+    def toggle_reminder(user_id, offer_id, remind_me):
+        query = """
+            UPDATE user_saved_offers
+            SET remind_me = %s
+            WHERE user_id = %s AND offer_id = %s
+        """
+        return execute_query(query, (remind_me, user_id, offer_id))
+
+    @staticmethod
+    def get_saved_by_user(user_id):
+        query = """
+            SELECT o.*, uso.remind_me, uso.saved_at, r.name as restaurant_name
+            FROM user_saved_offers uso
+            JOIN restaurant_offers o ON uso.offer_id = o.id
+            JOIN restaurants r ON o.restaurant_id = r.id
+            WHERE uso.user_id = %s
+              AND o.valid_until >= CURDATE()
+            ORDER BY o.valid_until ASC
+        """
+        return execute_query(query, (user_id,), fetch=True)
+
+    @staticmethod
+    def is_saved(user_id, offer_id):
+        query = "SELECT 1 FROM user_saved_offers WHERE user_id = %s AND offer_id = %s"
+        result = execute_query(query, (user_id, offer_id), fetch=True)
+        return bool(result)
