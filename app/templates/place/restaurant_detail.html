@@ -1,459 +1,157 @@
 {% extends "base_dashboard.html" %}
-{% set active_page = 'restaurants' %}
-{% block title %}{{ restaurant.name }} — Bhetamla{% endblock %}
+{% set active_page = 'saved' %}
+{% block title %}{{ restaurant.name }} — Bhetamल{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<style>
-    .detail-grid {
-        display: grid;
-        grid-template-columns: 1fr 340px;
-        gap: 20px;
-    }
+{% block page_content %}
+<div class="page active" style="flex-direction:column" role="main">
+  <div class="topbar">
+    <div class="topbar-search" style="padding:0 14px"><label style="display:flex;align-items:center;gap:10px;flex:1"><span style="font-size:14px">&#128269;</span><input type="search" placeholder="Search..." style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
+    <div class="topbar-controls"><button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button></div>
+  </div>
 
-    /* Hero */
-    .restaurant-hero {
-        height: 200px;
-        background: linear-gradient(135deg, #1E293B, #334155);
-        border-radius: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 80px;
-        margin-bottom: 20px;
-        position: relative;
-    }
-
-    .hero-badges {
-        position: absolute;
-        bottom: 16px;
-        left: 16px;
-        display: flex;
-        gap: 8px;
-    }
-
-    .hero-badge {
-        background: rgba(0, 0, 0, 0.6);
-        color: white;
-        border-radius: 8px;
-        padding: 4px 12px;
-        font-size: 12px;
-        font-weight: 600;
-    }
-
-    /* Info grid */
-    .info-row {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-        margin-bottom: 20px;
-    }
-
-    .info-stat {
-        background: var(--bg);
-        border-radius: 12px;
-        padding: 14px;
-        text-align: center;
-        border: 1px solid var(--border);
-    }
-
-    .info-stat .i-val {
-        font-size: 20px;
-        font-weight: 700;
-        color: var(--primary);
-    }
-
-    .info-stat .i-lbl {
-        font-size: 11px;
-        color: var(--text-muted);
-        margin-top: 4px;
-    }
-
-    /* Map */
-    #detailMap {
-        width: 100%;
-        height: 220px;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        margin-bottom: 16px;
-    }
-
-    /* Reviews */
-    .review-item {
-        padding: 14px 0;
-        border-bottom: 1px solid var(--border);
-    }
-
-    .review-item:last-child {
-        border-bottom: none;
-    }
-
-    .review-header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 8px;
-    }
-
-    .reviewer-avatar {
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        background: var(--primary-light);
-        color: var(--primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 13px;
-        font-weight: 700;
-    }
-
-    .reviewer-info .r-name {
-        font-size: 13px;
-        font-weight: 600;
-    }
-
-    .reviewer-info .r-date {
-        font-size: 11px;
-        color: var(--text-muted);
-    }
-
-    .review-rating {
-        margin-left: auto;
-        color: #D97706;
-        font-weight: 700;
-        font-size: 13px;
-    }
-
-    .review-text {
-        font-size: 13px;
-        color: var(--text-muted);
-        line-height: 1.5;
-    }
-
-    /* Add review */
-    .star-rating {
-        display: flex;
-        gap: 6px;
-        margin-bottom: 12px;
-    }
-
-    .star-rating input {
-        display: none;
-    }
-
-    .star-rating label {
-        font-size: 28px;
-        cursor: pointer;
-        color: #E2E8F0;
-        transition: color 0.15s;
-    }
-
-    .star-rating label:hover,
-    .star-rating label.active {
-        color: #D97706;
-    }
-
-    .form-group {
-        margin-bottom: 14px;
-    }
-
-    .form-group label {
-        display: block;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 6px;
-    }
-
-    .form-group textarea {
-        width: 100%;
-        padding: 10px 14px;
-        border: 1.5px solid var(--border);
-        border-radius: 10px;
-        font-size: 14px;
-        background: var(--bg);
-        color: var(--text);
-        outline: none;
-        resize: vertical;
-    }
-
-    .form-group textarea:focus {
-        border-color: var(--primary);
-    }
-
-    .submit-review-btn {
-        width: 100%;
-        padding: 11px;
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    /* Save place btn */
-    .save-place-btn {
-        width: 100%;
-        padding: 11px;
-        background: #DCFCE7;
-        color: #166534;
-        border: none;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        margin-top: 10px;
-    }
-
-    @media (max-width: 900px) {
-        .detail-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .info-row {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-
-<!-- Back -->
-<a href="{{ url_for('place.restaurants_page') }}" style="display:inline-flex; align-items:center; gap:6px;
-          font-size:14px; font-weight:600; color:var(--text-muted);
-          text-decoration:none; margin-bottom:20px;">
-    ← Back to Restaurants
-</a>
-
-<!-- Hero -->
-<div class="restaurant-hero">
-    {% if restaurant.cuisine == 'Coffee'
-    or restaurant.category == 'Cafe' %}☕
-    {% elif restaurant.cuisine == 'Nepali' %}🍛
-    {% elif restaurant.cuisine == 'Italian' %}🍕
-    {% elif restaurant.cuisine == 'Indian' %}🍲
-    {% elif restaurant.cuisine == 'Korean' %}🥢
-    {% else %}🍽️{% endif %}
-
-    <div class="hero-badges">
-        <span class="hero-badge">{{ restaurant.category }}</span>
-        <span class="hero-badge">{{ restaurant.cuisine }}</span>
-        <span class="hero-badge">
-            {% if restaurant.price_range == 'budget' %}💚 Budget
-            {% elif restaurant.price_range == 'mid' %}🟡 Mid
-            {% else %}🔴 Premium{% endif %}
-        </span>
+  <div class="venue-hero">
+    {% if restaurant.thumbnail_url %}
+    <img src="{{ restaurant.thumbnail_url }}" alt="{{ restaurant.name }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.35" onerror="this.style.display='none'">
+    {% endif %}
+    <div style="position:relative;z-index:1">
+      <div class="venue-hero-title">{{ restaurant.name }}</div>
+      <div class="venue-hero-loc">&#128205; {{ restaurant.address or 'Kathmandu' }}
+        {% if restaurant.is_verified %}&nbsp;·&nbsp;<span class="badge" style="background:rgba(255,255,255,.2);color:rgba(255,255,255,.9);font-size:10px">&#9989; VERIFIED</span>{% endif %}
+      </div>
     </div>
-</div>
+  </div>
 
-<h1 style="font-size:24px; font-weight:700; margin-bottom:6px;">
-    {{ restaurant.name }}
-</h1>
-<p style="color:var(--text-muted); font-size:14px; margin-bottom:20px;">
-    📍 {{ restaurant.address or 'Kathmandu, Nepal' }}
-</p>
-
-<!-- Stats -->
-<div class="info-row">
-    <div class="info-stat">
-        <div class="i-val">⭐ {{ restaurant.rating }}</div>
-        <div class="i-lbl">Rating</div>
-    </div>
-    <div class="info-stat">
-        <div class="i-val">{{ restaurant.review_count }}</div>
-        <div class="i-lbl">Reviews</div>
-    </div>
-    <div class="info-stat">
-        <div class="i-val">
-            {{ restaurant.ambience.replace('_', ' ').title()
-            if restaurant.ambience else 'Casual' }}
+  <div class="venue-body">
+    <div class="venue-main">
+      <!-- Info card -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="rating-row">
+          <span style="font-size:22px;font-weight:700;color:var(--amber)">{{ restaurant.rating or '—' }}</span>
+          <span style="color:var(--amber);font-size:16px">
+            {% if restaurant.rating %}{% for i in range(restaurant.rating|int) %}★{% endfor %}{% for i in range(5 - restaurant.rating|int) %}☆{% endfor %}{% endif %}
+          </span>
+          <span style="font-size:12px;color:var(--muted)">({{ reviews|length }} review{{ 's' if reviews|length != 1 else '' }})</span>
         </div>
-        <div class="i-lbl">Ambience</div>
-    </div>
-</div>
-
-<div class="detail-grid">
-
-    <!-- Left: Map + Reviews -->
-    <div>
-        <!-- Map -->
-        {% if restaurant.latitude and restaurant.longitude %}
-        <div id="detailMap" data-lat="{{ restaurant.latitude }}" data-lng="{{ restaurant.longitude }}"
-            data-name="{{ restaurant.name }}">
-        </div>
+        {% if restaurant.description %}
+        <p style="font-size:13.5px;color:var(--muted);line-height:1.65;margin-top:12px">{{ restaurant.description }}</p>
         {% endif %}
+        <div class="tags-row" style="margin-top:12px">
+          {% if restaurant.cuisine_type %}<div class="tag">🍽️ {{ restaurant.cuisine_type }}</div>{% endif %}
+          {% if restaurant.avg_cost_per_person %}<div class="tag">💰 NPR {{ restaurant.avg_cost_per_person }}/person</div>{% endif %}
+          {% if restaurant.ambience %}<div class="tag">✨ {{ restaurant.ambience }}</div>{% endif %}
+        </div>
+      </div>
 
-        <!-- Reviews -->
-        <div class="card">
-            <div class="card-title">
-                Reviews
-                <span style="font-size:12px; color:var(--text-muted);">
-                    {{ reviews|length }}
-                </span>
+      <!-- Offers -->
+      {% if offers %}
+      <div class="card" style="margin-bottom:20px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:14px">Active Offers & Discounts</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          {% for o in offers %}
+          <div style="border:1.5px solid var(--border);border-radius:12px;padding:16px;background:var(--input-bg);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+              <div>
+                <div style="font-weight:700;font-size:15px;color:var(--text)">🏷️ {{ o.title }}</div>
+                <div style="font-size:12px;color:var(--muted)">Valid until: <strong style="color:var(--text)">{{ o.valid_until }}</strong></div>
+              </div>
+              <span style="background:rgba(30,130,76,.1);color:var(--green);font-weight:700;font-size:11px;padding:4px 10px;border-radius:20px">{{ o.discount_percent }}% OFF</span>
             </div>
+            <p style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:12px">{{ o.description }}</p>
+            <div style="display:flex;align-items:center;gap:10px">
+              {% if not o.is_saved %}
+              <form method="POST" action="{{ url_for('place.save_offer_route', offer_id=o.id) }}" style="flex:1">
+                <button type="submit" class="btn-primary" style="width:100%;padding:10px;font-size:13px">Save Offer for Later</button>
+              </form>
+              {% else %}
+              <div style="flex:1;background:var(--blue-light);color:var(--blue);font-weight:600;font-size:13px;padding:10px;text-align:center;border-radius:8px">
+                ✅ Saved
+              </div>
+              <form method="POST" action="{{ url_for('place.toggle_reminder_route', offer_id=o.id) }}">
+                <input type="hidden" name="remind_me" value="{{ '0' if o.remind_me else '1' }}">
+                <button type="submit" class="btn-sec" style="padding:10px;font-size:12px;cursor:pointer;">
+                  {{ '🔕 Disable Reminder' if o.remind_me else '🔔 Notify Before Expiry' }}
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
 
-            {% if reviews %}
-            {% for review in reviews %}
-            <div class="review-item">
-                <div class="review-header">
-                    <div class="reviewer-avatar">
-                        {{ review.full_name[0].upper() }}
-                    </div>
-                    <div class="reviewer-info">
-                        <div class="r-name">
-                            {{ review.full_name }}
-                        </div>
-                        <div class="r-date">
-                            {{ review.created_at.strftime('%b %d, %Y')
-                            if review.created_at else '' }}
-                        </div>
-                    </div>
-                    <div class="review-rating">
-                        ⭐ {{ review.rating }}
-                    </div>
-                </div>
-                {% if review.review %}
-                <div class="review-text">{{ review.review }}</div>
-                {% endif %}
-            </div>
+      <!-- Reviews -->
+      <div class="card" style="margin-bottom:20px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:14px">Reviews</div>
+        {% for rev in reviews %}
+        <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div class="avatar" style="width:28px;height:28px;background:var(--blue);font-size:10px">{{ rev.full_name[:2]|upper }}</div>
+            <div style="font-weight:600;font-size:13px">{{ rev.full_name }}</div>
+            <div style="color:var(--amber);font-size:12px">{% for i in range(rev.rating|int) %}★{% endfor %}</div>
+            <div style="font-size:11px;color:var(--muted);margin-left:auto">{{ rev.created_at }}</div>
+          </div>
+          {% if rev.review %}<div style="font-size:13px;color:var(--text);line-height:1.6">{{ rev.review }}</div>{% endif %}
+        </div>
+        {% else %}
+        <div style="font-size:13px;color:var(--muted)">No reviews yet — be the first!</div>
+        {% endfor %}
+      </div>
+
+      <!-- Leave a review -->
+      <div class="card">
+        <div style="font-weight:700;font-size:15px;margin-bottom:14px">
+          {{ 'Update Your Review' if user_review else 'Leave a Review' }}
+        </div>
+        <form method="POST" action="{{ url_for('place.add_review_page', restaurant_id=restaurant.id) }}">
+          <div id="star-row" class="rating-star-row" style="margin-bottom:12px">
+            {% for i in range(1,6) %}
+            <span class="rating-star" onclick="setStars({{ i }})" data-val="{{ i }}" style="font-size:26px;cursor:pointer;color:{% if user_review and user_review.rating >= i %}var(--amber){% else %}var(--muted){% endif %}">{{ '★' if user_review and user_review.rating >= i else '☆' }}</span>
             {% endfor %}
-            {% else %}
-            <p style="color:var(--text-muted); font-size:14px;">
-                No reviews yet. Be the first!
-            </p>
-            {% endif %}
-        </div>
+          </div>
+          <input type="hidden" id="rating-input" name="rating" value="{{ user_review.rating if user_review else '' }}" required />
+          <textarea name="review" id="review-text" class="review-textarea" placeholder="Share your experience...">{{ user_review.review if user_review else '' }}</textarea>
+          <button class="btn-primary" type="submit" style="margin-top:12px;padding:11px">Submit Review</button>
+        </form>
+      </div>
     </div>
 
-    <!-- Right: Add Review + Save -->
-    <div>
-
-        <!-- Add review -->
-        <div class="card" style="margin-bottom:16px;">
-            <div class="card-title">
-                {% if user_review %}Edit Your Review
-                {% else %}Write a Review{% endif %}
-            </div>
-
-            <form method="POST" action="{{ url_for('place.add_review_page',
-                                     restaurant_id=restaurant.id) }}">
-                <div class="form-group">
-                    <label>Your Rating</label>
-                    <div class="star-rating" id="starRating">
-                        {% for i in range(5, 0, -1) %}
-                        <input type="radio" name="rating" id="star{{ i }}" value="{{ i }}" {% if user_review and
-                            user_review.rating|int==i %} checked{% endif %} />
-                        <label for="star{{ i }}" class="{% if user_review and
-                                  user_review.rating|int >= i %}
-                                  active{% endif %}">
-                            ★
-                        </label>
-                        {% endfor %}
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Your Review (optional)</label>
-                    <textarea name="review" rows="3" placeholder="Share your experience...">
-{{ user_review.review if user_review else '' }}</textarea>
-                </div>
-                <button type="submit" class="submit-review-btn">
-                    {% if user_review %}Update Review
-                    {% else %}Submit Review{% endif %}
-                </button>
-            </form>
+    <!-- Sidebar -->
+    <div class="venue-sidebar">
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:14px">Quick Actions</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <a href="{{ url_for('meetup.plan') }}" class="btn-primary" style="padding:11px;font-size:13px;text-decoration:none;display:flex;align-items:center;justify-content:center">📅 Plan Meetup Here</a>
+          <form method="POST" action="{{ url_for('place.save') }}">
+            <input type="hidden" name="place_name" value="{{ restaurant.name }}" />
+            <input type="hidden" name="address" value="{{ restaurant.address or '' }}" />
+            <input type="hidden" name="latitude" value="{{ restaurant.latitude or '' }}" />
+            <input type="hidden" name="longitude" value="{{ restaurant.longitude or '' }}" />
+            <button class="btn-sec" type="submit" style="width:100%;justify-content:center;padding:11px;font-size:13px">❤️ Save to Favourites</button>
+          </form>
+          <a href="{{ url_for('place.restaurants_page') }}" class="btn-sec" style="width:100%;justify-content:center;padding:11px;font-size:13px;text-decoration:none">← Back to Restaurants</a>
         </div>
-
-        <!-- Save place -->
-        <div class="card">
-            <div class="card-title">Save this Place</div>
-            <p style="font-size:13px; color:var(--text-muted);
-                       margin-bottom:12px;">
-                Save for quick access when planning meetups.
-            </p>
-            <form method="POST" action="{{ url_for('place.save') }}">
-                <input type="hidden" name="place_name" value="{{ restaurant.name }}" />
-                <input type="hidden" name="address" value="{{ restaurant.address }}" />
-                <input type="hidden" name="latitude" value="{{ restaurant.latitude }}" />
-                <input type="hidden" name="longitude" value="{{ restaurant.longitude }}" />
-                <button type="submit" class="save-place-btn">
-                    🔖 Save Place
-                </button>
-            </form>
-
-            {% if restaurant.latitude and restaurant.longitude %}
-            <a href="https://maps.google.com/?q={{ restaurant.latitude }},{{ restaurant.longitude }}" target="_blank"
-                style="display:block; text-align:center;
-                      margin-top:10px; font-size:13px;
-                      color:var(--primary);">
-                🗺️ Open in Google Maps
-            </a>
-            {% endif %}
-        </div>
-
+      </div>
+      <div class="card">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:10px">LOCATION INFO</div>
+        <div style="font-size:13px;color:var(--text);margin-bottom:4px;font-weight:600">{{ restaurant.address or 'Kathmandu' }}</div>
+        {% if restaurant.latitude and restaurant.longitude %}
+        <a href="https://www.google.com/maps?q={{ restaurant.latitude }},{{ restaurant.longitude }}" target="_blank" style="font-size:12px;color:var(--blue);font-weight:600;text-decoration:none">📍 Get Directions</a>
+        {% endif %}
+      </div>
     </div>
+  </div>
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% block scripts %}
 <script>
-    var mapEl = document.getElementById('detailMap');
-    if (mapEl) {
-        var lat = parseFloat(mapEl.getAttribute('data-lat'));
-        var lng = parseFloat(mapEl.getAttribute('data-lng'));
-        var name = mapEl.getAttribute('data-name');
-
-        var map = L.map('detailMap', {
-            center: [lat, lng],
-            zoom: 16,
-            scrollWheelZoom: false
-        });
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap',
-            maxZoom: 19
-        }).addTo(map);
-
-        var iconHtml = '<div style="background:#D97706;border:3px solid white;'
-            + 'border-radius:50%;width:36px;height:36px;display:flex;'
-            + 'align-items:center;justify-content:center;font-size:16px;'
-            + 'box-shadow:0 2px 8px rgba(0,0,0,0.3);">&#127869;</div>';
-
-        var icon = L.divIcon({
-            html: iconHtml,
-            className: '',
-            iconSize: [36, 36],
-            iconAnchor: [18, 18]
-        });
-
-        L.marker([lat, lng], { icon: icon })
-            .addTo(map)
-            .bindPopup('<strong>' + name + '</strong>')
-            .openPopup();
-    }
-
-    var labels = document.querySelectorAll('#starRating label');
-
-    labels.forEach(function (label, index) {
-        label.addEventListener('mouseover', function () {
-            labels.forEach(function (l, i) {
-                l.style.color = i <= index ? '#D97706' : '#E2E8F0';
-            });
-        });
-        label.addEventListener('mouseout', function () {
-            labels.forEach(function (l) { l.style.color = ''; });
-        });
-        label.addEventListener('click', function () {
-            labels.forEach(function (l, i) {
-                l.classList.toggle('active', i <= index);
-            });
-        });
-    });
+function setStars(n) {
+  document.querySelectorAll('.rating-star').forEach((s, i) => {
+    s.textContent = i < n ? '★' : '☆';
+    s.style.color = i < n ? 'var(--amber)' : 'var(--muted)';
+  });
+  document.getElementById('rating-input').value = n;
+}
 </script>
 {% endblock %}

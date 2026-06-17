@@ -1,662 +1,122 @@
 {% extends "base_dashboard.html" %}
 {% set active_page = 'restaurants' %}
-{% block title %}Restaurants — Bhetamla{% endblock %}
+{% block title %}Restaurants — Bhetamल{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<style>
-    .restaurants-layout {
-        display: grid;
-        grid-template-columns: 280px 1fr;
-        gap: 20px;
-    }
-
-    /* Filters sidebar */
-    .filters-card {
-        position: sticky;
-        top: 20px;
-    }
-
-    .filter-section {
-        margin-bottom: 20px;
-    }
-
-    .filter-section h4 {
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--text-muted);
-        margin-bottom: 10px;
-    }
-
-    .filter-option {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 0;
-        cursor: pointer;
-        font-size: 13px;
-    }
-
-    .filter-option input {
-        cursor: pointer;
-    }
-
-    .filter-select {
-        width: 100%;
-        padding: 9px 12px;
-        border: 1.5px solid var(--border);
-        border-radius: 8px;
-        font-size: 13px;
-        background: var(--bg);
-        color: var(--text);
-        outline: none;
-    }
-
-    .filter-select:focus {
-        border-color: var(--primary);
-    }
-
-    .apply-btn {
-        width: 100%;
-        padding: 11px;
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        margin-top: 8px;
-    }
-
-    .clear-btn {
-        width: 100%;
-        padding: 9px;
-        background: var(--bg);
-        color: var(--text-muted);
-        border: 1.5px solid var(--border);
-        border-radius: 10px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        margin-top: 6px;
-        text-decoration: none;
-        display: block;
-        text-align: center;
-    }
-
-    /* Search bar */
-    .search-bar {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-    }
-
-    .search-bar input {
-        flex: 1;
-        padding: 11px 16px;
-        border: 1.5px solid var(--border);
-        border-radius: 10px;
-        font-size: 14px;
-        background: var(--bg);
-        color: var(--text);
-        outline: none;
-    }
-
-    .search-bar input:focus {
-        border-color: var(--primary);
-    }
-
-    .search-bar button {
-        padding: 11px 20px;
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    /* Map */
-    #restaurantMap {
-        width: 100%;
-        height: 280px;
-        border-radius: 14px;
-        border: 1px solid var(--border);
-        margin-bottom: 20px;
-    }
-
-    /* Restaurant cards grid */
-    .restaurants-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 16px;
-    }
-
-    .restaurant-card {
-        background: var(--card);
-        border-radius: 14px;
-        border: 1px solid var(--border);
-        overflow: hidden;
-        transition: transform 0.15s, box-shadow 0.15s;
-        text-decoration: none;
-        color: var(--text);
-        display: block;
-    }
-
-    .restaurant-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-    }
-
-    .restaurant-img {
-        height: 140px;
-        background: linear-gradient(135deg, #1E293B, #334155);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 48px;
-        position: relative;
-    }
-
-    .restaurant-img .price-badge {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: rgba(0, 0, 0, 0.6);
-        color: white;
-        border-radius: 6px;
-        padding: 3px 8px;
-        font-size: 11px;
-        font-weight: 600;
-    }
-
-    .restaurant-img .distance-badge {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        background: var(--primary);
-        color: white;
-        border-radius: 6px;
-        padding: 3px 8px;
-        font-size: 11px;
-        font-weight: 600;
-    }
-
-    .restaurant-body {
-        padding: 14px;
-    }
-
-    .restaurant-body .r-name {
-        font-size: 15px;
-        font-weight: 700;
-        margin-bottom: 4px;
-    }
-
-    .restaurant-body .r-cuisine {
-        font-size: 12px;
-        color: var(--text-muted);
-        margin-bottom: 8px;
-    }
-
-    .restaurant-body .r-address {
-        font-size: 12px;
-        color: var(--text-muted);
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-
-    .restaurant-body .r-footer {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .rating-stars {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 13px;
-        font-weight: 600;
-        color: #D97706;
-    }
-
-    .review-count {
-        font-size: 11px;
-        color: var(--text-muted);
-    }
-
-    .cuisine-tag {
-        background: var(--primary-light);
-        color: var(--primary);
-        border-radius: 6px;
-        padding: 3px 8px;
-        font-size: 11px;
-        font-weight: 600;
-    }
-
-    /* Midpoint notice */
-    .midpoint-notice {
-        background: linear-gradient(135deg, #2563EB, #1D4ED8);
-        border-radius: 14px;
-        padding: 16px 20px;
-        color: white;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-    }
-
-    .midpoint-notice .mn-icon {
-        font-size: 28px;
-    }
-
-    .midpoint-notice .mn-text {
-        flex: 1;
-    }
-
-    .midpoint-notice .mn-title {
-        font-size: 15px;
-        font-weight: 700;
-    }
-
-    .midpoint-notice .mn-sub {
-        font-size: 12px;
-        opacity: 0.85;
-        margin-top: 2px;
-    }
-
-    /* Empty state */
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-        color: var(--text-muted);
-    }
-
-    .empty-state .e-icon {
-        font-size: 48px;
-        margin-bottom: 12px;
-    }
-
-    /* Price range colors */
-    .price-budget {
-        color: #16A34A;
-    }
-
-    .price-mid {
-        color: #D97706;
-    }
-
-    .price-expensive {
-        color: #DC2626;
-    }
-
-    @media (max-width: 900px) {
-        .restaurants-layout {
-            grid-template-columns: 1fr;
-        }
-
-        .filters-card {
-            position: static;
-        }
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<h1 style="font-size:22px; font-weight:700; margin-bottom:24px;">
-    🍽️ Restaurants in Kathmandu
-</h1>
-
-<!-- Midpoint notice -->
-{% if midpoint_lat and midpoint_lng %}
-<div class="midpoint-notice">
-    <div class="mn-icon">📍</div>
-    <div class="mn-text">
-        <div class="mn-title">Showing restaurants near meetup midpoint</div>
-        <div class="mn-sub">
-            {{ restaurants|length }} place(s) found within
-            {{ request.args.get('radius', 3) }}km
-        </div>
+{% block page_content %}
+<div class="page active" style="flex-direction:column" role="main">
+  <div class="topbar">
+    <div class="topbar-search" style="padding:0 14px">
+      <form method="GET" action="{{ url_for('place.restaurants_page') }}" style="display:flex;align-items:center;gap:10px;flex:1">
+        {% if meetup_id %}<input type="hidden" name="meetup_id" value="{{ meetup_id }}" />{% endif %}
+        <span style="font-size:14px">&#128269;</span>
+        <input name="q" type="search" value="{{ search_q }}" placeholder="Search restaurants..." style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0" />
+      </form>
     </div>
-    <a href="{{ url_for('place.restaurants_page') }}" style="background:rgba(255,255,255,0.2); color:white;
-              border-radius:8px; padding:6px 14px;
-              font-size:12px; font-weight:600;
-              text-decoration:none;">
-        Show All
-    </a>
-</div>
-{% endif %}
+    <div class="topbar-controls">
+      <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
+    </div>
+    <button class="sos-btn" onclick="openModal('modal-sos')">&#10033; SOS</button>
+  </div>
 
-{#
-Pass all dynamic data to JS as JSON inside hidden
-<script type="application/json"> tags.
-    This eliminates Jinja2 syntax inside <script> blocks, which causes IDE/linter errors.
-#}
-<script type="application/json" id="restaurant-data">
-    [
-        {% for r in restaurants %}
-        {% if r.latitude and r.longitude %}
-        {
-            "name":     {{ r.name | tojson }},
-            "cuisine":  {{ r.cuisine | tojson }},
-            "rating":   {{ r.rating | tojson }},
-            "address":  {{ (r.address or 'Kathmandu') | tojson }},
-            "lat":      {{ r.latitude }},
-            "lng":      {{ r.longitude }},
-            "id":       {{ r.id }}
-        }{% if not loop.last %},{% endif %}
-        {% endif %}
-        {% endfor %}
-    ]
-</script>
-
-<script type="application/json" id="map-config">
-    {
-        "hasMidpoint":  {{ (midpoint_lat and midpoint_lng) | tojson }},
-        "midpointLat":  {{ midpoint_lat | default(0) }},
-        "midpointLng":  {{ midpoint_lng | default(0) }},
-        "radius":       {{ request.args.get('radius', 3) | float }},
-        "meetupId":     {{ meetup_id | default(none) | tojson }}
-    }
-</script>
-
-<div class="restaurants-layout">
+  <div style="padding:28px;overflow-y:auto;flex:1">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--primary);margin-bottom:6px">
+          {% if midpoint_lat %}Restaurants Near Meetup Midpoint{% else %}Restaurants Near You{% endif %}
+        </h1>
+        <p style="color:var(--muted);font-size:13.5px">
+          {% if midpoint_lat %}Showing spots closest to your group's midpoint.
+          {% else %}Discover verified dining spots perfect for meetups in Kathmandu.{% endif %}
+        </p>
+      </div>
+      {% if meetup_id %}
+      <a href="{{ url_for('meetup.view_meetup', meetup_id=meetup_id) }}" style="color:var(--blue);font-size:13px;font-weight:700;text-decoration:none">← Back to Meetup</a>
+      {% endif %}
+    </div>
 
     <!-- Filters -->
-    <div>
-        <div class="card filters-card">
-            <div class="card-title">🔍 Filters</div>
-
-            <form method="GET" action="{{ url_for('place.restaurants_page') }}">
-
-                {% if meetup_id %}
-                <input type="hidden" name="meetup_id" value="{{ meetup_id }}" />
-                {% endif %}
-
-                <!-- Search -->
-                <div class="filter-section">
-                    <h4>Search</h4>
-                    <input type="text" name="q" class="filter-select" placeholder="Restaurant name..."
-                        value="{{ search_q }}" />
-                </div>
-
-                <!-- Cuisine -->
-                <div class="filter-section">
-                    <h4>Cuisine</h4>
-                    <select name="cuisine" class="filter-select">
-                        <option value="">All Cuisines</option>
-                        {% for c in cuisines %}
-                        <option value="{{ c }}" {% if filters.get('cuisine')==c %} selected{% endif %}>
-                            {{ c }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Price Range -->
-                <div class="filter-section">
-                    <h4>Price Range</h4>
-                    <select name="price_range" class="filter-select">
-                        <option value="">All Prices</option>
-                        <option value="budget" {% if filters.get('price_range')=='budget' %} selected{% endif %}>
-                            💚 Budget
-                        </option>
-                        <option value="mid" {% if filters.get('price_range')=='mid' %} selected{% endif %}>
-                            🟡 Mid-range
-                        </option>
-                        <option value="expensive" {% if filters.get('price_range')=='expensive' %} selected{% endif %}>
-                            🔴 Expensive
-                        </option>
-                    </select>
-                </div>
-
-                <!-- Ambience -->
-                <div class="filter-section">
-                    <h4>Ambience</h4>
-                    <select name="ambience" class="filter-select">
-                        <option value="">All Ambiences</option>
-                        <option value="casual" {% if filters.get('ambience')=='casual' %} selected{% endif %}>
-                            😊 Casual
-                        </option>
-                        <option value="fine_dining" {% if filters.get('ambience')=='fine_dining' %} selected{% endif %}>
-                            🍷 Fine Dining
-                        </option>
-                        <option value="family_friendly" {% if filters.get('ambience')=='family_friendly' %} selected{%
-                            endif %}>
-                            👨‍👩‍👧 Family Friendly
-                        </option>
-                        <option value="romantic" {% if filters.get('ambience')=='romantic' %} selected{% endif %}>
-                            💑 Romantic
-                        </option>
-                    </select>
-                </div>
-
-                <!-- Min Rating -->
-                <div class="filter-section">
-                    <h4>Minimum Rating</h4>
-                    <select name="min_rating" class="filter-select">
-                        <option value="">Any Rating</option>
-                        <option value="4.5" {% if filters.get('min_rating')==4.5 %} selected{% endif %}>
-                            ⭐ 4.5+
-                        </option>
-                        <option value="4.0" {% if filters.get('min_rating')==4.0 %} selected{% endif %}>
-                            ⭐ 4.0+
-                        </option>
-                        <option value="3.5" {% if filters.get('min_rating')==3.5 %} selected{% endif %}>
-                            ⭐ 3.5+
-                        </option>
-                    </select>
-                </div>
-
-                <!-- Radius (only if meetup) -->
-                {% if meetup_id %}
-                <div class="filter-section">
-                    <h4>Radius from Midpoint</h4>
-                    <select name="radius" class="filter-select">
-                        <option value="1" {% if request.args.get('radius')=='1' %} selected{% endif %}>
-                            1 km
-                        </option>
-                        <option value="2" {% if request.args.get('radius')=='2' %} selected{% endif %}>
-                            2 km
-                        </option>
-                        <option value="3" {% if not request.args.get('radius') or request.args.get('radius')=='3' %}
-                            selected{% endif %}>
-                            3 km
-                        </option>
-                        <option value="5" {% if request.args.get('radius')=='5' %} selected{% endif %}>
-                            5 km
-                        </option>
-                    </select>
-                </div>
-                {% endif %}
-
-                <button type="submit" class="apply-btn">
-                    Apply Filters
-                </button>
-                <a href="{{ url_for('place.restaurants_page') }}" class="clear-btn">
-                    Clear All
-                </a>
-            </form>
-        </div>
-    </div>
-
-    <!-- Main content -->
-    <div>
-        <!-- Mini map -->
-        <div id="restaurantMap"></div>
-
-        <!-- Results count -->
-        <p style="font-size:13px; color:var(--text-muted);
-                  margin-bottom:16px;">
-            Showing <strong>{{ restaurants|length }}</strong>
-            restaurant(s)
-        </p>
-
-        <!-- Restaurant cards -->
-        {% if restaurants %}
-        <div class="restaurants-grid">
-            {% for r in restaurants %}
-            <a href="{{ url_for('place.restaurant_detail_page',
-                                restaurant_id=r.id) }}" class="restaurant-card">
-
-                <div class="restaurant-img">
-                    {% if r.cuisine == 'Coffee' or r.category == 'Cafe' %}☕
-                    {% elif r.cuisine == 'Nepali' %}🍛
-                    {% elif r.cuisine == 'Italian' %}🍕
-                    {% elif r.cuisine == 'Indian' %}🍲
-                    {% elif r.cuisine == 'Korean' %}🥢
-                    {% elif r.cuisine == 'Tibetan' %}🥟
-                    {% elif r.cuisine == 'French' %}🥐
-                    {% else %}🍽️{% endif %}
-
-                    {% if r.distance_km is defined %}
-                    <div class="distance-badge">
-                        📍 {{ r.distance_km }} km
-                    </div>
-                    {% endif %}
-
-                    <div class="price-badge">
-                        {% if r.price_range == 'budget' %}💚 Budget
-                        {% elif r.price_range == 'mid' %}🟡 Mid
-                        {% else %}🔴 Premium{% endif %}
-                    </div>
-                </div>
-
-                <div class="restaurant-body">
-                    <div class="r-name">{{ r.name }}</div>
-                    <div class="r-cuisine">
-                        {{ r.category }} • {{ r.cuisine }}
-                    </div>
-                    <div class="r-address">
-                        📍 {{ r.address or 'Kathmandu' }}
-                    </div>
-                    <div class="r-footer">
-                        <div class="rating-stars">
-                            ⭐ {{ r.rating }}
-                            <span class="review-count">
-                                ({{ r.review_count }})
-                            </span>
-                        </div>
-                        <div class="cuisine-tag">{{ r.ambience or 'Casual' }}</div>
-                    </div>
-                </div>
-
-            </a>
-            {% endfor %}
-        </div>
-
-        {% else %}
-        <div class="card">
-            <div class="empty-state">
-                <div class="e-icon">🍽️</div>
-                <h3 style="font-size:18px; font-weight:700;
-                            color:var(--text); margin-bottom:8px;">
-                    No restaurants found
-                </h3>
-                <p style="font-size:14px;">
-                    Try adjusting your filters or search query.
-                </p>
-            </div>
-        </div>
+    <form method="GET" action="{{ url_for('place.restaurants_page') }}" style="margin-bottom:20px">
+      {% if meetup_id %}<input type="hidden" name="meetup_id" value="{{ meetup_id }}" />{% endif %}
+      {% if search_q %}<input type="hidden" name="q" value="{{ search_q }}" />{% endif %}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <select name="cuisine" class="field-input" style="width:auto;padding:8px 12px;font-size:13px" onchange="this.form.submit()">
+          <option value="">🍽️ All Cuisines</option>
+          {% for c in cuisines %}
+          <option value="{{ c }}" {% if filters.get('cuisine') == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+        <select name="price_range" class="field-input" style="width:auto;padding:8px 12px;font-size:13px" onchange="this.form.submit()">
+          <option value="">💰 Any Price</option>
+          <option value="budget" {% if filters.get('price_range') == 'budget' %}selected{% endif %}>Budget</option>
+          <option value="mid" {% if filters.get('price_range') == 'mid' %}selected{% endif %}>Mid-range</option>
+          <option value="premium" {% if filters.get('price_range') == 'premium' %}selected{% endif %}>Premium</option>
+        </select>
+        <select name="min_rating" class="field-input" style="width:auto;padding:8px 12px;font-size:13px" onchange="this.form.submit()">
+          <option value="">★ Any Rating</option>
+          <option value="4" {% if filters.get('min_rating') == 4.0 %}selected{% endif %}>4.0+</option>
+          <option value="4.5" {% if filters.get('min_rating') == 4.5 %}selected{% endif %}>4.5+</option>
+        </select>
+        {% if filters %}
+        <a href="{{ url_for('place.restaurants_page') }}{% if meetup_id %}?meetup_id={{ meetup_id }}{% endif %}" style="font-size:12px;color:var(--red);font-weight:600;text-decoration:none">✕ Clear filters</a>
         {% endif %}
+      </div>
+    </form>
+
+    <!-- Restaurant grid -->
+    {% if restaurants %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+      {% for r in restaurants %}
+      <div class="card" style="cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''" onclick="window.location='{{ url_for('place.restaurant_detail_page', restaurant_id=r.id) }}'">
+        {% if r.thumbnail_url %}
+        <img src="{{ r.thumbnail_url }}" alt="{{ r.name }}" style="width:100%;height:140px;object-fit:cover;border-radius:12px;margin-bottom:12px" onerror="this.style.display='none'">
+        {% else %}
+        <div style="width:100%;height:140px;border-radius:12px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;font-size:40px;margin-bottom:12px">🍽️</div>
+        {% endif %}
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
+          <div>
+            <div style="font-weight:700;font-size:14px;margin-bottom:3px">{{ r.name }}</div>
+            <div style="font-size:11.5px;color:var(--muted)">{{ r.address or 'Kathmandu' }}{% if r.cuisine_type %} · {{ r.cuisine_type }}{% endif %}</div>
+          </div>
+          {% if r.is_verified %}<span class="badge" style="background:rgba(5,150,105,.1);color:var(--green);font-size:10px;flex-shrink:0">✓ Verified</span>{% endif %}
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="color:var(--amber);font-size:13px">★</span>
+            <span style="font-weight:700;font-size:13px">{{ r.rating or '—' }}</span>
+          </div>
+          {% if r.avg_cost_per_person %}<span style="font-size:12px;color:var(--muted)">NPR {{ r.avg_cost_per_person }}/person</span>{% endif %}
+          {% if r.distance_km is defined %}<span style="font-size:11px;color:var(--blue);font-weight:600">{{ r.distance_km|round(1) }} km</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
     </div>
+    {% else %}
+    <div class="card" style="text-align:center;padding:40px;color:var(--muted)">
+      <div style="font-size:36px;margin-bottom:14px">🍽️</div>
+      {% if search_q %}
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">No results for "{{ search_q }}"</div>
+      <div style="font-size:13px">Try a different search term or clear the filters.</div>
+      {% elif midpoint_lat %}
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">No restaurants found near the midpoint</div>
+      <div style="font-size:13px">The radius may be too small — check back once the restaurants table has data.</div>
+      {% else %}
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">No restaurants yet</div>
+      <div style="font-size:13px">Restaurants will appear here once added to the database.</div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    // ── Read data injected by Jinja2 as JSON (no template syntax in JS) ──
-    const restaurantData = JSON.parse(
-        document.getElementById('restaurant-data').textContent
-    );
-    const mapConfig = JSON.parse(
-        document.getElementById('map-config').textContent
-    );
-
-    // ── Map setup ──
-    const KTM = [27.7172, 85.3240];
-
-    const map = L.map('restaurantMap', {
-        center: KTM,
-        zoom: 13,
-        scrollWheelZoom: false
-    });
-
-    L.tileLayer(
-        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        { attribution: '© OpenStreetMap', maxZoom: 19 }
-    ).addTo(map);
-
-    // ── Icons ──
-    const restaurantIcon = L.divIcon({
-        html: '<div style="background:#D97706;border:3px solid white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🍽️</div>',
-        className: '',
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
-    });
-
-    const midpointIcon = L.divIcon({
-        html: '<div style="background:#DC2626;border:3px solid white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 10px rgba(220,38,38,0.5);">⭐</div>',
-        className: '',
-        iconSize: [36, 36],
-        iconAnchor: [18, 18]
-    });
-
-    // ── Restaurant markers ──
-    const allLatLngs = [];
-
-    restaurantData.forEach(function (r) {
-        var latlng = [r.lat, r.lng];
-        allLatLngs.push(latlng);
-
-        L.marker(latlng, { icon: restaurantIcon })
-            .addTo(map)
-            .bindPopup(
-                '<div style="font-family:Inter,sans-serif;padding:4px;min-width:160px;">' +
-                '<strong>' + r.name + '</strong><br>' +
-                '<span style="font-size:12px;color:#64748B;">' + r.cuisine + ' • ⭐' + r.rating + '</span><br>' +
-                '<span style="font-size:11px;color:#94A3B8;">' + r.address + '</span><br>' +
-                '<a href="/place/restaurant/' + r.id + '" style="font-size:12px;color:#2563EB;">View Details →</a>' +
-                '</div>'
-            );
-    });
-
-    // ── Midpoint marker ──
-    if (mapConfig.hasMidpoint) {
-        var midLatLng = [mapConfig.midpointLat, mapConfig.midpointLng];
-        allLatLngs.push(midLatLng);
-
-        L.marker(midLatLng, { icon: midpointIcon })
-            .addTo(map)
-            .bindPopup(
-                '<div style="font-family:Inter,sans-serif;padding:4px;">' +
-                '<strong style="color:#DC2626;">⭐ Meetup Midpoint</strong>' +
-                '</div>'
-            )
-            .openPopup();
-
-        L.circle(midLatLng, {
-            color: '#2563EB',
-            fillColor: '#2563EB',
-            fillOpacity: 0.05,
-            radius: mapConfig.radius * 1000
-        }).addTo(map);
-    }
-
-    // ── Fit bounds ──
-    if (allLatLngs.length > 0) {
-        if (allLatLngs.length === 1) {
-            map.setView(allLatLngs[0], 15);
-        } else {
-            map.fitBounds(L.latLngBounds(allLatLngs).pad(0.15));
-        }
-    }
-</script>
+<!-- SOS Modal -->
+<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
+  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
+    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
+    <div style="font-size:48px;margin-bottom:10px">🆘</div>
+    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
+    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
+    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
+    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
+  </div>
+</div>
 {% endblock %}

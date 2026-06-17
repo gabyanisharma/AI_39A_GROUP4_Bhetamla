@@ -36,3 +36,21 @@ def save():
 @login_required
 def remove(place_id):
     return remove_saved_place(place_id)
+
+@place_bp.route('/api/restaurants')
+@login_required
+def api_restaurants():
+    from app.controllers.place_controller import api_filter_restaurants
+    return api_filter_restaurants()
+
+@place_bp.route('/offer/<int:offer_id>/save', methods=['POST'])
+@login_required
+def save_offer_route(offer_id):
+    from app.controllers.place_controller import save_restaurant_offer
+    return save_restaurant_offer(offer_id)
+
+@place_bp.route('/offer/<int:offer_id>/reminder', methods=['POST'])
+@login_required
+def toggle_reminder_route(offer_id):
+    from app.controllers.place_controller import toggle_offer_reminder
+    return toggle_offer_reminder(offer_id)
