@@ -1,210 +1,58 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="{{ session.get('theme', 'light') }}">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}Bhetamला{% endblock %}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    {% block extra_css %}{% endblock %}
-
-    <style>
-        :root {
-            --primary: #2563EB;
-            --primary-dark: #1D4ED8;
-            --primary-light: #EFF6FF;
-            --success: #16A34A;
-            --error: #DC2626;
-            --info: #0284C7;
-            --bg: #F8FAFC;
-            --card: #FFFFFF;
-            --text: #1E293B;
-            --text-muted: #64748B;
-            --border: #E2E8F0;
-            --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-        }
-
-        [data-theme="dark"] {
-            --bg: #0F172A;
-            --card: #1E293B;
-            --text: #F1F5F9;
-            --text-muted: #94A3B8;
-            --border: #334155;
-            --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            transition: background 0.3s, color 0.3s;
-        }
-
-        /* Flash messages */
-        .flash-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .flash {
-            padding: 14px 20px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 500;
-            min-width: 280px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            animation: slideIn 0.3s ease;
-            box-shadow: var(--shadow);
-        }
-
-        .flash.success {
-            background: #DCFCE7;
-            color: #166534;
-            border-left: 4px solid var(--success);
-        }
-
-        .flash.error {
-            background: #FEE2E2;
-            color: #991B1B;
-            border-left: 4px solid var(--error);
-        }
-
-        .flash.info {
-            background: #E0F2FE;
-            color: #075985;
-            border-left: 4px solid var(--info);
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        /* Buttons */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            transition: all 0.2s;
-            text-decoration: none;
-            width: 100%;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: #fff;
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-dark);
-            transform: translateY(-1px);
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--primary);
-            border: 2px solid var(--primary);
-        }
-
-        .btn-outline:hover {
-            background: var(--primary-light);
-        }
-
-        /* Form inputs */
-        .form-group {
-            margin-bottom: 18px;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 6px;
-        }
-
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1.5px solid var(--border);
-            border-radius: 10px;
-            font-size: 15px;
-            background: var(--card);
-            color: var(--text);
-            transition: border-color 0.2s, box-shadow 0.2s;
-            outline: none;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        a {
-            color: var(--primary);
-            text-decoration: none;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Bhetamल{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,700;0,800;1,600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+  {% block head %}{% endblock %}
+  {% block extra_css %}{% endblock %}
 </head>
-
 <body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <div class="flash-container">
-        {% for category, message in messages %}
-        <div class="flash {{ category }}">{{ message }}</div>
-        {% endfor %}
+  {% block body %}{% endblock %}
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Win popup overlay -->
+  <div class="win-popup-overlay" id="win-popup-overlay">
+    <div class="win-popup">
+      <div class="win-popup-badge">🏆 WINNER ANNOUNCED</div>
+      <span class="win-popup-icon">🎉</span>
+      <div class="win-popup-title">We Have a Winner!</div>
+      <div class="win-popup-place" id="win-popup-place-name">—</div>
+      <div class="win-popup-stats">
+        <div class="win-stat"><div class="win-stat-val" id="win-popup-votes">—</div><div class="win-stat-lbl">Votes</div></div>
+        <div class="win-stat"><div class="win-stat-val" id="win-popup-pct">—</div><div class="win-stat-lbl">Support</div></div>
+        <div class="win-stat"><div class="win-stat-val" id="win-popup-total">—</div><div class="win-stat-lbl">Total Cast</div></div>
+      </div>
+      <p class="win-popup-desc" id="win-popup-place-desc">—</p>
+      <div class="win-popup-actions">
+        <button class="win-btn-primary" onclick="proceedToPlanWithWinner()">📅 Use This Venue for Meetup</button>
+        <button class="win-btn-sec" onclick="closeWinPopup()">Maybe Later</button>
+      </div>
     </div>
-    <script>
-        setTimeout(() => {
-            document.querySelectorAll('.flash').forEach(el => el.remove());
-        }, 4000);
-    </script>
-    {% endif %}
-    {% endwith %}
+  </div>
 
-    {% block content %}{% endblock %}
+  <!-- Notification panel overlay -->
+  <div id="notif-overlay" onclick="closeNotifPanel()" style="display:none;position:fixed;inset:0;z-index:1400;background:rgba(0,0,0,.3)"></div>
+  <div id="notif-panel" class="notif-panel" role="dialog" aria-label="Notifications">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="font-family:'Playfair Display',serif;font-weight:700;font-size:18px">Notifications</div>
+      <button onclick="closeNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted)">✕</button>
+    </div>
+    <div class="notif-item"><div class="notif-dot"></div><div><div style="font-weight:600;font-size:13px">Priya accepted your invite</div><div style="font-size:11px;color:var(--muted)">Dinner @ Aura · 2 min ago</div></div></div>
+    <div class="notif-item"><div class="notif-dot"></div><div><div style="font-weight:600;font-size:13px">Group vote ends in 2 hours</div><div style="font-size:11px;color:var(--muted)">Kathmandu Foodies · 1 hr ago</div></div></div>
+    <div class="notif-item"><div class="notif-dot" style="background:var(--green)"></div><div><div style="font-weight:600;font-size:13px">Arjun checked in safely</div><div style="font-size:11px;color:var(--muted)">Group Hike · 3 hrs ago</div></div></div>
+  </div>
 
-    {% block extra_js %}{% endblock %}
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+  {% block extra_js %}{% endblock %}
 </body>
-
 </html>

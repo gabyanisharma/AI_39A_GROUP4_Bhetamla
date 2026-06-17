@@ -1,1317 +1,170 @@
 {% extends "base_dashboard.html" %}
-
 {% set active_page = 'plan' %}
+{% block title %}{{ meetup.title }} — Bhetamल{% endblock %}
 
-{% block title %}{{ meetup.title }} — Bhetamla{% endblock %}
-
-{% block extra_css %}
+{% block page_content %}
+<!-- Leaflet map CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
 <style>
-    .view-grid {
-        display: grid;
-        grid-template-columns: 1fr 340px;
-        gap: 20px;
-    }
-
-    #map {
-        width: 100%;
-        height: 420px;
-        border-radius: 16px;
-        border: 1px solid var(--border);
-        z-index: 1;
-        margin-bottom: 20px;
-    }
-
-    .midpoint-card {
-        background: linear-gradient(135deg, #2563EB, #1D4ED8);
-        border-radius: 14px;
-        padding: 20px;
-        color: white;
-        margin-bottom: 16px;
-    }
-
-    .midpoint-card .mp-label {
-        font-size: 11px;
-        font-weight: 600;
-        opacity: 0.8;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .midpoint-card .mp-coords {
-        font-size: 16px;
-        font-weight: 700;
-        margin: 6px 0 4px;
-    }
-
-    .midpoint-card .mp-sub {
-        font-size: 12px;
-        opacity: 0.85;
-    }
-
-    .midpoint-card .mp-stats {
-        display: flex;
-        gap: 16px;
-        margin-top: 14px;
-    }
-
-    .midpoint-card .mp-stat {
-        background: rgba(255, 255, 255, 0.15);
-        border-radius: 10px;
-        padding: 10px 14px;
-        text-align: center;
-        flex: 1;
-    }
-
-    .midpoint-card .mp-stat .s-val {
-        font-size: 18px;
-        font-weight: 700;
-    }
-
-    .midpoint-card .mp-stat .s-lbl {
-        font-size: 11px;
-        opacity: 0.85;
-    }
-
-    .member-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 0;
-        border-bottom: 1px solid var(--border);
-    }
-
-    .member-item:last-child {
-        border-bottom: none;
-    }
-
-    .member-avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: var(--primary-light);
-        color: var(--primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        font-weight: 700;
-    }
-
-    .member-info {
-        flex: 1;
-    }
-
-    .member-info .m-name {
-        font-size: 13px;
-        font-weight: 600;
-    }
-
-    .member-info .m-dist {
-        font-size: 12px;
-        color: var(--text-muted);
-    }
-
-    .member-status {
-        font-size: 11px;
-        font-weight: 600;
-        padding: 3px 8px;
-        border-radius: 20px;
-    }
-
-    .status-accepted {
-        background: #DCFCE7;
-        color: #166534;
-    }
-
-    .status-invited {
-        background: #FEF3C7;
-        color: #D97706;
-    }
-
-    .status-declined {
-        background: #FEE2E2;
-        color: #DC2626;
-    }
-
-    .location-update {
-        background: var(--bg);
-        border: 1.5px solid var(--border);
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 16px;
-    }
-
-    .location-update p {
-        font-size: 13px;
-        color: var(--text-muted);
-        margin-bottom: 10px;
-    }
-
-    .update-btn {
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 9px 18px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        width: 100%;
-    }
-
-    .suggestion-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 0;
-        border-bottom: 1px solid var(--border);
-    }
-
-    .suggestion-item:last-child {
-        border-bottom: none;
-    }
-
-    .suggestion-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
-        background: #FEF3C7;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-    }
-
-    .suggestion-info {
-        flex: 1;
-    }
-
-    .suggestion-info .s-name {
-        font-size: 14px;
-        font-weight: 600;
-    }
-
-    .suggestion-info .s-addr {
-        font-size: 12px;
-        color: var(--text-muted);
-    }
-
-    .suggestion-info .s-rating {
-        font-size: 12px;
-        color: #D97706;
-    }
-
-    .form-group {
-        margin-bottom: 12px;
-    }
-
-    .form-group label {
-        display: block;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 4px;
-    }
-
-    .form-group input {
-        width: 100%;
-        padding: 10px 14px;
-        border: 1.5px solid var(--border);
-        border-radius: 10px;
-        font-size: 14px;
-        background: var(--bg);
-        color: var(--text);
-        outline: none;
-    }
-
-    .form-group input:focus {
-        border-color: var(--primary);
-    }
-
-    .btn-add {
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        padding: 10px 20px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        width: 100%;
-    }
-
-    .action-row {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-    }
-
-    .btn-back {
-        background: var(--bg);
-        color: var(--text);
-        border: 1.5px solid var(--border);
-        border-radius: 10px;
-        padding: 10px 20px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .btn-accept {
-        background: #DCFCE7;
-        color: #166534;
-        border: none;
-        border-radius: 10px;
-        padding: 10px 20px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    .btn-decline {
-        background: #FEE2E2;
-        color: #DC2626;
-        border: none;
-        border-radius: 10px;
-        padding: 10px 20px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    .map-legend {
-        display: flex;
-        gap: 16px;
-        flex-wrap: wrap;
-        padding: 12px 16px;
-        background: var(--bg);
-        border-radius: 10px;
-        margin-bottom: 16px;
-        font-size: 12px;
-        font-weight: 600;
-    }
-
-    .legend-item {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .legend-dot {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-    }
-
-    .no-location-notice {
-        background: #FEF3C7;
-        border: 1px solid #FDE68A;
-        border-radius: 12px;
-        padding: 14px 16px;
-        font-size: 13px;
-        color: #92400E;
-        margin-bottom: 16px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .route-planner-card {
-        margin-bottom: 16px;
-    }
-
-    .route-actions {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-bottom: 12px;
-    }
-
-    .route-actions .btn-add,
-    .route-actions .btn-back {
-        width: auto;
-        flex: 1;
-        justify-content: center;
-        padding: 9px 14px;
-        font-size: 12px;
-    }
-
-    .route-stops-list {
-        display: grid;
-        gap: 8px;
-        padding-left: 18px;
-        margin: 0;
-    }
-
-    .route-stop-item {
-        background: var(--bg);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 10px;
-    }
-
-    .route-stop-title {
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--text);
-    }
-
-    .route-stop-meta {
-        font-size: 12px;
-        color: var(--text-muted);
-        margin-top: 2px;
-        word-break: break-word;
-    }
-
-    .route-stop-actions {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-        margin-top: 8px;
-    }
-
-    .route-stop-actions button {
-        border: 1px solid var(--border);
-        background: white;
-        color: var(--text);
-        border-radius: 8px;
-        padding: 5px 9px;
-        font-size: 11px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    .route-status {
-        font-size: 12px;
-        margin-top: 10px;
-    }
-
-    .leaflet-routing-container {
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        overflow: hidden;
-        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
-    }
-
-    @keyframes pulse {
-        0% {
-            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
-        }
-
-        70% {
-            box-shadow: 0 0 0 12px rgba(220, 38, 38, 0);
-        }
-
-        100% {
-            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
-        }
-    }
-
-    @media (max-width: 900px) {
-        .view-grid {
-            grid-template-columns: 1fr;
-        }
-    }
+  #meetup-map {
+    width: 100%;
+    height: 380px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    z-index: 1;
+    margin-bottom: 16px;
+  }
+  .route-stops-list { display:grid; gap:8px; padding-left:18px; margin:0; }
+  .route-stop-item { background:var(--input-bg); border:1px solid var(--border); border-radius:10px; padding:10px; }
+  .route-stop-title { font-size:13px; font-weight:700; color:var(--text); }
+  .route-stop-meta { font-size:12px; color:var(--muted); margin-top:2px; word-break:break-word; }
+  .route-stop-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .route-stop-actions button { border:1px solid var(--border); background:white; color:var(--text); border-radius:8px; padding:5px 9px; font-size:11px; font-weight:600; cursor:pointer; }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); }
+    70%  { box-shadow: 0 0 0 12px rgba(220,38,38,0); }
+    100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+  }
 </style>
-{% endblock %}
-
-
-{% block content %}
-
-<div class="action-row">
-    <a href="{{ url_for('meetup.plan') }}" class="btn-back">← Back</a>
-
-    {% set user_member = members | selectattr('user_id', 'eq', user_id) | list %}
-    {% if user_member and user_member[0].status == 'invited'
-    and meetup.created_by != user_id %}
-    <form method="POST" action="{{ url_for('meetup.respond', meetup_id=meetup.id) }}" style="display:inline;">
-        <input type="hidden" name="action" value="accept" />
-        <button type="submit" class="btn-accept">✓ Accept Invite</button>
-    </form>
-    <form method="POST" action="{{ url_for('meetup.respond', meetup_id=meetup.id) }}" style="display:inline;">
-        <input type="hidden" name="action" value="decline" />
-        <button type="submit" class="btn-decline">✕ Decline</button>
-    </form>
-    {% endif %}
-</div>
-
-<h1 style="font-size:22px; font-weight:700; margin-bottom:6px;">
-    📅 {{ meetup.title }}
-</h1>
-<p style="color:var(--text-muted); font-size:14px; margin-bottom:24px;">
-    {{ meetup.description or 'No description.' }}
-    {% if meetup.meetup_date %}
-    — {{ meetup.meetup_date.strftime('%B %d, %Y') }}
-    {% if meetup.meetup_time %}
-    at {{ meetup.meetup_time.strftime('%I:%M %p') }}
-    {% endif %}
-    {% endif %}
-</p>
-
-<div class="view-grid">
-
-    <!-- Left: Map + Suggestions -->
-    <div>
-
-        {% if midpoint_lat and midpoint_lng %}
-        <div class="midpoint-card">
-            <div class="mp-label">⭐ Smart Midpoint Found</div>
-            <div class="mp-coords">
-                {{ "%.4f"|format(midpoint_lat) }},
-                {{ "%.4f"|format(midpoint_lng) }}
-                <a href="{{ url_for('place.restaurants_page',
-                        meetup_id=meetup.id,
-                        midpoint_lat=midpoint_lat,
-                        midpoint_lng=midpoint_lng) }}" style="display:inline-flex; align-items:center; gap:6px;
-                        background:rgba(255,255,255,0.2); color:white;
-                        border-radius:8px; padding:8px 16px;
-                        font-size:13px; font-weight:600;
-                        text-decoration:none; margin-top:12px;">
-                    🍽️ Find Nearby Restaurants
-                </a>
-            </div>
-            <div class="mp-sub">
-                Optimal meeting point for all {{ members|length }} members
-                in Kathmandu Valley
-            </div>
-            <div class="mp-stats">
-                <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
-                    <a href="{{ url_for('ride.estimate_page', meetup_id=meetup.id) }}"
-                        style="background:rgba(255,255,255,0.2); color:white;
-                                border-radius:8px; padding:8px 16px;
-                                font-size:13px; font-weight:600;
-                                text-decoration:none; display:inline-flex;
-                                align-items:center; gap:6px;">
-                        🛵 Ride Cost Estimates
-                    </a>
-                    <a href="{{ url_for('place.restaurants_page') }}?meetup_id={{ meetup.id }}"
-                        style="background:rgba(255,255,255,0.2); color:white;
-                                border-radius:8px; padding:8px 16px;
-                                font-size:13px; font-weight:600;
-                                text-decoration:none; display:inline-flex;
-                                align-items:center; gap:6px;">
-                            🍽️ Nearby Restaurants
-                    </a>
-                </div>
-
-                <div class="mp-stat">
-                    <div class="s-val">{{ locations|length }}</div>
-                    <div class="s-lbl">Locations</div>
-                </div>
-                <div class="mp-stat">
-                    <div class="s-val">
-                        {% if locations %}
-                        {% set distances = [] %}
-                        {% for loc in locations %}
-                        {% if loc.distance_to_mid is defined %}
-                        {% set _ = distances.append(loc.distance_to_mid) %}
-                        {% endif %}
-                        {% endfor %}
-                        {% if distances %}
-                        {{ "%.1f"|format(distances|sum / distances|length) }} km
-                        {% else %}
-                        — km
-                        {% endif %}
-                        {% else %}
-                        — km
-                        {% endif %}
-                    </div>
-                    <div class="s-lbl">Avg Distance</div>
-                </div>
-                <div class="mp-stat">
-                    <div class="s-val">{{ members|length }}</div>
-                    <div class="s-lbl">Members</div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        {% if locations|length < 2 %} <div class="no-location-notice">
-            ⚠️ Share your location (and ask members to do the same)
-            to calculate the midpoint on the map.
+<div class="page active" style="flex-direction:column" role="main">
+  <div class="topbar">
+    <div class="topbar-search" style="padding:0 14px"><label style="display:flex;align-items:center;gap:10px;flex:1"><span style="font-size:14px">&#128269;</span><input type="search" placeholder="Search..." style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
+    <div class="topbar-controls">
+      <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
     </div>
-    {% endif %}
+    <button class="sos-btn" onclick="openModal('modal-sos')">&#10033; SOS</button>
+    <button aria-label="Notifications" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px">&#128276;</button>
+  </div>
 
-    <div class="map-legend">
-        <div class="legend-item">
-            <div class="legend-dot" style="background:#2563EB;"></div>
-            Members
-        </div>
-        <div class="legend-item">
-            <div class="legend-dot" style="background:#DC2626;"></div>
-            Midpoint
-        </div>
-        <div class="legend-item">
-            <div class="legend-dot" style="background:#16A34A;"></div>
-            Suggestions
-        </div>
-    </div>
+  <div style="padding:28px;max-width:860px;width:100%">
+    <a href="{{ url_for('meetup.plan') }}" style="display:inline-flex;align-items:center;gap:6px;color:var(--blue);font-size:13px;font-weight:700;text-decoration:none;margin-bottom:20px;">← Back to Plan</a>
 
-    <div id="map"></div>
-
-    {% if is_member or route_waypoints %}
-    <div class="card route-planner-card" id="routePlanner" data-can-edit-route="{{ can_edit_route | tojson }}">
-        <div class="card-title">Route Planner</div>
-        <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
-            Search an address or click the map to add stops. The saved order becomes the route sequence.
-        </p>
-
-        <div class="route-actions">
-            <button type="button" class="btn-add" id="routeClickModeBtn" {% if not can_edit_route %}disabled{% endif %}>
-                Add by map click
-            </button>
-            <button type="button" class="btn-back" id="routeClearBtn" {% if not can_edit_route %}disabled{% endif %}>
-                Clear
-            </button>
-            <button type="button" class="btn-add" id="routeSaveBtn" {% if not can_edit_route %}disabled{% endif %}>
-                Save Route
-            </button>
-        </div>
-
-        {% if not can_edit_route %}
-        <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
-            Accept the meetup invitation before editing this route.
-        </p>
-        {% endif %}
-
-        <ol id="routeStopsList" class="route-stops-list"></ol>
-        <p id="routeStatus" class="route-status"></p>
-    </div>
-    {% endif %}
-    
-    <div id="routePeakHourAlert" class="card" style="display: none; border-left: 4px solid #D97706; background: #FEF3C7; margin-bottom: 16px; padding: 14px 16px;">
-    <div style="display: flex; gap: 12px; align-items: flex-start;">
-        <span style="font-size: 18px;">⚡</span>
+    <!-- Header card -->
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px">
         <div>
-            <h4 style="margin: 0; font-size: 13px; font-weight: 700; color: #92400E;">Peak Hours Active</h4>
-            <p style="margin: 4px 0 0; font-size: 12px; color: #B45309; line-height: 1.4;">
-                Rides and travel fares are currently higher than usual due to peak hour traffic surge rules.
-            </p>
+          <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--primary);margin-bottom:8px;">{{ meetup.title }}</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted);">
+            {% if meetup.meetup_date %}<span>📅 {{ meetup.meetup_date }}{% if meetup.meetup_time %} · {{ meetup.meetup_time }}{% endif %}</span>{% endif %}
+            {% if meetup.midpoint_address %}<span>·</span><span>📍 {{ meetup.midpoint_address }}</span>{% endif %}
+          </div>
+          {% if meetup.description %}<div style="margin-top:10px;font-size:13.5px;color:var(--text);line-height:1.6">{{ meetup.description }}</div>{% endif %}
         </div>
+        <span class="badge" style="background:var(--blue-light);color:var(--blue);flex-shrink:0">{{ meetup.status|capitalize }}</span>
+      </div>
+
+      <!-- Accept/Decline for invited members -->
+      {% if is_member and not is_creator %}
+        {% for m in members %}
+          {% if m.user_id == user_id %}
+            {% if m.status == 'invited' %}
+            <form method="POST" action="{{ url_for('meetup.respond', meetup_id=meetup.id) }}" style="display:flex;gap:10px;margin-bottom:16px">
+              <button name="action" value="accept" class="btn-primary" style="flex:1;padding:11px">✓ Accept Invite</button>
+              <button name="action" value="decline" class="btn-sec" style="flex:1;justify-content:center;padding:11px">✕ Decline</button>
+            </form>
+            {% elif m.status == 'accepted' %}
+            <div style="padding:10px 14px;background:#E8F5E9;border-radius:10px;font-size:13px;font-weight:600;color:var(--green);margin-bottom:16px">✓ You have accepted this meetup</div>
+            {% elif m.status == 'declined' %}
+            <div style="padding:10px 14px;background:#FFF3E0;border-radius:10px;font-size:13px;font-weight:600;color:var(--amber);margin-bottom:16px">You declined this meetup</div>
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+
+      <!-- Creator actions -->
+      {% if is_creator %}
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-primary" style="flex:1;min-width:140px;padding:11px" onclick="openModal('modal-suggest')">📍 Suggest a Place</button>
+        <a href="{{ url_for('place.restaurants_page') }}?meetup_id={{ meetup.id }}" class="btn-sec" style="flex:1;min-width:140px;padding:11px;justify-content:center;text-decoration:none">🍽️ Browse Restaurants</a>
+      </div>
+      {% endif %}
     </div>
-</div>
 
-<div id="routeNormalHourAlert" class="card" style="display: none; border-left: 4px solid #16A34A; background: #DCFCE7; margin-bottom: 16px; padding: 14px 16px;">
-    <div style="display: flex; gap: 12px; align-items: flex-start;">
-        <span style="font-size: 18px;">✅</span>
-        <div>
-            <h4 style="margin: 0; font-size: 13px; font-weight: 700; color: #14532D;">Standard Rates Active</h4>
-            <p style="margin: 4px 0 0; font-size: 12px; color: #166534; line-height: 1.4;">
-                Rides are at standard, normal pricing right now. No active traffic surges.
-            </p>
-        </div>
-    </div>
-</div>
 
-    <div class="card">
-        <div class="card-title">📍 Place Suggestions</div>
 
-        {% if suggestions %}
-        {% for s in suggestions %}
-        <div class="suggestion-item">
-            <div class="suggestion-icon">🍽️</div>
-            <div class="suggestion-info">
-                <div class="s-name">{{ s.place_name }}</div>
-                <div class="s-addr">{{ s.address or 'No address' }}</div>
-                {% if s.rating %}
-                <div class="s-rating">
-                    ⭐ {{ s.rating }} — by {{ s.suggested_by_name }}
-                </div>
-                {% endif %}
+        <!-- Place suggestions card -->
+        <div class="card">
+          <div style="font-weight:700;font-size:15px;margin-bottom:16px">💡 Place Suggestions ({{ suggestions|length }})</div>
+          {% for s in suggestions %}
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--input-bg);border-radius:12px;margin-bottom:10px">
+            <div style="width:40px;height:40px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🍽️</div>
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:13px">{{ s.place_name }}</div>
+              {% if s.address %}<div style="font-size:11px;color:var(--muted)">📍 {{ s.address }}</div>{% endif %}
+              {% if s.rating %}<div style="font-size:11px;color:var(--amber)">★ {{ s.rating }}</div>{% endif %}
             </div>
             {% if s.latitude and s.longitude %}
-            <a href="https://maps.google.com/?q={{ s.latitude }},{{ s.longitude }}" target="_blank"
-                style="font-size:12px; color:var(--primary);">
-                Map
-            </a>
+            <a href="https://www.google.com/maps?q={{ s.latitude }},{{ s.longitude }}" target="_blank" style="font-size:12px;color:var(--blue);font-weight:600;text-decoration:none">Map →</a>
             {% endif %}
+          </div>
+          {% else %}
+          <div style="text-align:center;color:var(--muted);font-size:13px;padding:16px 0">No place suggestions yet.</div>
+          {% endfor %}
         </div>
-        {% endfor %}
-        {% else %}
-        <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px;">
-            No suggestions yet. Add one below!
-        </p>
+
+
+        </div>
+
+        <!-- Member locations for midpoint -->
+        {% if locations %}
+        <div class="card" style="margin-bottom:16px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:12px">📍 Member Locations</div>
+          {% for loc in locations %}
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+            <div class="avatar" style="width:28px;height:28px;background:var(--blue);font-size:10px;flex-shrink:0">{{ loc.full_name[:2]|upper }}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600">{{ loc.full_name }}</div>
+              {% if loc.distance_to_mid is defined %}<div style="color:var(--muted)">{{ loc.distance_to_mid }} km from midpoint</div>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
         {% endif %}
 
-        {% if is_member %}
-        <form method="POST" action="{{ url_for('meetup.suggest', meetup_id=meetup.id) }}" style="margin-top:16px;">
-            <div class="form-group">
-                <label>Place Name</label>
-                <input type="text" name="place_name" placeholder="e.g. Himalayan Java Coffee" required />
-            </div>
-            <div class="form-group">
-                <label>Address</label>
-                <input type="text" name="address" placeholder="e.g. Thamel, Kathmandu" />
-            </div>
-            <div class="form-group">
-                <label>Rating (optional)</label>
-                <input type="number" name="rating" min="1" max="5" step="0.1" placeholder="4.5" />
-            </div>
-            <button type="submit" class="btn-add">➕ Add Suggestion</button>
-        </form>
+        {% if is_creator %}
+        <div class="card">
+          <div style="font-weight:700;font-size:14px;margin-bottom:12px">⚙️ Organiser Actions</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="{{ url_for('place.restaurants_page') }}?meetup_id={{ meetup.id }}" class="btn-sec" style="font-size:12px;padding:9px 14px;justify-content:center;text-decoration:none">🍽️ Find Restaurants Near Midpoint</a>
+            <button class="btn-sec" type="button" style="font-size:12px;padding:9px 14px;justify-content:center" onclick="openModal('modal-suggest')">💡 Suggest a Place</button>
+          </div>
+        </div>
         {% endif %}
+      </div>
     </div>
+  </div>
 </div>
 
-<!-- Right: Members -->
-<div>
-
-    {% if is_member %}
-    <div class="card" style="margin-bottom:16px;">
-        <div class="card-title">📍 My Location</div>
-        <div class="location-update">
-            <p>Share your location to calculate the group midpoint in Kathmandu.</p>
-            <button class="update-btn" onclick="shareLocation()">
-                📡 Share My Location
-            </button>
-            <p id="locationStatus" style="margin-top:8px; font-size:12px; color:#16A34A; display:none;">
-                ✅ Location shared! Reloading map...
-            </p>
-        </div>
-    </div>
-    {% endif %}
-
-    <div class="card">
-        <div class="card-title">
-            👥 Members
-            <span style="font-size:12px; color:var(--text-muted);">
-                {{ members|length }}
-            </span>
-        </div>
-
-        {% for member in members %}
-        <div class="member-item">
-            <div class="member-avatar">
-                {{ member.full_name[0].upper() }}
-            </div>
-            <div class="member-info">
-                <div class="m-name">{{ member.full_name }}</div>
-                <div class="m-dist">
-                    {% if member.latitude %}
-                    📍 Location shared
-                    {% for loc in locations %}
-                    {% if loc.user_id == member.user_id
-                    and loc.distance_to_mid is defined %}
-                    — {{ loc.distance_to_mid }} km to mid
-                    {% endif %}
-                    {% endfor %}
-                    {% else %}
-                    📍 No location yet
-                    {% endif %}
-                </div>
-            </div>
-            <span class="member-status status-{{ member.status }}">
-                {{ member.status.capitalize() }}
-            </span>
-        </div>
-        {% endfor %}
-    </div>
-    
-
+<!-- Suggest place modal -->
+<div class="modal-overlay" id="modal-suggest" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:440px">
+    <button class="modal-close" type="button" onclick="closeModal('modal-suggest')">✕</button>
+    <div class="modal-title">Suggest a Place</div>
+    <div class="modal-sub">Recommend a venue for this meetup.</div>
+    <form method="POST" action="{{ url_for('meetup.suggest', meetup_id=meetup.id) }}">
+      <div style="margin-bottom:14px"><label class="field-label" for="sg-name">Place Name</label><input class="field-input" id="sg-name" name="place_name" placeholder="e.g. Himalayan Java, Thamel" required /></div>
+      <div style="margin-bottom:14px"><label class="field-label" for="sg-addr">Address (optional)</label><input class="field-input" id="sg-addr" name="address" placeholder="Street, Area, City" /></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div><label class="field-label" for="sg-lat">Latitude</label><input class="field-input" id="sg-lat" name="latitude" type="number" step="any" placeholder="27.7172" /></div>
+        <div><label class="field-label" for="sg-lng">Longitude</label><input class="field-input" id="sg-lng" name="longitude" type="number" step="any" placeholder="85.3240" /></div>
+      </div>
+      <div style="margin-bottom:20px"><label class="field-label" for="sg-rating">Rating (optional)</label><input class="field-input" id="sg-rating" name="rating" type="number" min="0" max="5" step="0.1" placeholder="e.g. 4.5" /></div>
+      <button class="btn-primary" type="submit">Add Suggestion</button>
+    </form>
+  </div>
 </div>
+
+<!-- SOS Modal -->
+<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
+  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
+    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
+    <div style="font-size:48px;margin-bottom:10px">🆘</div>
+    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
+    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
+    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
+    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
+  </div>
 </div>
-{% endblock %}
-
-
-{% block extra_js %}
-
-<!-- All Jinja data in a JSON island — JS linter ignores this tag entirely -->
-<script type="application/json" id="meetup-data">
-{
-    "midpointLat": {{ midpoint_lat | tojson }},
-    "midpointLng": {{ midpoint_lng | tojson }},
-    "hasMidpoint": {{ (midpoint_lat != none and midpoint_lng != none) | tojson }},
-    "meetupId":    {{ meetup.id | tojson }},
-    "memberLocations": [
-        {% for loc in locations %}
-        {
-            "name": {{ loc.full_name | tojson }},
-            "lat":  {{ loc.latitude }},
-            "lng":  {{ loc.longitude }}
-        }{% if not loop.last %},{% endif %}
-        {% endfor %}
-    ],
-    "suggestions": [
-        {% set ns = namespace(first=true) %}
-        {% for s in suggestions %}{% if s.latitude and s.longitude %}
-        {% if not ns.first %},{% endif %}
-        {
-            "name":    {{ s.place_name | tojson }},
-            "address": {{ (s.address or '') | tojson }},
-            "lat":     {{ s.latitude }},
-            "lng":     {{ s.longitude }},
-            "rating":  {% if s.rating %}{{ s.rating }}{% else %}null{% endif %}
-        }
-        {% set ns.first = false %}
-        {% endif %}{% endfor %}
-    ]
-}
-</script>
-
-<script type="application/json" id="saved-route-waypoints">
-{{ route_waypoints | default([], true) | tojson }}
-</script>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
-<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-
-<!-- Pure JavaScript — zero Jinja here -->
-<script>
-    const MEETUP = JSON.parse(document.getElementById('meetup-data').textContent);
-    const KTM_CENTER = [27.7172, 85.3240];
-    const KTM_ZOOM = 13;
-    const memberLocations = MEETUP.memberLocations;
-    const midpointLat = MEETUP.midpointLat;
-    const midpointLng = MEETUP.midpointLng;
-    const hasMidpoint = MEETUP.hasMidpoint;
-    const suggestions = MEETUP.suggestions;
-
-    const map = L.map('map', {
-        center: KTM_CENTER,
-        zoom: KTM_ZOOM,
-        zoomControl: true,
-        scrollWheelZoom: true
-    });
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 19
-    }).addTo(map);
-
-    (function initRoutePlanner() {
-        const routePlannerEl = document.getElementById('routePlanner');
-        if (!routePlannerEl || !L.Routing) return;
-
-        const saveUrl = `/meetup/${MEETUP.meetupId}/route`;
-        const canEditRoute = routePlannerEl.dataset.canEditRoute === 'true';
-        const stopsList = document.getElementById('routeStopsList');
-        const statusEl = document.getElementById('routeStatus');
-        const clickModeBtn = document.getElementById('routeClickModeBtn');
-        const clearBtn = document.getElementById('routeClearBtn');
-        const saveBtn = document.getElementById('routeSaveBtn');
-
-        const bounds = {
-            minLat: 27.55,
-            maxLat: 27.85,
-            minLng: 85.15,
-            maxLng: 85.55
-        };
-
-        const state = {
-            waypoints: [],
-            clickMode: false,
-            routeSummary: null
-        };
-
-        function escapeHtml(value) {
-            return String(value || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        }
-
-        function setStatus(message, type) {
-            if (!statusEl) return;
-            statusEl.textContent = message || '';
-            statusEl.style.color = type === 'error' ? '#DC2626' : '#16A34A';
-        }
-
-        function isInsideKathmandu(lat, lng) {
-            return lat >= bounds.minLat && lat <= bounds.maxLat &&
-                   lng >= bounds.minLng && lng <= bounds.maxLng;
-        }
-
-        function normalizeWaypoint(raw, index) {
-            const lat = Number(raw.latitude ?? raw.lat);
-            const lng = Number(raw.longitude ?? raw.lng);
-            return {
-                sequence: index,
-                label: String(raw.label || `Stop ${index + 1}`).trim(),
-                address: String(raw.address || '').trim(),
-                lat: lat,
-                lng: lng,
-                source: raw.source || 'manual'
-            };
-        }
-
-        const routingControl = L.Routing.control({
-            waypoints: [],
-            router: L.Routing.osrmv1({
-                serviceUrl: 'https://router.project-osrm.org/route/v1',
-                profile: 'driving',
-                timeout: 15000
-            }),
-            addWaypoints: false,
-            draggableWaypoints: canEditRoute,
-            routeWhileDragging: canEditRoute,
-            showAlternatives: false,
-            fitSelectedRoutes: true,
-            show: false,
-            lineOptions: {
-                styles: [
-                    { color: '#1E293B', opacity: 0.25, weight: 8 },
-                    { color: '#2563EB', opacity: 0.95, weight: 5 }
-                ]
-            },
-            createMarker: function (index, waypoint) {
-                return L.marker(waypoint.latLng, { draggable: canEditRoute })
-                    .bindPopup(`Stop ${index + 1}`);
-            }
-        }).addTo(map);
-
-        routingControl.on('routesfound', function (event) {
-            const route = event.routes[0];
-            state.routeSummary = {
-                distance_m: Math.round(route.summary.totalDistance),
-                duration_s: Math.round(route.summary.totalTime)
-            };
-            setStatus(
-                `Route ready: ${(state.routeSummary.distance_m / 1000).toFixed(1)} km, ` +
-                `${Math.round(state.routeSummary.duration_s / 60)} min`,
-                'success'
-            );
-        });
-            
-        routingControl.on('routingerror', function () {
-            setStatus('Could not calculate a route for these stops. Try moving a stop closer to a road.', 'error');
-        });
-
-        routingControl.getPlan().on('waypointschanged', function () {
-            if (!canEditRoute) return;
-            const lrmWaypoints = routingControl.getWaypoints().filter(wp => wp.latLng);
-            if (lrmWaypoints.length !== state.waypoints.length) return;
-
-            state.waypoints = lrmWaypoints.map((wp, index) => normalizeWaypoint({
-                ...state.waypoints[index],
-                lat: wp.latLng.lat,
-                lng: wp.latLng.lng,
-                source: 'dragged'
-            }, index));
-
-            renderStops();
-        });
-
-        function renderStops() {
-            if (!stopsList) return;
-            if (!state.waypoints.length) {
-                stopsList.innerHTML = '<li class="route-stop-item"><div class="route-stop-meta">No stops added yet.</div></li>';
-                return;
-            }
-
-            stopsList.innerHTML = state.waypoints.map((wp, index) => `
-                <li class="route-stop-item" data-index="${index}">
-                    <div class="route-stop-title">${escapeHtml(wp.label)}</div>
-                    <div class="route-stop-meta">
-                        ${escapeHtml(wp.address || `${wp.lat.toFixed(5)}, ${wp.lng.toFixed(5)}`)}
-                    </div>
-                    <div class="route-stop-actions">
-                        <button type="button" data-action="up" ${!canEditRoute || index === 0 ? 'disabled' : ''}>Up</button>
-                        <button type="button" data-action="down" ${!canEditRoute || index === state.waypoints.length - 1 ? 'disabled' : ''}>Down</button>
-                        <button type="button" data-action="remove" ${!canEditRoute ? 'disabled' : ''}>Remove</button>
-                    </div>
-                </li>
-            `).join('');
-        }
-
-        function refreshRoute() {
-            const latLngs = state.waypoints.map(wp => L.latLng(wp.lat, wp.lng));
-            routingControl.setWaypoints(latLngs);
-            renderStops();
-
-            if (state.waypoints.length < 2) {
-                state.routeSummary = null;
-                setStatus('Add at least two stops to calculate a route.', 'error');
-            }
-        }
-
-        function addWaypoint(lat, lng, label, address, source) {
-            if (!canEditRoute) return;
-            if (!isInsideKathmandu(lat, lng)) {
-                setStatus('That stop is outside the Kathmandu planning area.', 'error');
-                return;
-            }
-
-            state.waypoints.push(normalizeWaypoint({
-                lat: lat,
-                lng: lng,
-                label: label,
-                address: address,
-                source: source
-            }, state.waypoints.length));
-            refreshRoute();
-        }
-
-        function removeWaypoint(index) {
-            state.waypoints.splice(index, 1);
-            state.waypoints = state.waypoints.map(normalizeWaypoint);
-            refreshRoute();
-        }
-
-        function moveWaypoint(index, direction) {
-            const nextIndex = index + direction;
-            if (nextIndex < 0 || nextIndex >= state.waypoints.length) return;
-
-            const current = state.waypoints[index];
-            state.waypoints[index] = state.waypoints[nextIndex];
-            state.waypoints[nextIndex] = current;
-            state.waypoints = state.waypoints.map(normalizeWaypoint);
-            refreshRoute();
-        }
-
-        if (stopsList) {
-            stopsList.addEventListener('click', function (event) {
-                const button = event.target.closest('button[data-action]');
-                if (!button || button.disabled) return;
-
-                const item = button.closest('li[data-index]');
-                if (!item) return;
-
-                const index = Number(item.dataset.index);
-                if (button.dataset.action === 'up') moveWaypoint(index, -1);
-                if (button.dataset.action === 'down') moveWaypoint(index, 1);
-                if (button.dataset.action === 'remove') removeWaypoint(index);
-            });
-        }
-
-        if (clickModeBtn) {
-            clickModeBtn.addEventListener('click', function () {
-                if (!canEditRoute) return;
-                state.clickMode = !state.clickMode;
-                clickModeBtn.textContent = state.clickMode ? 'Map click enabled' : 'Add by map click';
-                setStatus(state.clickMode ? 'Click anywhere on the map to add the next stop.' : '', 'success');
-            });
-        }
-
-        map.on('click', function (event) {
-            if (!state.clickMode || !canEditRoute) return;
-            addWaypoint(
-                event.latlng.lat,
-                event.latlng.lng,
-                `Stop ${state.waypoints.length + 1}`,
-                '',
-                'map_click'
-            );
-        });
-
-        if (canEditRoute && L.Control && L.Control.Geocoder) {
-            L.Control.geocoder({
-                defaultMarkGeocode: false,
-                geocoder: L.Control.Geocoder.nominatim({
-                    geocodingQueryParams: {
-                        countrycodes: 'np',
-                        viewbox: '85.15,27.55,85.55,27.85',
-                        bounded: 1
-                    }
-                })
-            })
-                .on('markgeocode', function (event) {
-                    const center = event.geocode.center;
-                    addWaypoint(
-                        center.lat,
-                        center.lng,
-                        event.geocode.name || `Stop ${state.waypoints.length + 1}`,
-                        event.geocode.name || '',
-                        'geocoder'
-                    );
-                    map.setView(center, 15);
-                })
-                .addTo(map);
-        }
-
-        if (clearBtn) {
-            clearBtn.addEventListener('click', function () {
-                if (!canEditRoute) return;
-                state.waypoints = [];
-                state.routeSummary = null;
-                refreshRoute();
-
-                fetch(saveUrl, { method: 'DELETE' })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (!data.success) throw new Error(data.message || 'Clear failed');
-                        setStatus('Route cleared.', 'success');
-                    })
-                    .catch(error => setStatus(error.message, 'error'));
-            });
-        }
-
-        if (saveBtn) {
-            saveBtn.addEventListener('click', function () {
-                if (!canEditRoute) return;
-                if (state.waypoints.length < 2) {
-                    setStatus('Please add at least two stops before saving.', 'error');
-                    return;
-                }
-
-                fetch(saveUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        travel_mode: 'driving',
-                        route_summary: state.routeSummary,
-                        waypoints: state.waypoints.map((wp, index) => ({
-                            sequence_index: index,
-                            label: wp.label,
-                            address: wp.address,
-                            latitude: wp.lat,
-                            longitude: wp.lng,
-                            source: wp.source
-                        }))
-                    })
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (!data.success) throw new Error(data.message || 'Save failed');
-                        setStatus('Route saved successfully.', 'success');
-                    })
-                    .catch(error => setStatus(error.message, 'error'));
-            });
-        }
-
-        try {
-            const savedEl = document.getElementById('saved-route-waypoints');
-            const savedWaypoints = savedEl ? JSON.parse(savedEl.textContent || '[]') : [];
-            state.waypoints = savedWaypoints
-                .map((wp, index) => normalizeWaypoint(wp, index))
-                .filter(wp => Number.isFinite(wp.lat) && Number.isFinite(wp.lng));
-        } catch (error) {
-            state.waypoints = [];
-        }
-
-        if (state.waypoints.length) {
-            refreshRoute();
-        } else {
-            renderStops();
-            setStatus('Add at least two stops to calculate a route.', 'error');
-        }
-
-        window.bhetamlaRoutePlanner = {
-            getWaypoints: function () {
-                return state.waypoints.slice();
-            },
-            setWaypoints: function (waypoints) {
-                if (!canEditRoute) return;
-                state.waypoints = waypoints.map(normalizeWaypoint);
-                refreshRoute();
-            }
-        };
-    })();
-
-    const memberIcon = L.divIcon({
-        html: `<div style="
-            background:#2563EB; border:3px solid white;
-            border-radius:50%; width:32px; height:32px;
-            display:flex; align-items:center; justify-content:center;
-            font-size:14px; box-shadow:0 2px 8px rgba(0,0,0,0.3);
-        ">👤</div>`,
-        className: '', iconSize: [32, 32], iconAnchor: [16, 16]
-    });
-
-    const midpointIcon = L.divIcon({
-        html: `<div style="
-            background:#DC2626; border:3px solid white;
-            border-radius:50%; width:40px; height:40px;
-            display:flex; align-items:center; justify-content:center;
-            font-size:18px; box-shadow:0 2px 12px rgba(220,38,38,0.5);
-            animation:pulse 2s infinite;
-        ">⭐</div>`,
-        className: '', iconSize: [40, 40], iconAnchor: [20, 20]
-    });
-
-    const suggestionIcon = L.divIcon({
-        html: `<div style="
-            background:#16A34A; border:3px solid white;
-            border-radius:50%; width:32px; height:32px;
-            display:flex; align-items:center; justify-content:center;
-            font-size:14px; box-shadow:0 2px 8px rgba(0,0,0,0.3);
-        ">🍽️</div>`,
-        className: '', iconSize: [32, 32], iconAnchor: [16, 16]
-    });
-
-    const memberLatLngs = [];
-
-    memberLocations.forEach(member => {
-        const latlng = [member.lat, member.lng];
-        memberLatLngs.push(latlng);
-        L.marker(latlng, { icon: memberIcon })
-            .addTo(map)
-            .bindPopup(`
-            <div style="font-family:Inter,sans-serif; padding:4px;">
-                <strong style="font-size:14px;">👤 ${member.name}</strong><br>
-                <span style="font-size:12px; color:#64748B;">
-                    ${member.lat.toFixed(4)}, ${member.lng.toFixed(4)}
-                </span>
-            </div>
-         `);
-    });
-
-    if (hasMidpoint) {
-        const midLatLng = [midpointLat, midpointLng];
-
-        L.marker(midLatLng, { icon: midpointIcon })
-            .addTo(map)
-            .bindPopup(`
-            <div style="font-family:Inter,sans-serif; padding:4px;">
-                <strong style="font-size:14px; color:#DC2626;">⭐ Meeting Midpoint</strong><br>
-                <span style="font-size:12px; color:#64748B;">
-                    ${midpointLat.toFixed(4)}, ${midpointLng.toFixed(4)}
-                </span><br>
-                <a href="https://maps.google.com/?q=${midpointLat},${midpointLng}"
-                   target="_blank" style="font-size:12px; color:#2563EB;">
-                    Open in Google Maps
-                </a>
-            </div>
-         `)
-            .openPopup();
-
-        memberLatLngs.forEach(memberLatLng => {
-            L.polyline([memberLatLng, midLatLng], {
-                color: '#2563EB', weight: 2,
-                opacity: 0.5, dashArray: '6, 6'
-            }).addTo(map);
-        });
-
-        L.circle(midLatLng, {
-            color: '#DC2626', fillColor: '#DC2626',
-            fillOpacity: 0.08, radius: 300
-        }).addTo(map);
-
-        const allPoints = [...memberLatLngs, midLatLng];
-        if (allPoints.length > 1) {
-            map.fitBounds(L.latLngBounds(allPoints).pad(0.2));
-        } else {
-            map.setView(midLatLng, KTM_ZOOM);
-        }
-
-    } else if (memberLatLngs.length > 0) {
-        if (memberLatLngs.length === 1) {
-            map.setView(memberLatLngs[0], KTM_ZOOM);
-        } else {
-            map.fitBounds(L.latLngBounds(memberLatLngs).pad(0.2));
-        }
-    }
-
-    suggestions.forEach(s => {
-        L.marker([s.lat, s.lng], { icon: suggestionIcon })
-            .addTo(map)
-            .bindPopup(`
-            <div style="font-family:Inter,sans-serif; padding:4px;">
-                <strong style="font-size:14px; color:#16A34A;">🍽️ ${s.name}</strong><br>
-                <span style="font-size:12px; color:#64748B;">${s.address}</span>
-                ${s.rating ? `<br><span style="font-size:12px; color:#D97706;">⭐ ${s.rating}</span>` : ''}
-            </div>
-         `);
-    });
-
-    if (memberLatLngs.length === 0) {
-        const landmarks = [
-            { name: 'Thamel', lat: 27.7153, lng: 85.3123 },
-            { name: 'Patan Durbar Sq', lat: 27.6727, lng: 85.3246 },
-            { name: 'Boudhanath', lat: 27.7215, lng: 85.3620 },
-            { name: 'Swayambhunath', lat: 27.7149, lng: 85.2901 },
-            { name: 'New Road', lat: 27.7041, lng: 85.3145 },
-            { name: 'Baneshwor', lat: 27.6933, lng: 85.3418 },
-            { name: 'Lazimpat', lat: 27.7220, lng: 85.3198 },
-            { name: 'Durbarmarg', lat: 27.7100, lng: 85.3175 },
-        ];
-        landmarks.forEach(lm => {
-            L.marker([lm.lat, lm.lng], {
-                icon: L.divIcon({
-                    html: `<div style="
-                        background:rgba(255,255,255,0.9);
-                        border:1px solid #E2E8F0; border-radius:6px;
-                        padding:2px 6px; font-size:10px; font-weight:600;
-                        color:#64748B; white-space:nowrap;
-                        box-shadow:0 1px 4px rgba(0,0,0,0.1);
-                    ">${lm.name}</div>`,
-                    className: '', iconAnchor: [0, 0]
-                })
-            }).addTo(map);
-        });
-    }
-    (function() {
-        function checkRoutePeakHours() {
-            const now = new Date();
-            const hour = now.getHours();
-            
-            // Matches 8:00 AM – 10:00 AM and 5:00 PM – 8:00 PM (17:00 – 20:00)
-            const isPeak = (hour >= 8 && hour < 10) || (hour >= 17 && hour < 20);
-            
-            const peakAlert = document.getElementById('routePeakHourAlert');
-            const normalAlert = document.getElementById('routeNormalHourAlert');
-            
-            if (isPeak) {
-                if (peakAlert) peakAlert.style.display = 'block';
-                if (normalAlert) normalAlert.style.display = 'none';
-            } else {
-                if (peakAlert) peakAlert.style.display = 'none';
-                if (normalAlert) normalAlert.style.display = 'block';
-            }
-        }
-        
-        // Execute safely when the DOM components render
-        if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", checkRoutePeakHours);
-        } else {
-            checkRoutePeakHours();
-        }
-    })();
-    function shareLocation() {
-        if (!navigator.geolocation) {
-            alert('Geolocation not supported by your browser.');
-            return;
-        }
-        const btn = document.querySelector('.update-btn');
-        btn.textContent = '📡 Detecting...';
-        btn.disabled = true;
-
-        navigator.geolocation.getCurrentPosition(
-            position => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-
-                fetch(`/meetup/update-location/${MEETUP.meetupId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        latitude: lat,
-                        longitude: lng,
-                        address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`
-                    })
-                })
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.success) {
-                            document.getElementById('locationStatus').style.display = 'block';
-                            setTimeout(() => location.reload(), 1500);
-                        }
-                    })
-                    .catch(() => {
-                        btn.textContent = '📡 Share My Location';
-                        btn.disabled = false;
-                        alert('Failed to share location. Try again.');
-                    });
-            },
-            error => {
-                btn.textContent = '📡 Share My Location';
-                btn.disabled = false;
-                alert('Could not get location. Please allow access.');
-            },
-            { enableHighAccuracy: true, timeout: 10000 }
-        );
-    }
-</script>
 {% endblock %}

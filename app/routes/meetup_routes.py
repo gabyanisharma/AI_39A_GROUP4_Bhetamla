@@ -52,25 +52,27 @@ def suggest(meetup_id):
 def respond(meetup_id):
     return respond_meetup(meetup_id)
 
-@meetup_bp.route('/<int:meetup_id>/route', methods=['GET'])
-@login_required
-def route_detail(meetup_id):
-    return get_meetup_route(meetup_id)
-
-@meetup_bp.route('/<int:meetup_id>/route', methods=['POST'])
-@login_required
-def route_save(meetup_id):
-    return save_meetup_route(meetup_id)
-
-@meetup_bp.route('/<int:meetup_id>/route', methods=['DELETE'])
-@login_required
-def route_delete(meetup_id):
-    return delete_meetup_route(meetup_id)
 
 @meetup_bp.route('/groups')
 @login_required
 def groups():
-    return render_template('meetup/groups.html')
+    from app.auth import get_current_user_id
+    from app.models.meetup import Meetup
+    from app.database import execute_query
+    user_id = get_current_user_id()
+    meetups = Meetup.get_by_user(user_id)
+    friends = execute_query(
+        """SELECT u.id, u.full_name, u.email
+           FROM friends f
+           JOIN users u ON (
+               CASE WHEN f.user_id = %s THEN f.friend_id = u.id
+               ELSE f.user_id = u.id END
+           )
+           WHERE (f.user_id = %s OR f.friend_id = %s)
+           AND f.status = 'accepted'""",
+        (user_id, user_id, user_id), fetch=True
+    ) or []
+    return render_template('meetup/groups.html', meetups=meetups, friends=friends)
 
 @meetup_bp.route('/scheduler')
 @login_required
@@ -116,3 +118,18 @@ def respond_invite_route(invite_id):
 @login_required
 def common_availability():
     return get_common_availability()
+
+@meetup_bp.route('/<int:meetup_id>/route', methods=['GET'])
+@login_required
+def route_detail(meetup_id):
+    return get_meetup_route(meetup_id)
+
+@meetup_bp.route('/<int:meetup_id>/route', methods=['POST'])
+@login_required
+def route_save(meetup_id):
+    return save_meetup_route(meetup_id)
+
+@meetup_bp.route('/<int:meetup_id>/route', methods=['DELETE'])
+@login_required
+def route_delete(meetup_id):
+    return delete_meetup_route(meetup_id)

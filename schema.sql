@@ -7,18 +7,14 @@ USE bhetamla_db;
 
 
 -- =========================================
--- EMAIL VERIFICATION
+-- EMAIL VERIFICATION (helper comments)
 -- =========================================
--- 1. Turn off safe updates
 -- SET SQL_SAFE_UPDATES = 0;
--- 2. Run your update query
 -- UPDATE users SET is_verified = 1;
--- 3. Turn safe updates back on (recommended for safety)
 -- SET SQL_SAFE_UPDATES = 1;
--- 4. Check your results
 -- SELECT id, email, is_verified FROM users;
--- to unverify
 -- UPDATE users SET is_verified = 0 WHERE email = 'testuser@example.com';
+
 
 -- =========================================
 -- USERS TABLE
@@ -422,6 +418,7 @@ CREATE TABLE IF NOT EXISTS place_suggestions (
 
 -- =========================================
 -- RESTAURANTS
+-- (defined before restaurant_offers so FK works)
 -- =========================================
 
 CREATE TABLE IF NOT EXISTS restaurants (
@@ -484,6 +481,58 @@ CREATE TABLE IF NOT EXISTS restaurant_reviews (
 
 
 -- =========================================
+-- RESTAURANT OFFERS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS restaurant_offers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    restaurant_id INT NOT NULL,
+
+    title VARCHAR(100) NOT NULL,
+    description TEXT,
+    discount_percent INT DEFAULT 0,
+
+    valid_from DATE NOT NULL,
+    valid_until DATE NOT NULL,
+
+    is_active BOOLEAN DEFAULT TRUE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (restaurant_id)
+    REFERENCES restaurants(id)
+    ON DELETE CASCADE
+);
+
+
+-- =========================================
+-- USER SAVED OFFERS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS user_saved_offers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NOT NULL,
+    offer_id INT NOT NULL,
+
+    remind_me BOOLEAN DEFAULT FALSE,
+
+    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id)
+    REFERENCES users(id)
+    ON DELETE CASCADE,
+
+    FOREIGN KEY (offer_id)
+    REFERENCES restaurant_offers(id)
+    ON DELETE CASCADE,
+
+    UNIQUE KEY idx_user_offer (user_id, offer_id)
+);
+
+
+-- =========================================
 -- RIDE ESTIMATES
 -- =========================================
 
@@ -520,3 +569,75 @@ CREATE TABLE IF NOT EXISTS ride_estimates (
 
     UNIQUE KEY unique_ride_estimate (meetup_id, user_id)
 );
+
+
+-- ============================================================
+-- FARE DROP ALERT FEATURE
+-- ============================================================
+
+-- Travel Estimate
+CREATE TABLE IF NOT EXISTS travel_estimate (
+    travelID      INT AUTO_INCREMENT PRIMARY KEY,
+    meetupID      INT NOT NULL,
+    userID        INT NOT NULL,
+    mode          ENUM('car','bike','public','walk') NOT NULL DEFAULT 'car',
+    travelTime    INT COMMENT 'minutes',
+    distance      DECIMAL(8,2) COMMENT 'km',
+    estimatedCost DECIMAL(10,2),
+    createdAt     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (meetupID) REFERENCES meetups(id) ON DELETE CASCADE,
+    FOREIGN KEY (userID)   REFERENCES users(id)   ON DELETE CASCADE
+);
+
+-- Fare Alert subscriptions
+CREATE TABLE IF NOT EXISTS fare_alert (
+    alertID       INT AUTO_INCREMENT PRIMARY KEY,
+    userID        INT NOT NULL,
+    meetupID      INT NOT NULL,
+    mode          ENUM('car','bike','public','walk') NOT NULL DEFAULT 'car',
+    targetFare    DECIMAL(10,2) NOT NULL COMMENT 'Alert when fare drops to or below this',
+    currentFare   DECIMAL(10,2)           COMMENT 'Last checked fare',
+    isActive      TINYINT(1) DEFAULT 1,
+    isTriggered   TINYINT(1) DEFAULT 0    COMMENT '1 once the alert has fired',
+    createdAt     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    triggeredAt   DATETIME,
+    FOREIGN KEY (userID)   REFERENCES users(id)   ON DELETE CASCADE,
+    FOREIGN KEY (meetupID) REFERENCES meetups(id) ON DELETE CASCADE
+);
+
+-- Fare price history (powers sparkline chart)
+CREATE TABLE IF NOT EXISTS fare_history (
+    historyID     INT AUTO_INCREMENT PRIMARY KEY,
+    meetupID      INT NOT NULL,
+    mode          ENUM('car','bike','public','walk') NOT NULL,
+    fare          DECIMAL(10,2) NOT NULL,
+    recordedAt    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (meetupID) REFERENCES meetups(id) ON DELETE CASCADE
+);
+
+
+-- =========================================
+-- SAVED ROUTES (Multi-Stop Route Planning)
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS saved_routes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NOT NULL,
+    route_name VARCHAR(255) NOT NULL DEFAULT 'My Route',
+
+    -- JSON array: [{name, lat, lng}, ...]
+    waypoints_json TEXT NOT NULL,
+
+    -- Optimized by 'time' or 'distance'
+    optimize_by VARCHAR(20) DEFAULT 'time',
+
+    total_distance_km DECIMAL(8,2) DEFAULT 0,
+    total_duration_min INT DEFAULT 0,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Indexes for fast lookups are created conditionally in app/database.py
