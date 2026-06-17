@@ -1,4 +1,3 @@
-# app/models/meetup_route.py
 from app.database import execute_query, get_db_connection
 
 
@@ -264,4 +263,3 @@ class MeetupRoute:
               AND (m.created_by = %s OR mr.created_by = %s)
         """
         return execute_query(query, (meetup_id, user_id, user_id))
-    

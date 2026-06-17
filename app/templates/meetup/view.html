@@ -82,127 +82,7 @@
       {% endif %}
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 300px;gap:20px;flex-wrap:wrap">
-      <div>
 
-        <!-- Members card -->
-        <div class="card" style="margin-bottom:20px">
-          <div style="font-weight:700;font-size:15px;margin-bottom:16px">👥 Members ({{ members|length }})</div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            {% for m in members %}
-            <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--input-bg);border-radius:10px">
-              <div class="avatar" style="width:38px;height:38px;background:var(--blue);font-size:13px;flex-shrink:0">{{ m.full_name[:2]|upper }}</div>
-              <div style="flex:1">
-                <div style="font-weight:600;font-size:13px">{{ m.full_name }} {% if m.user_id == meetup.created_by %}<span style="font-size:10px;color:var(--muted)">(organiser)</span>{% endif %}</div>
-                <div style="font-size:11px;margin-top:2px;
-                  {% if m.status == 'accepted' %}color:var(--green)
-                  {% elif m.status == 'declined' %}color:var(--red)
-                  {% else %}color:var(--muted){% endif %}">
-                  {% if m.status == 'accepted' %}✓ Accepted
-                  {% elif m.status == 'declined' %}✕ Declined
-                  {% else %}⏳ Pending{% endif %}
-                </div>
-              </div>
-              {% if m.address %}
-              <div style="font-size:11px;color:var(--muted);text-align:right;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📍 {{ m.address }}</div>
-              {% endif %}
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-
-        <!-- Midpoint card -->
-        <div class="card" style="margin-bottom:20px">
-          <div style="font-weight:700;font-size:15px;margin-bottom:4px">🗺️ Smart Midpoint</div>
-          <div style="font-size:12.5px;color:var(--muted);margin-bottom:16px">Calculated from all members' locations.</div>
-          {% if midpoint_lat and midpoint_lng %}
-          <div style="background:linear-gradient(135deg,#0e2d22,#14322A);border-radius:14px;padding:20px;color:#fff;margin-bottom:14px">
-            <div style="font-size:11px;color:rgba(200,153,58,.85);font-weight:700;letter-spacing:2px;margin-bottom:6px">MIDPOINT FOUND</div>
-            <div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;margin-bottom:4px">{{ meetup.midpoint_address or 'Midpoint calculated' }}</div>
-            <div style="font-size:12px;opacity:.7">{{ midpoint_lat|round(5) }}, {{ midpoint_lng|round(5) }}</div>
-          </div>
-          <a href="https://www.google.com/maps?q={{ midpoint_lat }},{{ midpoint_lng }}" target="_blank" class="btn-sec" style="font-size:13px;padding:10px 16px;text-decoration:none">🗺️ Open in Google Maps</a>
-          {% else %}
-          <div style="background:var(--input-bg);border-radius:12px;padding:20px;text-align:center;color:var(--muted);font-size:13px">
-            Midpoint will appear once at least 2 members share their location.
-          </div>
-          {% endif %}
-        <!-- Map legend -->
-        <div style="display:flex;gap:16px;flex-wrap:wrap;padding:12px 16px;background:var(--input-bg);border-radius:10px;margin-bottom:12px;font-size:12px;font-weight:600;">
-            <div style="display:flex;align-items:center;gap:6px;"><div style="width:12px;height:12px;border-radius:50%;background:#2563EB;"></div>Members</div>
-            <div style="display:flex;align-items:center;gap:6px;"><div style="width:12px;height:12px;border-radius:50%;background:#DC2626;"></div>Midpoint</div>
-            <div style="display:flex;align-items:center;gap:6px;"><div style="width:12px;height:12px;border-radius:50%;background:#16A34A;"></div>Suggestions</div>
-        </div>
-
-        <!-- Map -->
-        <div id="meetup-map"></div>
-
-        <!-- Route Planner (only for members) -->
-        {% if is_member or route_waypoints %}
-        <div class="card" id="routePlanner" data-can-edit-route="{{ can_edit_route | tojson }}" style="margin-bottom:16px;">
-          <div style="font-weight:700;font-size:15px;margin-bottom:8px;">🗺️ Route Planner</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Search an address or click the map to add stops.</p>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-              <button type="button" id="routeClickModeBtn" {% if not can_edit_route %}disabled{% endif %}
-                style="flex:1;padding:9px 14px;font-size:12px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">
-                Add by map click
-              </button>
-              <button type="button" id="routeClearBtn" {% if not can_edit_route %}disabled{% endif %}
-                style="flex:1;padding:9px 14px;font-size:12px;background:var(--input-bg);color:var(--text);border:1px solid var(--border);border-radius:8px;font-weight:600;cursor:pointer;">
-                Clear
-              </button>
-              <button type="button" id="routeSaveBtn" {% if not can_edit_route %}disabled{% endif %}
-                style="flex:1;padding:9px 14px;font-size:12px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">
-                Save Route
-              </button>
-          </div>
-          {% if not can_edit_route %}
-          <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Accept the meetup invitation before editing this route.</p>
-          {% endif %}
-          <ol id="routeStopsList" class="route-stops-list"></ol>
-          <p id="routeStatus" style="font-size:12px;margin-top:10px;"></p>
-        </div>
-          {% endif %}
-
-          <!-- JSON data islands for JS -->
-          <script type="application/json" id="meetup-data">
-          {
-              "midpointLat": {{ midpoint_lat | tojson }},
-              "midpointLng": {{ midpoint_lng | tojson }},
-              "hasMidpoint": {{ (midpoint_lat != none and midpoint_lng != none) | tojson }},
-              "meetupId":    {{ meetup.id | tojson }},
-              "memberLocations": [
-                  {% for loc in locations %}{
-                      "name": {{ loc.full_name | tojson }},
-                      "lat":  {{ loc.latitude }},
-                      "lng":  {{ loc.longitude }}
-                  }{% if not loop.last %},{% endif %}{% endfor %}
-              ],
-              "suggestions": [
-                  {% set ns = namespace(first=true) %}
-                  {% for s in suggestions %}{% if s.latitude and s.longitude %}
-                  {% if not ns.first %},{% endif %}{
-                      "name":    {{ s.place_name | tojson }},
-                      "address": {{ (s.address or '') | tojson }},
-                      "lat":     {{ s.latitude }},
-                      "lng":     {{ s.longitude }},
-                      "rating":  {% if s.rating %}{{ s.rating }}{% else %}null{% endif %}
-                  }{% set ns.first = false %}{% endif %}{% endfor %}
-              ]
-          }
-          </script>
-          <script type="application/json" id="saved-route-waypoints">
-          {{ route_waypoints | default([], true) | tojson }}
-          </script>
-          <!-- Share my location -->
-          {% if is_member %}
-          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-            <div style="font-size:13px;font-weight:600;margin-bottom:10px">Share your location for midpoint calculation:</div>
-            <button class="btn-primary" type="button" style="padding:10px 18px;font-size:13px" onclick="shareMyLocation({{ meetup.id }})">📍 Share My Location</button>
-            <div id="loc-status" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
-          </div>
-          {% endif %}
-        </div>
 
         <!-- Place suggestions card -->
         <div class="card">
@@ -224,18 +104,7 @@
           {% endfor %}
         </div>
 
-      </div>
 
-      <!-- Right column -->
-      <div>
-        <div class="card" style="margin-bottom:16px">
-          <div style="font-weight:700;font-size:14px;margin-bottom:12px">📋 Meetup Info</div>
-          <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Status</span><span style="font-weight:600;color:var(--blue)">{{ meetup.status|capitalize }}</span></div>
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Members</span><span style="font-weight:600">{{ members|length }}</span></div>
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Date</span><span style="font-weight:600">{{ meetup.meetup_date or '—' }}</span></div>
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Time</span><span style="font-weight:600">{{ meetup.meetup_time or '—' }}</span></div>
-          </div>
         </div>
 
         <!-- Member locations for midpoint -->
@@ -298,54 +167,4 @@
     <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
   </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-function shareMyLocation(meetupId) {
-  const status = document.getElementById('loc-status');
-  status.textContent = 'Getting your location...';
-  if (!navigator.geolocation) {
-    status.textContent = 'Geolocation not supported by your browser.';
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      // Reverse geocode for address
-      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
-        .then(r => r.json())
-        .then(d => {
-          const address = d.display_name || '';
-          fetch(`/meetup/update-location/${meetupId}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({latitude: lat, longitude: lng, address: address})
-          })
-          .then(r => r.json())
-          .then(data => {
-            if (data.success) {
-              status.style.color = 'var(--green)';
-              status.textContent = '✓ Location shared! ' + (data.member_count >= 2 ? 'Midpoint updated — refresh to see it.' : 'Waiting for more members to share.');
-            } else {
-              status.textContent = 'Failed to share location.';
-            }
-          });
-        })
-        .catch(() => {
-          fetch(`/meetup/update-location/${meetupId}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({latitude: lat, longitude: lng, address: ''})
-          }).then(() => {
-            status.style.color = 'var(--green)';
-            status.textContent = '✓ Location shared! Refresh to see midpoint.';
-          });
-        });
-    },
-    () => { status.textContent = 'Could not get your location. Please allow location access.'; }
-  );
-}
-</script>
 {% endblock %}
