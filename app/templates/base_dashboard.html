@@ -1,523 +1,76 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="{{ session.get('theme', 'light') }}">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}Bhetamla{% endblock %}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    {% block extra_css %}{% endblock %}
-
-    <style>
-        :root {
-            --primary: #2563EB;
-            --primary-dark: #1D4ED8;
-            --primary-light: #EFF6FF;
-            --success: #16A34A;
-            --error: #DC2626;
-            --info: #0284C7;
-            --bg: #F8FAFC;
-            --card: #FFFFFF;
-            --text: #1E293B;
-            --text-muted: #64748B;
-            --border: #E2E8F0;
-            --shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
-            --sidebar-w: 260px;
-        }
-
-        [data-theme="dark"] {
-            --bg: #0F172A;
-            --card: #1E293B;
-            --text: #F1F5F9;
-            --text-muted: #94A3B8;
-            --border: #334155;
-            --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* ── SIDEBAR ─────────────────────────────── */
-        .sidebar {
-            width: var(--sidebar-w);
-            background: var(--card);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            padding: 24px 16px;
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100vh;
-            z-index: 100;
-            overflow-y: auto;
-        }
-
-        .sidebar-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 12px 24px;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 16px;
-        }
-
-        .sidebar-logo .logo-icon {
-            width: 38px;
-            height: 38px;
-            background: var(--primary);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-        }
-
-        .sidebar-logo span {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 11px 14px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-muted);
-            text-decoration: none;
-            transition: all 0.15s;
-            margin-bottom: 2px;
-        }
-
-        .nav-item:hover {
-            background: var(--primary-light);
-            color: var(--primary);
-        }
-
-        .nav-item.active {
-            background: var(--primary);
-            color: #fff;
-        }
-
-        .nav-item .nav-icon {
-            font-size: 18px;
-            width: 22px;
-            text-align: center;
-        }
-
-        .sidebar-spacer {
-            flex: 1;
-        }
-
-        .new-meetup-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            background: var(--primary);
-            color: #fff;
-            border-radius: 12px;
-            padding: 13px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            text-decoration: none;
-            margin-bottom: 12px;
-            transition: background 0.2s, transform 0.1s;
-        }
-
-        .new-meetup-btn:hover {
-            background: var(--primary-dark);
-            transform: translateY(-1px);
-        }
-
-        .sidebar-bottom-links {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .sidebar-user {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px;
-            background: var(--bg);
-            border-radius: 12px;
-            margin-top: 8px;
-        }
-
-        .sidebar-user img {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        .sidebar-user .user-info {
-            flex: 1;
-            overflow: hidden;
-        }
-
-        .sidebar-user .user-name {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .sidebar-user .user-role {
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-
-        /* ── MAIN AREA ───────────────────────────── */
-        .main-wrapper {
-            margin-left: var(--sidebar-w);
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-
-        .topbar {
-            height: 64px;
-            background: var(--card);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 0 28px;
-            position: sticky;
-            top: 0;
-            z-index: 50;
-        }
-
-        .search-box {
-            flex: 1;
-            max-width: 400px;
-            position: relative;
-        }
-
-        .search-box input {
-            width: 100%;
-            padding: 9px 16px 9px 38px;
-            border: 1.5px solid var(--border);
-            border-radius: 10px;
-            font-size: 14px;
-            background: var(--bg);
-            color: var(--text);
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .search-box input:focus {
-            border-color: var(--primary);
-        }
-
-        .search-box .search-icon {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 15px;
-            color: var(--text-muted);
-        }
-
-        .topbar-actions {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .icon-btn {
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            cursor: pointer;
-            background: var(--bg);
-            border: 1.5px solid var(--border);
-            position: relative;
-            text-decoration: none;
-            color: var(--text-muted);
-            transition: background 0.15s;
-        }
-
-        .icon-btn:hover {
-            background: var(--primary-light);
-            color: var(--primary);
-        }
-
-        .icon-btn .badge {
-            position: absolute;
-            top: -4px;
-            right: -4px;
-            width: 16px;
-            height: 16px;
-            background: var(--error);
-            border-radius: 50%;
-            font-size: 10px;
-            font-weight: 700;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .sos-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: #DC2626;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            padding: 8px 14px;
-            font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            text-decoration: none;
-            transition: background 0.2s;
-        }
-
-        .sos-btn:hover {
-            background: #B91C1C;
-        }
-
-        .page-content {
-            flex: 1;
-            padding: 28px;
-            overflow-y: auto;
-        }
-
-        /* ── FLASH MESSAGES ──────────────────────── */
-        .flash-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .flash {
-            padding: 14px 20px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 500;
-            min-width: 280px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            animation: slideIn 0.3s ease;
-            box-shadow: var(--shadow);
-        }
-
-        .flash.success {
-            background: #DCFCE7;
-            color: #166534;
-            border-left: 4px solid #16A34A;
-        }
-
-        .flash.error {
-            background: #FEE2E2;
-            color: #991B1B;
-            border-left: 4px solid #DC2626;
-        }
-
-        .flash.info {
-            background: #E0F2FE;
-            color: #075985;
-            border-left: 4px solid #0284C7;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        /* ── SHARED CARD STYLE ───────────────────── */
-        .card {
-            background: var(--card);
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-        }
-
-        .card-title {
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 16px;
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-    </style>
-</head>
-
-<body>
-
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <div class="flash-container">
-        {% for category, message in messages %}
-        <div class="flash {{ category }}">{{ message }}</div>
-        {% endfor %}
+{% block body %}
+<!-- APP SHELL -->
+<div id="app" class="screen active" style="flex-direction:row">
+  <nav class="sidebar" aria-label="Main navigation">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon" style="background:transparent;padding:0;overflow:hidden;border-radius:10px">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Bhetam" style="width:40px;height:40px;object-fit:contain">
+      </div>
+      <div>
+        <div class="sidebar-brand-name" style="color:#14322A"><strong style="font-weight:800;letter-spacing:-0.5px">Bhetam</strong><sup style="font-size:10px;color:var(--gold);font-weight:700">&#2354;</sup></div>
+        <div class="sidebar-brand-sub">Verified Member</div>
+      </div>
     </div>
-    <script>
-        setTimeout(() => document.querySelectorAll('.flash').forEach(e => e.remove()), 4000);
-    </script>
+
+    <a class="nav-btn {% if active_page == 'dashboard' %}active{% endif %}" href="{{ url_for('user.dashboard') }}" style="text-decoration:none" {% if active_page == 'dashboard' %}aria-current="page"{% endif %}><span class="nav-icon">&#8861;</span><span>Dashboard</span></a>
+    <a class="nav-btn {% if active_page == 'plan' %}active{% endif %}" href="{{ url_for('meetup.plan') }}" style="text-decoration:none" {% if active_page == 'plan' %}aria-current="page"{% endif %}><span class="nav-icon">&#65291;</span><span>Plan Meetup</span></a>
+    <a class="nav-btn {% if active_page == 'groups' %}active{% endif %}" href="{{ url_for('meetup.groups') }}" style="text-decoration:none" {% if active_page == 'groups' %}aria-current="page"{% endif %}><span class="nav-icon">&#128101;</span><span>My Groups</span></a>
+    <a class="nav-btn {% if active_page == 'saved' %}active{% endif %}" href="{{ url_for('place.saved') }}" style="text-decoration:none" {% if active_page == 'saved' %}aria-current="page"{% endif %}><span class="nav-icon">&#128278;</span><span>Saved Places</span></a>
+    <a class="nav-btn {% if active_page == 'restaurants' %}active{% endif %}" href="{{ url_for('place.restaurants_page') }}" style="text-decoration:none" {% if active_page == 'restaurants' %}aria-current="page"{% endif %}><span class="nav-icon">&#127869;</span><span>Browse Restaurants</span></a>
+    <a class="nav-btn {% if active_page == 'route_planner' %}active{% endif %}" href="{{ url_for('ride.planner') }}" style="text-decoration:none" {% if active_page == 'route_planner' %}aria-current="page"{% endif %}><span class="nav-icon">🗺️</span><span>Route Planner</span></a>
+    <a class="nav-btn {% if active_page == 'safety' %}active{% endif %}" href="{{ url_for('user.safety_page') }}" style="text-decoration:none" {% if active_page == 'safety' %}aria-current="page"{% endif %}><span class="nav-icon">&#128737;</span><span>Safety Hub</span></a>
+
+    <div class="sidebar-spacer"></div>
+
+    <a class="nav-btn {% if active_page == 'settings' %}active{% endif %}" href="{{ url_for('user.settings_page') }}" style="text-decoration:none" {% if active_page == 'settings' %}aria-current="page"{% endif %}><span class="nav-icon">&#9881;</span><span>Settings</span></a>
+    <a class="nav-btn {% if active_page == 'support' %}active{% endif %}" href="{{ url_for('user.support_page') }}" style="text-decoration:none" {% if active_page == 'support' %}aria-current="page"{% endif %}><span class="nav-icon">&#10067;</span><span>Support</span></a>
+    <button class="nav-btn" type="button" onclick="confirmLogout()" style="color:#f08080"><span class="nav-icon">&#10140;</span><span>Logout</span></button>
+
+    <div class="sidebar-user">
+      <div class="avatar" style="width:34px;height:34px;background:var(--blue);font-size:13px">{{ session.get('user_name','U')[0]|upper }}</div>
+      <div>
+        <div style="font-weight:600;font-size:13px;color:#d8e4f0">{{ session.get('user_name','User') }}</div>
+        <div style="font-size:10px;color:rgba(180,200,220,.45);letter-spacing:.5px">VERIFIED MEMBER</div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="main" id="main-content">
+    {% block page_content %}{% endblock %}
+  </div>
+</div>
+
+<!-- Logout modal -->
+<div class="modal-overlay" id="modal-logout" role="dialog" aria-modal="true" aria-label="Confirm logout">
+  <div class="modal-box" style="text-align:center;max-width:360px">
+    <div style="font-size:36px;margin-bottom:14px">👋</div>
+    <div class="modal-title">Log out?</div>
+    <div class="modal-sub">You'll need to sign in again to access your meetups and groups.</div>
+    <a href="{{ url_for('auth.logout') }}" class="btn-primary" style="background:var(--red);box-shadow:none;text-decoration:none;display:flex;justify-content:center">Log Out</a>
+    <button class="btn-sec" type="button" onclick="closeModal('modal-logout')" style="width:100%;justify-content:center;margin-top:10px">Cancel</button>
+  </div>
+</div>
+<!-- Notification panel overlay -->
+<div id="notif-overlay" onclick="closeNotifPanel()" style="display:none;position:fixed;inset:0;z-index:1400;background:rgba(0,0,0,.3)"></div>
+  <div id="notif-panel" class="notif-panel" role="dialog" aria-label="Notifications">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="font-family:'Playfair Display',serif;font-weight:700;font-size:18px">Notifications</div>
+      <button onclick="closeNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted)">✕</button>
+    </div>
+    {% if header_notifications %}
+      {% for n in header_notifications %}
+      <div class="notif-item" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div class="notif-dot" style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0"></div>
+        <div>
+          <div style="font-weight:600;font-size:13px">{{ n.title }}</div>
+          <div style="font-size:11px;color:var(--muted)">{{ n.body }} · {{ n.time }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0">No new notifications yet.</div>
     {% endif %}
-    {% endwith %}
-
-    <!-- ── SIDEBAR ── -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-logo">
-            <div class="logo-icon">📍</div>
-            <span>Bhetamla</span>
-        </div>
-
-        <nav>
-            <a href="{{ url_for('user.dashboard') }}"
-                class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
-                <span class="nav-icon">🏠</span> {{ t.dashboard }}
-            </a>
-            <a href="{{ url_for('meetup.plan') }}" class="nav-item {% if active_page == 'plan' %}active{% endif %}">
-                <span class="nav-icon">➕</span> {{ t.plan_meetup }}
-            </a>
-            <a href="{{ url_for('meetup.groups') }}" class="nav-item {% if active_page == 'groups' %}active{% endif %}">
-                <span class="nav-icon">👥</span> {{ t.my_groups }}
-            </a>
-            <a href="{{ url_for('place.saved') }}" class="nav-item {% if active_page == 'saved' %}active{% endif %}">
-                <span class="nav-icon">🔖</span> {{ t.saved_places }}
-            </a>
-            <a href="{{ url_for('place.restaurants_page') }}"
-                class="nav-item {% if active_page == 'restaurants' %}active{% endif %}">
-                <span class="nav-icon">🍽️</span> {{ t.get('restaurants', 'Restaurants') }}
-            </a>
-            <a href="{{ url_for('user.safety_page') }}"
-                class="nav-item {% if active_page == 'safety' %}active{% endif %}">
-                <span class="nav-icon">🛡️</span> {{ t.safety_hub }}
-            </a>
-        </nav>
-
-        <div class="sidebar-spacer"></div>
-
-        <a href="{{ url_for('meetup.plan') }}" class="new-meetup-btn">
-            ➕ {{ t.new_meetup }}
-        </a>
-
-        <div class="sidebar-bottom-links">
-            <a href="{{ url_for('user.settings_page') }}"
-                class="nav-item {% if active_page == 'settings' %}active{% endif %}">
-                <span class="nav-icon">⚙️</span> {{ t.settings }}
-            </a>
-            <a href="{{ url_for('user.support_page') }}" class="nav-item">
-                <span class="nav-icon">❓</span> {{ t.support }}
-            </a>
-            <a href="{{ url_for('auth.logout') }}" class="nav-item">
-                <span class="nav-icon">🚪</span> Logout
-            </a>
-
-        </div>
-
-        <div class="sidebar-user">
-            <img src="https://ui-avatars.com/api/?name={{ session.get('user_name', 'U') }}&background=2563EB&color=fff"
-                alt="Profile" />
-            <div class="user-info">
-                <div class="user-name">{{ session.get('user_name', 'User') }}</div>
-                <div class="user-role">{{ t.verified_member }}</div>
-            </div>
-        </div>
-    </aside>
-
-    <!-- ── MAIN AREA ── -->
-    <div class="main-wrapper">
-
-        <!-- Top Bar -->
-        <header class="topbar">
-            <div class="search-box">
-                <span class="search-icon">🔍</span>
-                <input type="text" placeholder="{{ t.search }}" />
-            </div>
-            <div class="topbar-actions">
-                <a href="{{ url_for('user.safety_page') }}" class="sos-btn">✳️ SOS</a>
-                <a href="{{ url_for('user.notifications_page') }}" class="icon-btn" id="notifBtn">
-                    🔔
-                    <span class="badge" id="notifBadge" style="display:none;">0</span>
-                </a>
-                <a href="{{ url_for('user.profile_page') }}" class="icon-btn">👤</a>
-            </div>
-        </header>
-
-        <!-- Page Content -->
-        <main class="page-content">
-            {% block content %}{% endblock %}
-        </main>
-    </div>
-
-    <!-- Theme + Notification count -->
-    <script>
-        // Apply theme instantly
-        const theme = "{{ session.get('theme', 'light') }}";
-        document.documentElement.setAttribute('data-theme', theme);
-
-        // Fetch unread notification count
-        function updateNotifCount() {
-            fetch('/notification/unread-count')
-                .then(r => r.json())
-                .then(data => {
-                    const badge = document.getElementById('notifBadge');
-                    if (data.count > 0) {
-                        badge.textContent = data.count;
-                        badge.style.display = 'flex';
-                    } else {
-                        badge.style.display = 'none';
-                    }
-                })
-                .catch(() => { });
-        }
-
-        updateNotifCount();
-        setInterval(updateNotifCount, 30000);
-    </script>
-
-    {% block extra_js %}{% endblock %}
-</body>
-
-</html>
+  </div>
+{% endblock %}

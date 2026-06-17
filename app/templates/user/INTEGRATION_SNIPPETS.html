@@ -1,0 +1,56 @@
+<!-- ══════════════════════════════════════════════════════════════════════
+     1. ADD THIS BUTTON TO templates/base_dashboard.html
+        Place it just ABOVE the <div class="sidebar-spacer"></div> line
+═══════════════════════════════════════════════════════════════════════ -->
+
+<a class="nav-btn {% if active_page == 'fare_alert' %}active{% endif %}"
+   href="{{ url_for('fare_alert.index') }}">
+  <span class="nav-icon">📉</span>
+  <span data-en="Fare Alerts" data-ne="भाडा अलर्ट">Fare Alerts</span>
+</a>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     2. ADD THIS BUTTON ON THE PLAN MEETUP PAGE (meetup/plan.html)
+        Place it inside the "My Meetups" card, on each meetup item row.
+        Replace <MEETUP_ID> with the actual meetup id variable.
+═══════════════════════════════════════════════════════════════════════ -->
+
+<a href="{{ url_for('fare_alert.meetup_alerts', meetup_id=MEETUP_ID) }}"
+   class="btn-sec"
+   style="padding:5px 10px;font-size:11px;text-decoration:none;border-color:var(--green);color:var(--green)">
+  📉 Fare Alert
+</a>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     3. ADD THIS CARD ON THE DASHBOARD (user/dashboard.html)
+        Place it at the bottom of the dash-right aside, after the calendar.
+        Replace MEETUP_ID with the first active meetup id.
+═══════════════════════════════════════════════════════════════════════ -->
+
+<div class="card" style="margin-top:16px;padding:16px">
+  <div style="font-weight:700;font-size:14px;color:var(--primary);margin-bottom:10px">
+    📉 Fare Drop Alerts
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">
+    Get notified when ride costs drop for your upcoming meetups.
+  </div>
+  <a href="{{ url_for('fare_alert.index') }}"
+     class="btn-primary"
+     style="display:flex;align-items:center;justify-content:center;text-decoration:none;padding:10px;font-size:13px">
+    View My Alerts →
+  </a>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     4. ADD THIS SNIPPET IN meetup/view.html
+        Place it inside the Quick Actions card.
+═══════════════════════════════════════════════════════════════════════ -->
+
+<a href="{{ url_for('fare_alert.meetup_alerts', meetup_id=meetup_id) }}"
+   class="btn-sec"
+   style="width:100%;justify-content:center;padding:11px;font-size:13px;text-decoration:none">
+  📉 Set Fare Drop Alert
+</a>

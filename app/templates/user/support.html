@@ -1,132 +1,53 @@
 {% extends "base_dashboard.html" %}
 {% set active_page = 'support' %}
-{% block title %}Help & Support — Bhetamla{% endblock %}
+{% block title %}Support — Bhetamल{% endblock %}
 
-{% block extra_css %}
-<style>
-    .support-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
+{% block page_content %}
+<div id="page-support" class="page active" style="flex-direction:column" role="main">
+  <div class="topbar">
+    <div class="topbar-search" style="padding:0 14px"><label for="search-support" style="display:flex;align-items:center;gap:10px;cursor:text;flex:1"><span aria-hidden="true" style="font-size:14px">&#128269;</span><input id="search-support" type="search" placeholder="Search help topics..." aria-label="Search help topics" style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
+    <div class="topbar-controls">
+      <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
+    </div>
+  </div>
+  <div style="padding:28px;max-width:700px">
+    <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;margin-bottom:8px;color:var(--primary)">Support &amp; Help</h1>
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:28px">Find answers, get help, and reach our support team.</p>
 
-    .form-group {
-        margin-bottom: 16px;
-    }
-
-    .form-group label {
-        display: block;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 8px;
-    }
-
-    .form-group input,
-    .form-group textarea {
-        width: 100%;
-        padding: 12px 16px;
-        border: 1.5px solid var(--border);
-        border-radius: 12px;
-        font-size: 14px;
-        background: var(--bg);
-        color: var(--text);
-        outline: none;
-        transition: all 0.2s;
-    }
-
-    .form-group input:focus,
-    .form-group textarea:focus {
-        border-color: var(--primary);
-    }
-
-    .btn-submit {
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 12px;
-        padding: 12px 24px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    .faq-item {
-        margin-bottom: 16px;
-        padding-bottom: 14px;
-        border-bottom: 1px solid var(--border);
-    }
-
-    .faq-item:last-child {
-        border-bottom: none;
-        margin-bottom: 0;
-        padding-bottom: 0;
-    }
-
-    .faq-question {
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--text);
-        margin-bottom: 6px;
-    }
-
-    .faq-answer {
-        font-size: 13px;
-        color: var(--text-muted);
-        line-height: 1.5;
-    }
-
-    @media (max-width: 768px) {
-        .support-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<h1 style="font-size:22px; font-weight:700; margin-bottom:24px;">❓ Help & Support Desk</h1>
-
-<div class="support-grid">
-    <!-- Help Request Form -->
-    <div class="card">
-        <div class="card-title">📩 Submit Support Ticket</div>
-        
-        <form method="POST" action="{{ url_for('user.support_page') }}">
-            <div class="form-group">
-                <label for="subject">Request Subject</label>
-                <input type="text" id="subject" name="subject" placeholder="What do you need help with?" required>
-            </div>
-
-            <div class="form-group">
-                <label for="message">Detailed Message</label>
-                <textarea id="message" name="message" rows="5" placeholder="Provide details regarding your query..." required></textarea>
-            </div>
-
-            <button type="submit" class="btn-submit">Submit Request</button>
-        </form>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px">
+      <div class="card" style="cursor:pointer;text-align:center;padding:24px" onclick="showToast('Live chat coming soon!')">
+        <div style="font-size:32px;margin-bottom:10px">💬</div>
+        <div style="font-weight:700;font-size:14px">Live Chat</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">Chat with our support team</div>
+      </div>
+      <div class="card" style="cursor:pointer;text-align:center;padding:24px" onclick="showToast('Email support: help@bhetamla.com')">
+        <div style="font-size:32px;margin-bottom:10px">📧</div>
+        <div style="font-weight:700;font-size:14px">Email Support</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">help@bhetamla.com</div>
+      </div>
     </div>
 
-    <!-- Help FAQs -->
     <div class="card">
-        <div class="card-title">📖 Frequently Asked Questions</div>
-        
-        <div class="faq-item">
-            <div class="faq-question">How does Bhetamla SOS coordinate my location?</div>
-            <div class="faq-answer">When you trigger the red SOS button, Bhetamla queries your browser GPS coordinates and dynamically formats them into a Google Maps locator link which is emailed to your circle of contacts.</div>
+      <div style="font-weight:700;font-size:15px;margin-bottom:16px">Frequently Asked Questions</div>
+      {% set faqs = [
+        ('How do I create a meetup?', 'Go to Plan Meetup from the sidebar, fill in the details and invite friends. The smart midpoint calculator will suggest the best meeting spot.'),
+        ('How does location sharing work?', 'Location is only shared when you actively trigger it or during an SOS alert. It is never stored permanently.'),
+        ('How do I add emergency contacts?', 'Go to Safety Hub → Emergency Contacts → Add Contact. They will be notified instantly during any SOS alert.'),
+        ('Can I change my language?', 'Yes! Click the EN | नेपाली button in the top bar to switch between English and Nepali at any time.'),
+        ('How do group votes work?', 'In My Groups, the admin can start a vote session. Members vote for their preferred venue and the winner is announced automatically.'),
+      ] %}
+      {% for q, a in faqs %}
+      <div style="border-bottom:1px solid var(--border);padding:14px 0;">
+        <button onclick="toggleTopic({{ loop.index }})" id="topic-btn-{{ loop.index }}" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;color:var(--text);text-align:left;padding:0" aria-expanded="false">
+          {{ q }}
+          <span id="topic-arrow-{{ loop.index }}" style="font-size:14px;color:var(--muted);transition:transform .2s;flex-shrink:0;margin-left:10px;">›</span>
+        </button>
+        <div id="topic-body-{{ loop.index }}" style="display:none;margin-top:10px;font-size:13px;color:var(--muted);line-height:1.65;">
+          {{ a }}
         </div>
-
-        <div class="faq-item">
-            <div class="faq-question">How many contacts can I add?</div>
-            <div class="faq-answer">Bhetamla supports up to 3 safety contacts. This ensures maximum alert efficiency without cluttering emergency responses.</div>
-        </div>
-
-        <div class="faq-item">
-            <div class="faq-question">Is my location monitored 24/7?</div>
-            <div class="faq-answer">No, your privacy is fully protected. Location details are only queried dynamically when you manually trigger an SOS alert and are never logged on active servers afterwards.</div>
-        </div>
+      </div>
+      {% endfor %}
     </div>
+  </div>
 </div>
 {% endblock %}
