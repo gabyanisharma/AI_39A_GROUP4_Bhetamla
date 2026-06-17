@@ -126,6 +126,7 @@ def view_meetup(meetup_id):
 
     members     = MeetupMember.get_by_meetup(meetup_id)
     suggestions = PlaceSuggestion.get_by_meetup(meetup_id)
+    saved_route = MeetupRoute.get_by_meetup(meetup_id)
     user_id     = get_current_user_id()
 
     # Check if current user is a member
@@ -135,7 +136,6 @@ def view_meetup(meetup_id):
         m['user_id'] == user_id and m['status'] == 'accepted'
         for m in members
     )
-    saved_route = MeetupRoute.get_by_meetup(meetup_id)
 
     # Get member locations for midpoint display
     locations = MeetupMember.get_locations(meetup_id)
@@ -291,12 +291,14 @@ def saved_places():
         return redirect(url_for('auth.login'))
 
     from app.database import execute_query
+    from app.models.place import RestaurantOffer
     user_id = get_current_user_id()
     places  = execute_query(
         "SELECT * FROM saved_places WHERE user_id=%s ORDER BY created_at DESC",
         (user_id,), fetch=True
     )
-    return render_template('place/saved.html', places=places)
+    offers = RestaurantOffer.get_saved_by_user(user_id)
+    return render_template('place/saved.html', places=places, offers=offers)
 
 
 def _build_filters(args):
@@ -340,6 +342,8 @@ def restaurants():
             restaurant_list = Restaurant.get_near_midpoint(
                 midpoint_lat, midpoint_lng, radius, filters
             )
+        else:
+            restaurant_list = Restaurant.get_all(filters)
     elif search_q:
         restaurant_list = Restaurant.search(search_q)
     else:
@@ -386,14 +390,28 @@ def restaurant_detail(restaurant_id):
         return redirect(url_for('place.saved'))
 
     reviews      = RestaurantReview.get_by_restaurant(restaurant_id)
+    user_id      = get_current_user_id()
     user_review  = RestaurantReview.get_by_user(
-        get_current_user_id(), restaurant_id
+        user_id, restaurant_id
     )
+
+    from app.models.place import RestaurantOffer
+    active_offers = RestaurantOffer.get_active_by_restaurant(restaurant_id)
+    saved_offers_dict = {o['offer_id']: o for o in RestaurantOffer.get_saved_by_user(user_id)}
+    
+    for offer in active_offers:
+        if offer['id'] in saved_offers_dict:
+            offer['is_saved'] = True
+            offer['remind_me'] = saved_offers_dict[offer['id']]['remind_me']
+        else:
+            offer['is_saved'] = False
+            offer['remind_me'] = False
 
     return render_template('place/restaurant_detail.html',
                            restaurant=restaurant,
                            reviews=reviews,
-                           user_review=user_review)
+                           user_review=user_review,
+                           offers=active_offers)
 
 
 # ── Add review ─────────────────────────────────────────────────────
@@ -459,3 +477,21 @@ def remove_saved_place(place_id):
     )
     flash('Place removed.', 'info')
     return redirect(url_for('place.saved'))
+
+# ── Offers ─────────────────────────────────────────────────────────
+def save_restaurant_offer(offer_id):
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+    from app.models.place import RestaurantOffer
+    RestaurantOffer.save_offer(get_current_user_id(), offer_id)
+    flash('Offer saved!', 'success')
+    return redirect(request.referrer or url_for('place.restaurants_page'))
+
+def toggle_offer_reminder(offer_id):
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+    from app.models.place import RestaurantOffer
+    remind_me = request.form.get('remind_me') == '1'
+    RestaurantOffer.toggle_reminder(get_current_user_id(), offer_id, remind_me)
+    flash('Reminder preferences updated.', 'success')
+    return redirect(request.referrer or url_for('place.restaurants_page'))

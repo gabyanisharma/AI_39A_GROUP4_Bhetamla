@@ -87,17 +87,6 @@
         {% endfor %}
       </div>
 
-      <div class="section-header" style="margin-top:24px">
-        <div class="section-title">Explore Trending Spots</div>
-        <div class="view-all" onclick="window.location='{{ url_for('place.restaurants_page') }}'">View All →</div>
-      </div>
-      <div class="spots-grid" style="grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:28px;">
-        <div class="spot-card" style="position:relative;overflow:hidden;height:160px;" onclick="window.location='{{ url_for('place.restaurants_page') }}'" tabindex="0" role="button">
-          <img src="https://images.unsplash.com/photo-1571401835393-8c5f35328320?w=600&h=400&fit=crop&auto=format" alt="Basantapur Durbar Square" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
-          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 20%,rgba(0,0,0,.82) 100%);"></div>
-          <span class="badge" style="background:var(--gold);color:#fff;position:absolute;top:10px;left:10px;font-size:10px;z-index:2;">🔥 MOST POPULAR</span>
-          <div class="spot-name" style="position:relative;z-index:2;font-size:13.5px;">Basantapur Durbar Square</div>
-          <div class="spot-desc" style="position:relative;z-index:2;">Historic heart of Kathmandu — temples, street food &amp; vibes.</div>
         </div>
         <div class="spot-card" style="position:relative;overflow:hidden;height:160px;" onclick="window.location='{{ url_for('place.restaurants_page') }}'" tabindex="0" role="button">
           <img src="https://images.unsplash.com/photo-1605640840605-14ac1855827b?w=600&h=400&fit=crop&auto=format" alt="Thamel Kathmandu" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
