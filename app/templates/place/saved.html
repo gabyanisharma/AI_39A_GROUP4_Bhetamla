@@ -48,6 +48,44 @@
       </div>
       {% endfor %}
     </div>
+
+    <!-- SAVED OFFERS SECTION -->
+    <div style="margin-top:40px;margin-bottom:24px;">
+      <h2 style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--primary);margin-bottom:6px">Saved Offers</h2>
+      <p style="color:var(--muted);font-size:13.5px">Active deals you've saved for later.</p>
+    </div>
+    
+    <div id="offers-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding-bottom:40px;">
+      {% for o in offers %}
+      <div class="card" style="border:1.5px solid var(--border);border-radius:12px;padding:16px;background:var(--input-bg);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--text)">🏷️ {{ o.title }}</div>
+            <div style="font-size:12px;color:var(--muted)">@ {{ o.restaurant_name }}</div>
+          </div>
+          <span style="background:rgba(30,130,76,.1);color:var(--green);font-weight:700;font-size:11px;padding:4px 10px;border-radius:20px">{{ o.discount_percent }}% OFF</span>
+        </div>
+        <div style="font-size:12px;color:var(--text);margin-bottom:12px">Valid until: <strong style="color:var(--amber)">{{ o.valid_until }}</strong></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <a href="{{ url_for('place.restaurant_detail_page', restaurant_id=o.restaurant_id) }}" class="btn-primary" style="flex:1;text-align:center;padding:10px;font-size:12px;text-decoration:none">View Restaurant</a>
+          <form method="POST" action="{{ url_for('place.toggle_reminder_route', offer_id=o.id) }}" style="flex:1;">
+            <input type="hidden" name="remind_me" value="{{ '0' if o.remind_me else '1' }}">
+            <button type="submit" class="btn-sec" style="width:100%;padding:10px;font-size:12px;cursor:pointer">
+              {{ '🔕 Disable Reminder' if o.remind_me else '🔔 Notify Me' }}
+            </button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <div class="card" style="text-align:center;padding:30px;color:var(--muted);grid-column:1/-1">
+        <div style="font-size:28px;margin-bottom:10px">🏷️</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">No saved offers yet</div>
+        <div style="font-size:12px;margin-bottom:12px">Explore restaurants to find and save active discounts.</div>
+        <a href="{{ url_for('place.restaurants_page') }}" class="btn-sec" style="display:inline-flex;width:auto;padding:8px 16px;font-size:12px;text-decoration:none">Browse Offers →</a>
+      </div>
+      {% endfor %}
+    </div>
+
   </div>
 </div>
 
