@@ -19,7 +19,6 @@
     <a class="nav-btn {% if active_page == 'groups' %}active{% endif %}" href="{{ url_for('meetup.groups') }}" style="text-decoration:none" {% if active_page == 'groups' %}aria-current="page"{% endif %}><span class="nav-icon">&#128101;</span><span>My Groups</span></a>
     <a class="nav-btn {% if active_page == 'saved' %}active{% endif %}" href="{{ url_for('place.saved') }}" style="text-decoration:none" {% if active_page == 'saved' %}aria-current="page"{% endif %}><span class="nav-icon">&#128278;</span><span>Saved Places</span></a>
     <a class="nav-btn {% if active_page == 'restaurants' %}active{% endif %}" href="{{ url_for('place.restaurants_page') }}" style="text-decoration:none" {% if active_page == 'restaurants' %}aria-current="page"{% endif %}><span class="nav-icon">&#127869;</span><span>Browse Restaurants</span></a>
-    <a class="nav-btn {% if active_page == 'route_planner' %}active{% endif %}" href="{{ url_for('ride.planner') }}" style="text-decoration:none" {% if active_page == 'route_planner' %}aria-current="page"{% endif %}><span class="nav-icon">🗺️</span><span>Route Planner</span></a>
     <a class="nav-btn {% if active_page == 'safety' %}active{% endif %}" href="{{ url_for('user.safety_page') }}" style="text-decoration:none" {% if active_page == 'safety' %}aria-current="page"{% endif %}><span class="nav-icon">&#128737;</span><span>Safety Hub</span></a>
 
     <div class="sidebar-spacer"></div>
