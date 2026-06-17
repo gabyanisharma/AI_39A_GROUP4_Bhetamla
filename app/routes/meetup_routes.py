@@ -52,20 +52,6 @@ def suggest(meetup_id):
 def respond(meetup_id):
     return respond_meetup(meetup_id)
 
-@meetup_bp.route('/<int:meetup_id>/route', methods=['GET'])
-@login_required
-def route_detail(meetup_id):
-    return get_meetup_route(meetup_id)
-
-@meetup_bp.route('/<int:meetup_id>/route', methods=['POST'])
-@login_required
-def route_save(meetup_id):
-    return save_meetup_route(meetup_id)
-
-@meetup_bp.route('/<int:meetup_id>/route', methods=['DELETE'])
-@login_required
-def route_delete(meetup_id):
-    return delete_meetup_route(meetup_id)
 
 @meetup_bp.route('/groups')
 @login_required
@@ -132,3 +118,18 @@ def respond_invite_route(invite_id):
 @login_required
 def common_availability():
     return get_common_availability()
+
+@meetup_bp.route('/<int:meetup_id>/route', methods=['GET'])
+@login_required
+def route_detail(meetup_id):
+    return get_meetup_route(meetup_id)
+
+@meetup_bp.route('/<int:meetup_id>/route', methods=['POST'])
+@login_required
+def route_save(meetup_id):
+    return save_meetup_route(meetup_id)
+
+@meetup_bp.route('/<int:meetup_id>/route', methods=['DELETE'])
+@login_required
+def route_delete(meetup_id):
+    return delete_meetup_route(meetup_id)
