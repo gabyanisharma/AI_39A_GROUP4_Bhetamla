@@ -62,7 +62,6 @@ def plan_meetup(created_meetup_id=None):
     user_id  = get_current_user_id()
     friends  = Friend.get_friends(user_id)
     meetups  = Meetup.get_by_user(user_id)
-
     return render_template('meetup/plan.html',
                            friends=friends,
                            meetups=meetups,
