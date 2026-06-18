@@ -161,7 +161,7 @@
           <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;">
             <span style="background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">{{ m.status|title }}</span>
             {% if m.created_by == current_user_id %}
-            <form method="POST" action="{{ url_for('meetup.delete', meetup_id=m.id) }}" onsubmit="return confirm('Delete this meetup plan?');" style="margin:0;">
+            <form method="POST" action="{{ url_for('meetup.delete', meetup_id=m.id) }}" onsubmit="return confirm('Remove from My Groups? It stays in History & Analytics.');" style="margin:0;">
               <button type="submit" aria-label="Delete {{ m.title }}" title="Delete plan" style="width:30px;height:30px;border-radius:9px;border:1.5px solid rgba(192,57,43,.25);background:#FFEBEE;color:var(--red);font-size:13px;font-weight:800;cursor:pointer;">✕</button>
             </form>
             {% endif %}
