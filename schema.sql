@@ -717,4 +717,51 @@ CREATE TABLE IF NOT EXISTS spot_recommendations (
     UNIQUE KEY unique_user_spot_recommendation (user_id, spot_id)
 );
 
+-- =========================================
+-- SMART NOTIFICATION ALERTS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS notification_preferences (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NOT NULL,
+
+    -- Master switch for smart alerts.
+    smart_alerts_enabled BOOLEAN DEFAULT TRUE,
+
+    -- Per-category toggles.
+    meetup_reminders BOOLEAN DEFAULT TRUE,
+    invite_alerts BOOLEAN DEFAULT TRUE,
+    trending_alerts BOOLEAN DEFAULT TRUE,
+
+    -- How many hours before a meetup to fire the reminder.
+    reminder_lead_hours INT DEFAULT 24,
+
+    -- Quiet hours on a 24h clock - alerts in this window are suppressed.
+    quiet_hours_start TINYINT NULL,
+    quiet_hours_end TINYINT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+
+    UNIQUE KEY unique_user_pref (user_id)
+);
+
+-- Idempotency log so the smart-alert engine never fires the same alert twice.
+CREATE TABLE IF NOT EXISTS smart_alert_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NOT NULL,
+    alert_key VARCHAR(191) NOT NULL,
+    notification_id INT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+
+    UNIQUE KEY unique_user_alert (user_id, alert_key)
+);
+
 -- Indexes for fast lookups are created conditionally in app/database.py
