@@ -61,7 +61,20 @@ def plan_meetup(created_meetup_id=None):
 
     user_id  = get_current_user_id()
     friends  = Friend.get_friends(user_id)
-    meetups  = Meetup.get_by_user(user_id)
+    meetups  = Meetup.get_by_user(user_id, include_hidden=False)
+    created_meetup = None
+    created_members = []
+    created_map_points = []
+    created_midpoint = None
+    if created_meetup_id:
+        created_meetup = Meetup.get_by_id(int(created_meetup_id))
+        if created_meetup:
+            created_members = MeetupMember.get_by_meetup(int(created_meetup_id)) or []
+            if created_meetup.get('midpoint_lat'):
+                created_midpoint = {
+                    'lat': float(created_meetup['midpoint_lat']),
+                    'lng': float(created_meetup['midpoint_lng']),
+                }
     return render_template('meetup/plan.html',
                            friends=friends,
                            meetups=meetups,
@@ -114,6 +127,8 @@ def create_meetup():
             )
 
         flash('Meetup created successfully!', 'success')
+        from app.services import achievement_service
+        achievement_service.on_meetup_created(user_id)
         return redirect(url_for('meetup.plan',
                                 meetup_id=meetup_id))
 
@@ -282,6 +297,8 @@ def respond_meetup(meetup_id):
 
     if action == 'accept':
         MeetupMember.accept(meetup_id, user_id)
+        from app.services import achievement_service
+        achievement_service.on_meetup_joined(user_id)
         flash('You joined the meetup!', 'success')
     elif action == 'decline':
         MeetupMember.decline(meetup_id, user_id)
