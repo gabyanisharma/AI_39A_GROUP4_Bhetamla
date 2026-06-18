@@ -43,6 +43,8 @@ def add_contact():
             return redirect(url_for('user.safety_page'))
 
         EmergencyContact.create(get_current_user_id(), name, phone, relationship)
+        from app.services import achievement_service
+        achievement_service.on_emergency_contact_added(get_current_user_id())
         flash('Emergency contact added!', 'success')
 
     return redirect(url_for('user.safety_page'))
