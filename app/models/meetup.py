@@ -44,6 +44,14 @@ class Meetup:
             WHERE id = %s
         """
         return execute_query(query, (lat, lng, address, meetup_id))
+    
+    @staticmethod
+    def delete_by_creator(meetup_id, user_id):
+        query = """
+            DELETE FROM meetups
+            WHERE id = %s AND created_by = %s
+        """
+        return execute_query(query, (meetup_id, user_id))
 
 
 class MeetupMember:

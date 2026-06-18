@@ -8,6 +8,7 @@ from app.controllers.notification_controller import send_notification
 from app.models.place import Restaurant, RestaurantReview
 from app.models.meetup_route import MeetupRoute
 import math
+from flask import render_template, request, redirect, url_for, flash, jsonify
 
 # ── Midpoint calculation ───────────────────────────────────────────
 def calculate_midpoint(locations):
@@ -61,10 +62,16 @@ def plan_meetup(created_meetup_id=None):
     user_id  = get_current_user_id()
     friends  = Friend.get_friends(user_id)
     meetups  = Meetup.get_by_user(user_id)
+
     return render_template('meetup/plan.html',
                            friends=friends,
                            meetups=meetups,
-                           created_meetup_id=created_meetup_id) 
+                           created_meetup_id=created_meetup_id,
+                           created_meetup=created_meetup,
+                           created_members=created_members,
+                           created_map_points=created_map_points,
+                           created_midpoint=created_midpoint,
+                           current_user_id=user_id)
 
 
 # ── Create new meetup ──────────────────────────────────────────────
@@ -104,7 +111,7 @@ def create_meetup():
                 'Meetup Invitation',
                 f'{current_user["full_name"]} invited you to "{title}"!',
                 type='meetup',
-                link=f'/meetup/view/{meetup_id}'
+                link=f'/meetup/plan?meetup_id={meetup_id}'
             )
 
         flash('Meetup created successfully!', 'success')
