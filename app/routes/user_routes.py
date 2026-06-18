@@ -71,15 +71,8 @@ def dashboard():
     friends_count = friends_count_row[0]['cnt'] if friends_count_row else 0
 
     # ── Stats: badges earned ──────────────────────────────────────────────────
-    # Uses badges table if it exists; falls back to 0 gracefully
-    try:
-        badges_row = execute_query(
-            "SELECT COUNT(*) AS cnt FROM user_badges WHERE user_id = %s",
-            (user_id,), fetch=True
-        )
-        badges_count = badges_row[0]['cnt'] if badges_row else 0
-    except Exception:
-        badges_count = 0
+    from app.models.achievement import Achievement
+    badges_count = Achievement.count_for_user(user_id)
 
     # ── Meetup member avatars (first 6 meetups, up to 5 members each) ─────────
     meetup_member_map = {}
