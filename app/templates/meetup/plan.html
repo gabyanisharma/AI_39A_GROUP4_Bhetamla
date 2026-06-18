@@ -1,9 +1,35 @@
 {% extends "base_dashboard.html" %}
 {% set active_page = 'plan' %}
+{% set show_advanced = created_meetup is defined and created_meetup %}
+{% set active_meetup = created_meetup if show_advanced else none %}
 {% block title %}Plan Meetup — Bhetamल{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  #plan-leaflet-map .leaflet-control-attribution {
+    font-size: 10px;
+  }
+  .plan-map-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    border: 3px solid #fff;
+    box-shadow: 0 5px 16px rgba(8,45,37,.28);
+  }
+  .plan-map-dot.member {
+    background: linear-gradient(135deg,var(--blue),var(--primary));
+  }
+  .plan-map-dot.midpoint {
+    background: linear-gradient(135deg,var(--gold),var(--green));
+  }
+</style>
 {% endblock %}
 
 {% block page_content %}
@@ -31,6 +57,15 @@
           <input type="hidden" id="pm-lat" name="user_lat" />
           <input type="hidden" id="pm-lng" name="user_lng" />
           <input type="hidden" id="pm-addr" name="user_address" />
+
+          <div style="display:flex;align-items:center;gap:12px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:12px;padding:13px 16px;margin-bottom:20px;">
+            <span style="font-size:18px;flex-shrink:0;">📍</span>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:13px;color:var(--text);" id="pm-loc-label">Location not set</div>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:1px;">Your starting point for midpoint calculation</div>
+            </div>
+            <button type="button" onclick="detectPMLocation()" style="background:none;border:none;color:var(--blue);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;padding:0;flex-shrink:0;">Detect</button>
+          </div>
 
           <div style="margin-bottom:16px;">
             <label class="field-label" for="pm-title">MEETUP TITLE</label>
@@ -111,6 +146,7 @@
     </div>
   </div>
 
+  {% include "meetup/_plan_advanced.html" %}
 </div>
 
 <div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
@@ -809,25 +845,20 @@ function completeSerialStep(id, value){
     if(baseCloseFeatModal) return baseCloseFeatModal(id);
   };
 
-  window.closeFeatModal = function(id){
-    // X button always closes — just mark step as skipped
-    if(id && id === currentSerialStepId()){
-      recordSerialResponse(id, 'skipped');
-    }
-    if(baseCloseFeatModal) return baseCloseFeatModal(id);
-  };
-
   window.closeModal = function(id){
     if(id && id === currentSerialStepId()){
-      recordSerialResponse(id, 'skipped');
+      return requireSerialResponse(id);
     }
     if(baseCloseModal) return baseCloseModal(id);
   };
-document.addEventListener('click', function(e){\
+
+  document.addEventListener('click', function(e){
     var currentId = currentSerialStepId();
-    if(!currentId) return;
+    if(!currentId || e.target.id !== currentId) return;
     if(e.target.classList.contains('feat-modal-overlay') || e.target.classList.contains('modal-overlay')){
-      recordSerialResponse(currentId, 'skipped');
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      requireSerialResponse(currentId);
     }
   }, true);
 
@@ -835,7 +866,12 @@ document.addEventListener('click', function(e){\
     if(e.key !== 'Escape') return;
     var currentId = currentSerialStepId();
     if(!currentId) return;
-    recordSerialResponse(currentId, 'skipped');
+    var currentModal = document.getElementById(currentId);
+    if(currentModal && currentModal.classList.contains('open')){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      requireSerialResponse(currentId);
+    }
   }, true);
 
   window.openFinalSummary = function(){
@@ -865,15 +901,5 @@ document.addEventListener('click', function(e){\
     }
   }
 })();
-
-function savePlanPreferences(data) {
-  var ctx = window.PLAN_CONTEXT || {};
-  if (!ctx.meetupId) return;
-  fetch('/meetup/save-preferences/' + ctx.meetupId, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-    body: JSON.stringify(data)
-  }).catch(function(){});
-}
 </script>
 {% endblock %}
