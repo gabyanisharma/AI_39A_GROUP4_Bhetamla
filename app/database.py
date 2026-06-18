@@ -141,6 +141,8 @@ def _repair_existing_schema(cursor):
     _ensure_index(cursor, 'trending_spots', 'idx_trending_spots_feed', "INDEX idx_trending_spots_feed (is_active, trend_score)")
     _ensure_index(cursor, 'user_spot_interactions', 'idx_spot_interactions_spot', "INDEX idx_spot_interactions_spot (spot_id, interaction_type)")
     _ensure_index(cursor, 'spot_recommendations', 'idx_spot_recommendations_user', "INDEX idx_spot_recommendations_user (user_id, is_dismissed)")
+    _ensure_index(cursor, 'notifications', 'idx_notifications_user_read', "INDEX idx_notifications_user_read (user_id, is_read)")
+    _ensure_index(cursor, 'smart_alert_log', 'idx_smart_alert_user', "INDEX idx_smart_alert_user (user_id, alert_key)")
 
 
 def _seed_demo_data(cursor):
