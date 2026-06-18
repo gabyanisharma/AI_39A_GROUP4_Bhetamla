@@ -54,17 +54,17 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 
 
 # ── Plan Meetup page ───────────────────────────────────────────────
-def plan_meetup():
+def plan_meetup(created_meetup_id=None):
     if not is_logged_in():
         return redirect(url_for('auth.login'))
 
     user_id  = get_current_user_id()
     friends  = Friend.get_friends(user_id)
     meetups  = Meetup.get_by_user(user_id)
-
     return render_template('meetup/plan.html',
                            friends=friends,
-                           meetups=meetups)
+                           meetups=meetups,
+                           created_meetup_id=created_meetup_id) 
 
 
 # ── Create new meetup ──────────────────────────────────────────────
@@ -84,7 +84,7 @@ def create_meetup():
 
         if not title:
             flash('Meetup title is required.', 'error')
-            return redirect(url_for('meetup.plan'))
+            return redirect(url_for('meetup.plan', meetup_id=meetup_id))
 
         user_id    = get_current_user_id()
         meetup_id  = Meetup.create(title, description, user_id,
@@ -108,7 +108,7 @@ def create_meetup():
             )
 
         flash('Meetup created successfully!', 'success')
-        return redirect(url_for('meetup.view_meetup',
+        return redirect(url_for('meetup.plan',
                                 meetup_id=meetup_id))
 
     return redirect(url_for('meetup.plan'))
