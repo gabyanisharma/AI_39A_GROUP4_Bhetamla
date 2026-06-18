@@ -1,0 +1,671 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'plan' %}
+{% block title %}Ride Estimates — Bhetamla{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    .ride-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    .full-width { grid-column: span 2; }
+
+    /* Peak warning */
+    .peak-warning {
+        background: #FEF3C7;
+        border: 1px solid #FDE68A;
+        border-radius: 12px;
+        padding: 14px 18px;
+        display: flex; align-items: center; gap: 12px;
+        margin-bottom: 20px;
+        font-size: 14px; color: #92400E;
+    }
+    .peak-warning .pw-icon { font-size: 22px; }
+    .peak-warning .pw-text strong { display: block; font-weight: 700; }
+
+    /* My location card */
+    .location-card {
+        background: var(--bg);
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+    .location-card p {
+        font-size: 13px; color: var(--text-muted);
+        margin-bottom: 10px;
+    }
+    .detect-btn {
+        width: 100%; padding: 11px;
+        background: var(--primary); color: white;
+        border: none; border-radius: 10px;
+        font-size: 14px; font-weight: 600;
+        cursor: pointer; transition: background 0.2s;
+    }
+    .detect-btn:hover { background: var(--primary-dark); }
+    .loc-status {
+        font-size: 12px; color: #16A34A;
+        margin-top: 8px; display: none;
+    }
+
+    /* Cost cards */
+    .cost-options {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+    }
+    .cost-card {
+        background: var(--bg);
+        border: 1.5px solid var(--border);
+        border-radius: 14px;
+        padding: 16px;
+        text-align: center;
+        transition: border-color 0.2s;
+    }
+    .cost-card:hover { border-color: var(--primary); }
+    .cost-card .cc-icon  { font-size: 28px; margin-bottom: 8px; }
+    .cost-card .cc-name  { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .cost-card .cc-price {
+        font-size: 22px; font-weight: 700;
+        color: var(--primary); margin: 6px 0 4px;
+    }
+    .cost-card .cc-sub   { font-size: 11px; color: var(--text-muted); }
+    .cost-card.walk-card .cc-price { color: #16A34A; }
+    .cost-card.peak-card { border-color: #FDE68A; background: #FFFBEB; }
+
+    .distance-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: var(--primary-light);
+        color: var(--primary);
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-size: 13px; font-weight: 700;
+        margin-bottom: 16px;
+    }
+
+    /* Map */
+    #rideMap {
+        width: 100%; height: 300px;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        margin-bottom: 16px;
+    }
+
+    /* Members table */
+    .members-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .members-table th {
+        background: var(--bg);
+        padding: 10px 14px;
+        text-align: left;
+        font-size: 11px; font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--border);
+    }
+    .members-table td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+    }
+    .members-table tr:last-child td { border-bottom: none; }
+    .members-table tr:hover td { background: var(--bg); }
+    .no-data { color: var(--text-muted); font-style: italic; }
+    .peak-badge {
+        background: #FEF3C7; color: #D97706;
+        border-radius: 6px; padding: 2px 8px;
+        font-size: 11px; font-weight: 600;
+    }
+
+    /* Split summary */
+    .split-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+    }
+    .split-card {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px; text-align: center;
+    }
+    .split-card .s-icon  { font-size: 24px; margin-bottom: 8px; }
+    .split-card .s-name  { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+    .split-card .s-avg   { font-size: 20px; font-weight: 700; color: var(--primary); margin: 6px 0 2px; }
+    .split-card .s-total { font-size: 12px; color: var(--text-muted); }
+
+    .btn-split {
+        width: 100%; padding: 12px;
+        background: #16A34A; color: white;
+        border: none; border-radius: 10px;
+        font-size: 14px; font-weight: 600;
+        cursor: pointer; margin-top: 16px;
+        transition: background 0.2s;
+    }
+    .btn-split:hover { background: #15803D; }
+
+    @media (max-width: 768px) {
+        .ride-grid { grid-template-columns: 1fr; }
+        .full-width { grid-column: span 1; }
+        .cost-options { grid-template-columns: 1fr 1fr; }
+        .split-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<!-- Back link -->
+<a href="{{ url_for('meetup.view_meetup', meetup_id=meetup.id) }}"
+   style="display:inline-flex; align-items:center; gap:6px;
+          font-size:14px; font-weight:600; color:var(--text-muted);
+          text-decoration:none; margin-bottom:20px;">
+    ← Back to Meetup
+</a>
+
+<h1 style="font-size:22px; font-weight:700; margin-bottom:6px;">
+    🛵 Ride Cost Estimates
+</h1>
+<p style="color:var(--text-muted); font-size:14px; margin-bottom:24px;">
+    {{ meetup.title }} — Kathmandu Valley
+</p>
+
+<!-- Peak hour warning -->
+{% if is_peak %}
+<div class="peak-warning">
+    <span class="pw-icon">⚠️</span>
+    <div class="pw-text">
+        <strong>Peak Hour Surge Active</strong>
+        Ride fares are approximately 30% higher right now.
+        Consider travelling after peak hours to save money.
+    </div>
+</div>
+{% endif %}
+
+<div class="ride-grid">
+
+    <!-- My Ride Estimate -->
+    <div class="card">
+        <div class="card-title">📍 My Ride to Meetup</div>
+
+        <!-- Midpoint info -->
+        {% if meetup.midpoint_lat and meetup.midpoint_lng %}
+        <div style="background:var(--primary-light); border-radius:10px;
+                    padding:12px 14px; margin-bottom:16px; font-size:13px;">
+            <strong>🎯 Destination:</strong> Midpoint
+            ({{ "%.4f"|format(meetup.midpoint_lat|float) }},
+             {{ "%.4f"|format(meetup.midpoint_lng|float) }})
+        </div>
+        {% else %}
+        <div style="background:#FEF3C7; border-radius:10px;
+                    padding:12px 14px; margin-bottom:16px;
+                    font-size:13px; color:#92400E;">
+            ⚠️ No midpoint set yet. Share your location in the meetup first.
+        </div>
+        {% endif %}
+
+        <!-- Location detect -->
+        <div class="location-card">
+            <p>Share your current location to calculate your ride cost.</p>
+            <button class="detect-btn" id="detectBtn"
+                    onclick="detectAndCalculate()">
+                📡 Detect My Location & Calculate
+            </button>
+            <div class="loc-status" id="locStatus">
+                ✅ Location detected! Calculating costs...
+            </div>
+        </div>
+
+        <!-- My estimate result -->
+        {% set my_est = est_map.get(user_id) %}
+        {% if my_est %}
+        <div class="distance-badge">
+            📏 {{ my_est.distance_km }} km from meetup point
+        </div>
+
+        <div class="cost-options">
+            <div class="cost-card {% if my_est.is_peak_hour %}peak-card{% endif %}">
+                <div class="cc-icon">🛵</div>
+                <div class="cc-name">Pathao Bike</div>
+                <div class="cc-price">
+                    NPR {{ my_est.pathao_bike_cost|int }}
+                </div>
+                <div class="cc-sub">~15-20 min</div>
+            </div>
+            <div class="cost-card {% if my_est.is_peak_hour %}peak-card{% endif %}">
+                <div class="cc-icon">🚗</div>
+                <div class="cc-name">Pathao Car</div>
+                <div class="cc-price">
+                    NPR {{ my_est.pathao_car_cost|int }}
+                </div>
+                <div class="cc-sub">~20-30 min</div>
+            </div>
+            <div class="cost-card {% if my_est.is_peak_hour %}peak-card{% endif %}">
+                <div class="cc-icon">🚕</div>
+                <div class="cc-name">Taxi</div>
+                <div class="cc-price">
+                    NPR {{ my_est.taxi_cost|int }}
+                </div>
+                <div class="cc-sub">Meter fare</div>
+            </div>
+            <div class="cost-card walk-card">
+                <div class="cc-icon">🚶</div>
+                <div class="cc-name">Walk</div>
+                <div class="cc-price">
+                    {{ my_est.walk_minutes }} min
+                </div>
+                <div class="cc-sub">Free</div>
+            </div>
+        </div>
+
+        {% if my_est.is_peak_hour %}
+        <div style="margin-top:12px; font-size:12px; color:#D97706;
+                    background:#FEF3C7; border-radius:8px; padding:10px;">
+            ⚠️ Prices include 30% peak hour surge.
+        </div>
+        {% endif %}
+
+        {% else %}
+        <!-- Placeholder when no estimate yet -->
+        <div class="cost-options" id="costPlaceholder">
+            {% for icon, name in [('🛵','Pathao Bike'), ('🚗','Pathao Car'), ('🚕','Taxi'), ('🚶','Walk')] %}
+            <div class="cost-card">
+                <div class="cc-icon">{{ icon }}</div>
+                <div class="cc-name">{{ name }}</div>
+                <div class="cc-price" style="color:var(--text-muted); font-size:16px;">—</div>
+                <div class="cc-sub">Share location first</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Live result (shown after calculation) -->
+        <div id="liveResult" style="display:none;">
+            <div class="distance-badge" id="liveDist"></div>
+            <div class="cost-options">
+                <div class="cost-card" id="liveBike">
+                    <div class="cc-icon">🛵</div>
+                    <div class="cc-name">Pathao Bike</div>
+                    <div class="cc-price" id="liveBikePrice">—</div>
+                    <div class="cc-sub">~15-20 min</div>
+                </div>
+                <div class="cost-card" id="liveCar">
+                    <div class="cc-icon">🚗</div>
+                    <div class="cc-name">Pathao Car</div>
+                    <div class="cc-price" id="liveCarPrice">—</div>
+                    <div class="cc-sub">~20-30 min</div>
+                </div>
+                <div class="cost-card" id="liveTaxi">
+                    <div class="cc-icon">🚕</div>
+                    <div class="cc-name">Taxi</div>
+                    <div class="cc-price" id="liveTaxiPrice">—</div>
+                    <div class="cc-sub">Meter fare</div>
+                </div>
+                <div class="cost-card walk-card">
+                    <div class="cc-icon">🚶</div>
+                    <div class="cc-name">Walk</div>
+                    <div class="cc-price" id="liveWalk">—</div>
+                    <div class="cc-sub">Free</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Map -->
+    <div class="card">
+        <div class="card-title">🗺️ Route Overview</div>
+        <div id="rideMap"></div>
+        <p style="font-size:12px; color:var(--text-muted); margin-top:8px;">
+            📍 Blue = Your location &nbsp;|&nbsp;
+            ⭐ Red = Meetup midpoint &nbsp;|&nbsp;
+            👤 Purple = Other members
+        </p>
+    </div>
+
+    <!-- All Members Estimates -->
+    <div class="card full-width">
+        <div class="card-title">
+            👥 All Members Estimates
+            <button onclick="loadSplit()"
+                    class="btn-split"
+                    style="width:auto; padding:8px 18px; font-size:13px;
+                           margin-top:0;">
+                💰 Calculate Budget Split
+            </button>
+        </div>
+
+        <table class="members-table">
+            <thead>
+                <tr>
+                    <th>Member</th>
+                    <th>Distance</th>
+                    <th>🛵 Pathao Bike</th>
+                    <th>🚗 Pathao Car</th>
+                    <th>🚕 Taxi</th>
+                    <th>🚶 Walk</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for member in members %}
+                {% set est = est_map.get(member.user_id) %}
+                <tr>
+                    <td style="font-weight:600;">
+                        {{ member.full_name }}
+                        {% if member.user_id == user_id %}
+                        <span style="font-size:11px; color:var(--primary);">
+                            (you)
+                        </span>
+                        {% endif %}
+                    </td>
+                    {% if est %}
+                    <td>{{ est.distance_km }} km</td>
+                    <td>NPR {{ est.pathao_bike_cost|int }}</td>
+                    <td>NPR {{ est.pathao_car_cost|int }}</td>
+                    <td>NPR {{ est.taxi_cost|int }}</td>
+                    <td>{{ est.walk_minutes }} min</td>
+                    <td>
+                        {% if est.is_peak_hour %}
+                        <span class="peak-badge">⚠️ Peak</span>
+                        {% else %}
+                        <span style="color:#16A34A; font-size:12px;
+                                     font-weight:600;">✅ Normal</span>
+                        {% endif %}
+                    </td>
+                    {% else %}
+                    <td colspan="6" class="no-data">
+                        Not calculated yet
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Budget split result -->
+        <div id="splitResult" style="display:none; margin-top:20px;">
+            <div style="font-size:15px; font-weight:700;
+                        margin-bottom:12px; color:var(--text);">
+                💰 Average cost per person
+            </div>
+            <div class="split-grid">
+                <div class="split-card">
+                    <div class="s-icon">🛵</div>
+                    <div class="s-name">Pathao Bike</div>
+                    <div class="s-avg" id="splitBike">—</div>
+                    <div class="s-total" id="splitBikeTotal"></div>
+                </div>
+                <div class="split-card">
+                    <div class="s-icon">🚗</div>
+                    <div class="s-name">Pathao Car</div>
+                    <div class="s-avg" id="splitCar">—</div>
+                    <div class="s-total" id="splitCarTotal"></div>
+                </div>
+                <div class="split-card">
+                    <div class="s-icon">🚕</div>
+                    <div class="s-name">Taxi</div>
+                    <div class="s-avg" id="splitTaxi">—</div>
+                    <div class="s-total" id="splitTaxiTotal"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // ── Data from Flask ────────────────────────────────────────────
+    const MEETUP_ID  = {{ meetup.id }};
+    const USER_ID    = {{ user_id }};
+    const IS_PEAK    = {{ 'true' if is_peak else 'false' }};
+
+    {% if meetup.midpoint_lat and meetup.midpoint_lng %}
+    const MID_LAT = {{ meetup.midpoint_lat }};
+    const MID_LNG = {{ meetup.midpoint_lng }};
+    const HAS_MID = true;
+    {% else %}
+    const MID_LAT = 27.7172;
+    const MID_LNG = 85.3240;
+    const HAS_MID = false;
+    {% endif %}
+
+    const MEMBERS = [
+        {% for m in members %}
+        {% set est = est_map.get(m.user_id) %}
+        {
+            name:    "{{ m.full_name }}",
+            user_id: {{ m.user_id }},
+            lat:     {{ m.latitude or 'null' }},
+            lng:     {{ m.longitude or 'null' }},
+            has_est: {{ 'true' if est else 'false' }},
+            bike:    {{ est.pathao_bike_cost|int if est else 0 }},
+            car:     {{ est.pathao_car_cost|int if est else 0 }},
+            taxi:    {{ est.taxi_cost|int if est else 0 }}
+        },
+        {% endfor %}
+    ];
+
+    // ── Leaflet map ────────────────────────────────────────────────
+    const map = L.map('rideMap', {
+        center: [MID_LAT, MID_LNG],
+        zoom:   13,
+        scrollWheelZoom: false
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 19
+    }).addTo(map);
+
+    const midIcon = L.divIcon({
+        html: `<div style="background:#DC2626;border:3px solid white;
+                    border-radius:50%;width:36px;height:36px;
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,0.3);">⭐</div>`,
+        className: '', iconSize: [36,36], iconAnchor: [18,18]
+    });
+
+    const memberIcon = L.divIcon({
+        html: `<div style="background:#7C3AED;border:3px solid white;
+                    border-radius:50%;width:30px;height:30px;
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">👤</div>`,
+        className: '', iconSize: [30,30], iconAnchor: [15,15]
+    });
+
+    const myIcon = L.divIcon({
+        html: `<div style="background:#2563EB;border:3px solid white;
+                    border-radius:50%;width:32px;height:32px;
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:14px;box-shadow:0 2px 8px rgba(37,99,235,0.4);">📍</div>`,
+        className: '', iconSize: [32,32], iconAnchor: [16,16]
+    });
+
+    // Midpoint marker
+    if (HAS_MID) {
+        L.marker([MID_LAT, MID_LNG], { icon: midIcon })
+         .addTo(map)
+         .bindPopup('<strong>⭐ Meetup Midpoint</strong>');
+    }
+
+    // Member markers
+    const allLatLngs = HAS_MID ? [[MID_LAT, MID_LNG]] : [];
+    MEMBERS.forEach(m => {
+        if (m.lat && m.lng) {
+            const icon = m.user_id === USER_ID ? myIcon : memberIcon;
+            const latlng = [m.lat, m.lng];
+            allLatLngs.push(latlng);
+
+            const marker = L.marker(latlng, { icon })
+                .addTo(map)
+                .bindPopup(`
+                    <strong>${m.name}</strong>
+                    ${m.has_est ? `<br><span style="font-size:12px;color:#2563EB;">
+                        🛵 NPR ${m.bike} &nbsp; 🚗 NPR ${m.car}
+                    </span>` : ''}
+                `);
+
+            // Draw line to midpoint
+            if (HAS_MID) {
+                L.polyline([latlng, [MID_LAT, MID_LNG]], {
+                    color: m.user_id === USER_ID ? '#2563EB' : '#94A3B8',
+                    weight: 2, opacity: 0.5, dashArray: '5,5'
+                }).addTo(map);
+            }
+        }
+    });
+
+    if (allLatLngs.length > 1) {
+        map.fitBounds(L.latLngBounds(allLatLngs).pad(0.2));
+    }
+
+    // ── My marker (will be added on detect) ───────────────────────
+    let myMarker  = null;
+    let myLatLng  = null;
+
+    // ── Detect & calculate ─────────────────────────────────────────
+    function detectAndCalculate() {
+        if (!HAS_MID) {
+            alert('No midpoint set yet. Please share locations in the meetup first.');
+            return;
+        }
+
+        const btn = document.getElementById('detectBtn');
+        btn.textContent = '📡 Detecting...';
+        btn.disabled = true;
+
+        if (!navigator.geolocation) {
+            alert('Geolocation not supported by your browser.');
+            btn.textContent = '📡 Detect My Location & Calculate';
+            btn.disabled = false;
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                myLatLng = [lat, lng];
+
+                // Update map
+                if (myMarker) map.removeLayer(myMarker);
+                myMarker = L.marker([lat, lng], { icon: myIcon })
+                    .addTo(map)
+                    .bindPopup('<strong>📍 Your Location</strong>')
+                    .openPopup();
+
+                L.polyline([[lat, lng], [MID_LAT, MID_LNG]], {
+                    color: '#2563EB', weight: 2.5,
+                    opacity: 0.7, dashArray: '6,4'
+                }).addTo(map);
+
+                map.fitBounds(L.latLngBounds([
+                    [lat, lng], [MID_LAT, MID_LNG]
+                ]).pad(0.2));
+
+                document.getElementById('locStatus').style.display = 'block';
+                btn.textContent = '🔄 Recalculate';
+                btn.disabled = false;
+
+                // Call API
+                fetch(`/ride/calculate/${MEETUP_ID}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        from_lat:      lat,
+                        from_lng:      lng,
+                        from_address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+                        to_lat:       MID_LAT,
+                        to_lng:       MID_LNG,
+                        to_address:   'Meetup Midpoint'
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showLiveResult(data);
+                    } else {
+                        alert('Failed to calculate: ' + data.message);
+                    }
+                })
+                .catch(() => alert('Calculation failed. Please try again.'));
+            },
+            err => {
+                btn.textContent = '📡 Detect My Location & Calculate';
+                btn.disabled = false;
+                alert('Could not get your location. Please allow location access.');
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    }
+
+    function showLiveResult(data) {
+        const c = data.costs;
+
+        document.getElementById('costPlaceholder').style.display = 'none';
+        document.getElementById('liveResult').style.display     = 'block';
+        document.getElementById('liveDist').textContent =
+            `📏 ${data.distance_km} km from meetup point`;
+
+        document.getElementById('liveBikePrice').textContent =
+            `NPR ${c.pathao_bike}`;
+        document.getElementById('liveCarPrice').textContent  =
+            `NPR ${c.pathao_car}`;
+        document.getElementById('liveTaxiPrice').textContent =
+            `NPR ${c.taxi}`;
+        document.getElementById('liveWalk').textContent      =
+            `${c.walk_minutes} min`;
+
+        if (data.is_peak) {
+            ['liveBike','liveCar','liveTaxi'].forEach(id => {
+                document.getElementById(id).classList.add('peak-card');
+            });
+        }
+
+        // Reload page after short delay to persist data
+        setTimeout(() => location.reload(), 2000);
+    }
+
+    // ── Budget split ───────────────────────────────────────────────
+    function loadSplit() {
+        fetch(`/ride/split/${MEETUP_ID}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    alert(data.message ||
+                          'Calculate estimates for members first.');
+                    return;
+                }
+
+                const d = data.data;
+                document.getElementById('splitBike').textContent  =
+                    `NPR ${d.avg_bike}`;
+                document.getElementById('splitBikeTotal').textContent =
+                    `Total: NPR ${d.total_bike_cost}`;
+                document.getElementById('splitCar').textContent   =
+                    `NPR ${d.avg_car}`;
+                document.getElementById('splitCarTotal').textContent  =
+                    `Total: NPR ${d.total_car_cost}`;
+                document.getElementById('splitTaxi').textContent  =
+                    `NPR ${d.avg_taxi}`;
+                document.getElementById('splitTaxiTotal').textContent =
+                    `Total: NPR ${d.total_taxi_cost}`;
+
+                document.getElementById('splitResult').style.display =
+                    'block';
+            })
+            .catch(() => alert('Failed to load split data.'));
+    }
+</script>
+{% endblock %}
