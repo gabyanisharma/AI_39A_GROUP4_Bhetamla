@@ -62,65 +62,6 @@ def plan_meetup(created_meetup_id=None):
     friends  = Friend.get_friends(user_id)
     meetups  = Meetup.get_by_user(user_id)
 
-    created_meetup = None
-    created_members = []
-    created_map_points = []
-    created_midpoint = None
-
-    if created_meetup_id:
-        try:
-            created_meetup_id = int(created_meetup_id)
-        except (TypeError, ValueError):
-            created_meetup_id = None
-
-    if created_meetup_id:
-        candidate = Meetup.get_by_id(created_meetup_id)
-        if candidate:
-            members = MeetupMember.get_by_meetup(created_meetup_id)
-            is_member = any(m['user_id'] == user_id for m in members)
-            if candidate['created_by'] == user_id or is_member:
-                created_meetup = candidate
-                created_members = members
-                for member in members:
-                    if member.get('latitude') is None or member.get('longitude') is None:
-                        continue
-                    created_map_points.append({
-                        'name': member.get('full_name') or 'Member',
-                        'lat': float(member['latitude']),
-                        'lng': float(member['longitude']),
-                        'address': member.get('address') or '',
-                    })
-                if candidate.get('midpoint_lat') and candidate.get('midpoint_lng'):
-                    created_midpoint = {
-                        'lat': float(candidate['midpoint_lat']),
-                        'lng': float(candidate['midpoint_lng']),
-                        'address': candidate.get('midpoint_address') or 'Smart midpoint',
-                    }
-                elif len(created_map_points) >= 2:
-                    midpoint_lat, midpoint_lng = calculate_midpoint([
-                        {'latitude': point['lat'], 'longitude': point['lng']}
-                        for point in created_map_points
-                    ])
-                    if midpoint_lat is not None and midpoint_lng is not None:
-                        created_midpoint = {
-                            'lat': midpoint_lat,
-                            'lng': midpoint_lng,
-                            'address': 'Calculated geographic midpoint',
-                        }
-
-    return render_template('meetup/plan.html',
-                           friends=friends,
-                           meetups=meetups,
-                           created_meetup_id=created_meetup_id,
-                           created_meetup=created_meetup,
-                           created_members=created_members,
-                           created_map_points=created_map_points,
-                           created_midpoint=created_midpoint,
-                           current_user_id=user_id)
-
-    user_id  = get_current_user_id()
-    friends  = Friend.get_friends(user_id)
-    meetups  = Meetup.get_by_user(user_id)
     return render_template('meetup/plan.html',
                            friends=friends,
                            meetups=meetups,
