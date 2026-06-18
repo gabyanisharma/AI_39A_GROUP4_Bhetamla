@@ -640,4 +640,81 @@ CREATE TABLE IF NOT EXISTS saved_routes (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- =========================================
+-- TRENDING MEETUP SPOTS (Explore Feed)
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS trending_spots (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    address VARCHAR(255),
+
+    latitude DECIMAL(10,8),
+    longitude DECIMAL(11,8),
+
+    category VARCHAR(100),
+    cuisine VARCHAR(100),
+    ambience VARCHAR(100),
+
+    price_range ENUM('budget', 'mid', 'expensive') DEFAULT 'mid',
+    avg_cost_per_person DECIMAL(10,2),
+
+    rating DECIMAL(3,2) DEFAULT 0,
+    review_count INT DEFAULT 0,
+    trend_score DECIMAL(5,2) DEFAULT 0,
+
+    image_url VARCHAR(255),
+    thumbnail_url VARCHAR(255),
+
+    is_active BOOLEAN DEFAULT TRUE,
+    is_featured BOOLEAN DEFAULT FALSE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- USER SPOT INTERACTIONS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS user_spot_interactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NOT NULL,
+    spot_id INT NOT NULL,
+
+    interaction_type ENUM('view', 'like', 'save', 'share', 'visit') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (spot_id) REFERENCES trending_spots(id) ON DELETE CASCADE,
+
+    UNIQUE KEY unique_user_spot_interaction (user_id, spot_id, interaction_type)
+);
+
+-- =========================================
+-- SPOT RECOMMENDATIONS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS spot_recommendations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NOT NULL,
+    spot_id INT NOT NULL,
+    recommended_by INT,
+    recommendation_reason VARCHAR(255),
+    score DECIMAL(5,2) DEFAULT 0,
+
+    is_dismissed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (spot_id) REFERENCES trending_spots(id) ON DELETE CASCADE,
+    FOREIGN KEY (recommended_by) REFERENCES users(id) ON DELETE SET NULL,
+
+    UNIQUE KEY unique_user_spot_recommendation (user_id, spot_id)
+);
+
 -- Indexes for fast lookups are created conditionally in app/database.py
