@@ -784,3 +784,46 @@ CREATE TABLE IF NOT EXISTS meetup_plan_preferences (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY unique_pref (meetup_id, user_id)
 );
+-- =========================================
+-- BUDGET SPLIT RECORDS
+-- Append to schema.sql after meetup_plan_preferences
+--
+-- One canonical split row per meetup.
+-- record_budget_split() upserts on uq_bsr_meetup so calling
+-- "Send Split" multiple times is safe.
+-- recorded_by tracks the last user who pushed the button.
+-- badge_hint 'penny_pincher' is returned to the client on success.
+-- =========================================
+ 
+CREATE TABLE IF NOT EXISTS budget_split_records (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+ 
+    meetup_id           INT          NOT NULL,
+    recorded_by         INT          NOT NULL,
+ 
+    total_bill          DECIMAL(10,2) DEFAULT 0
+                            CHECK (total_bill >= 0),
+ 
+    member_count        INT           DEFAULT 1
+                            CHECK (member_count > 0),
+ 
+    per_person_amount   DECIMAL(10,2) DEFAULT 0
+                            CHECK (per_person_amount >= 0),
+ 
+    -- Snapshot of the modal summary line,
+    -- e.g. "Equal split: NPR 1,167 / person"
+    split_summary       VARCHAR(255),
+ 
+    recorded_at         DATETIME      DEFAULT CURRENT_TIMESTAMP
+                            ON UPDATE CURRENT_TIMESTAMP,
+ 
+    FOREIGN KEY (meetup_id)
+        REFERENCES meetups(id)  ON DELETE CASCADE,
+ 
+    FOREIGN KEY (recorded_by)
+        REFERENCES users(id)    ON DELETE CASCADE,
+ 
+    -- One canonical split per meetup.
+    -- The upsert in record_budget_split() keeps this in sync.
+    UNIQUE KEY uq_bsr_meetup (meetup_id)
+);
