@@ -53,7 +53,6 @@ def suggest(meetup_id):
 def respond(meetup_id):
     return respond_meetup(meetup_id)
 
-
 @meetup_bp.route('/groups')
 @login_required
 def groups():

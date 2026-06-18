@@ -765,3 +765,22 @@ CREATE TABLE IF NOT EXISTS smart_alert_log (
 );
 
 -- Indexes for fast lookups are created conditionally in app/database.py
+
+CREATE TABLE IF NOT EXISTS meetup_plan_preferences (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    meetup_id INT NOT NULL,
+    user_id INT NOT NULL,
+    cuisine VARCHAR(100),
+    budget_min INT DEFAULT 200,
+    budget_max INT DEFAULT 2000,
+    ambience VARCHAR(100),
+    selected_venue VARCHAR(255),
+    selected_venue_lat DECIMAL(10,8),
+    selected_venue_lng DECIMAL(11,8),
+    ride_option VARCHAR(100),
+    notes TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (meetup_id) REFERENCES meetups(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_pref (meetup_id, user_id)
+);
