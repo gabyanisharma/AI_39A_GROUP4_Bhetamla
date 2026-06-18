@@ -173,6 +173,8 @@ def create_meetup():
             )
 
         flash('Meetup created successfully!', 'success')
+        from app.services import achievement_service
+        achievement_service.on_meetup_created(user_id)
         return redirect(url_for('meetup.plan',
                                 meetup_id=meetup_id))
 
@@ -341,6 +343,8 @@ def respond_meetup(meetup_id):
 
     if action == 'accept':
         MeetupMember.accept(meetup_id, user_id)
+        from app.services import achievement_service
+        achievement_service.on_meetup_joined(user_id)
         flash('You joined the meetup!', 'success')
     elif action == 'decline':
         MeetupMember.decline(meetup_id, user_id)
