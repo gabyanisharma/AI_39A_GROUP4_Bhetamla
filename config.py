@@ -8,7 +8,7 @@ class Config:
 
     MYSQL_HOST     = os.getenv('MYSQL_HOST', 'localhost')
     MYSQL_USER     = os.getenv('MYSQL_USER', 'root')
-    MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD', 'xomko1-kugtov-qamgYq')
+    MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD', 'password')
     MYSQL_DB       = os.getenv('MYSQL_DB', 'bhetamla_db')
     MYSQL_DATABASE = os.getenv('MYSQL_DATABASE', MYSQL_DB)
 

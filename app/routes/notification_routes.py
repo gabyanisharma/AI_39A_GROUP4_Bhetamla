@@ -4,7 +4,8 @@ from app.controllers.notification_controller import (
     trigger_sos, cancel_sos,
     notifications, get_unread_count,
     mark_read, delete_notification,
-    clear_all_notifications
+    clear_all_notifications,
+    update_notification_preferences
 )
 
 notification_bp = Blueprint('notification', __name__, url_prefix='/notification')
@@ -30,3 +31,5 @@ notification_bp.add_url_rule('/delete/<int:notification_id>',
     'delete_notification', delete_notification)
 notification_bp.add_url_rule('/clear-all',
     'clear_all', clear_all_notifications)
+notification_bp.add_url_rule('/preferences',
+    'update_preferences', update_notification_preferences, methods=['POST'])
