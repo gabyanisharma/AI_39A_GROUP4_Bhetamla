@@ -1,0 +1,59 @@
+<div class="card">
+    <h2>📋 Scheduled Meetups</h2>
+
+    {% if invites %}
+        <h3>Pending Invites</h3>
+        {% for invite in (invites or []) %}
+        <div class="meetup-card">
+            <h4>{{ invite.title | default('Untitled') }}</h4>
+            <p>
+                From {{ invite.organizer_name | default('Unknown') }}
+                {% if invite.proposed_date %}
+                    — {% if invite.proposed_date.strftime %}
+                        {{ invite.proposed_date.strftime('%b %d, %Y') }}
+                      {% else %}
+                        {{ invite.proposed_date }}
+                      {% endif %}
+                {% endif %}
+            </p>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if schedules %}
+        {% for schedule in (schedules or []) %}
+        <div class="meetup-card">
+            <h4>{{ schedule.title | default('Untitled') }}</h4>
+            <p>
+                {% if schedule.proposed_date %}
+                    {% if schedule.proposed_date.strftime %}
+                        {{ schedule.proposed_date.strftime('%B %d, %Y') }}
+                    {% else %}
+                        {{ schedule.proposed_date }}
+                    {% endif %}
+                {% endif %}
+                
+                {% if schedule.proposed_time %}
+                    at {% if schedule.proposed_time.strftime %}
+                        {{ schedule.proposed_time.strftime('%I:%M %p') }}
+                       {% else %}
+                        {{ schedule.proposed_time }}
+                       {% endif %}
+                {% endif %}
+            </p>
+            <span class="badge">
+                {{ schedule.status.capitalize() if schedule.status else 'Pending' }}
+            </span>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No meetups scheduled yet.</p>
+    {% endif %}
+</div>
+
+{# Safe friends section - won't crash if friends is None #}
+{% set safe_friends = friends or [] %}
+<p>{{ safe_friends | length }} connected</p>
+{% for friend in safe_friends %}
+    <p>{{ friend.username | default('Unknown') }}</p>
+{% endfor %}
