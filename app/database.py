@@ -87,6 +87,7 @@ def initialize_db():
                 cursor.execute(statement)
             _repair_existing_schema(cursor)
             _seed_demo_data(cursor)
+            _seed_trending_spots(cursor)
         connection.commit()
     finally:
         connection.close()
@@ -137,6 +138,9 @@ def _repair_existing_schema(cursor):
     _ensure_column(cursor, 'notifications', 'link', "link VARCHAR(255) NULL")
     _ensure_index(cursor, 'fare_alert', 'idx_fare_alert_user', "INDEX idx_fare_alert_user (userID, isActive)")
     _ensure_index(cursor, 'fare_history', 'idx_fare_history_meetup', "INDEX idx_fare_history_meetup (meetupID, mode, recordedAt)")
+    _ensure_index(cursor, 'trending_spots', 'idx_trending_spots_feed', "INDEX idx_trending_spots_feed (is_active, trend_score)")
+    _ensure_index(cursor, 'user_spot_interactions', 'idx_spot_interactions_spot', "INDEX idx_spot_interactions_spot (spot_id, interaction_type)")
+    _ensure_index(cursor, 'spot_recommendations', 'idx_spot_recommendations_user', "INDEX idx_spot_recommendations_user (user_id, is_dismissed)")
 
 
 def _seed_demo_data(cursor):
@@ -215,6 +219,65 @@ def _seed_demo_data(cursor):
                      price_range, rating, review_count, ambience,
                      opening_time, closing_time, description,
                      avg_cost_per_person, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
+                """,
+                row
+            )
+
+
+def _seed_trending_spots(cursor):
+    """Seed curated spots for the Explore feed of trending meetup spots."""
+    # name, description, address, lat, lng, category, cuisine, ambience,
+    # price_range, avg_cost, rating, review_count, trend_score, is_featured
+    spots = [
+        ('The Old House', 'Riverside lounge with live music and a relaxed deck — a weekend favourite.',
+         'Jhamsikhel, Lalitpur', 27.6745, 85.3120, 'Lounge', 'Continental', 'lively',
+         'expensive', 1800, 4.7, 240, 92.5, True),
+        ('Cafe Soma', 'Garden cafe tucked in Patan, great for long catch-ups over coffee.',
+         'Pulchowk, Lalitpur', 27.6790, 85.3170, 'Cafe', 'Cafe', 'cozy',
+         'mid', 700, 4.6, 188, 81.0, True),
+        ('Trisara', 'Open-air Newari courtyard restaurant buzzing on weekend evenings.',
+         'Lazimpat, Kathmandu', 27.7220, 85.3210, 'Restaurant', 'Nepali', 'lively',
+         'mid', 1300, 4.5, 165, 76.0, True),
+        ('Places Restaurant & Bar', 'Rooftop spot with skyline views popular for group hangouts.',
+         'Thamel, Kathmandu', 27.7160, 85.3110, 'Restaurant', 'Continental', 'lively',
+         'mid', 1100, 4.4, 142, 70.0, False),
+        ('Karma Coffee', 'Specialty coffee roaster — quiet, laptop-friendly mornings.',
+         'Jhamsikhel, Lalitpur', 27.6758, 85.3142, 'Cafe', 'Cafe', 'quiet',
+         'budget', 450, 4.5, 121, 64.0, False),
+        ('Or2K Rooftop', 'Cushioned rooftop seating, vegetarian mezze, and a chill crowd.',
+         'Mandala Street, Thamel', 27.7152, 85.3119, 'Restaurant', 'Mediterranean', 'cozy',
+         'mid', 950, 4.3, 207, 58.0, False),
+        ('Le Sherpa', 'Farm-to-table garden venue, weekend farmers market draws crowds.',
+         'Maharajgunj, Kathmandu', 27.7380, 85.3290, 'Restaurant', 'Continental', 'cozy',
+         'expensive', 2000, 4.6, 134, 55.0, False),
+        ('Himalayan Java Durbar Marg', 'Flagship cafe, central meeting point in the heart of the city.',
+         'Durbar Marg, Kathmandu', 27.7110, 85.3180, 'Cafe', 'Coffee', 'lively',
+         'mid', 650, 4.4, 312, 51.0, False),
+    ]
+
+    for row in spots:
+        cursor.execute("SELECT id FROM trending_spots WHERE name = %s LIMIT 1", (row[0],))
+        existing = cursor.fetchone()
+        if existing:
+            cursor.execute(
+                """
+                UPDATE trending_spots
+                SET description = %s, address = %s, latitude = %s, longitude = %s,
+                    category = %s, cuisine = %s, ambience = %s, price_range = %s,
+                    avg_cost_per_person = %s, rating = %s, review_count = %s,
+                    trend_score = %s, is_featured = %s, is_active = TRUE
+                WHERE id = %s
+                """,
+                (*row[1:], existing['id'])
+            )
+        else:
+            cursor.execute(
+                """
+                INSERT INTO trending_spots
+                    (name, description, address, latitude, longitude, category,
+                     cuisine, ambience, price_range, avg_cost_per_person, rating,
+                     review_count, trend_score, is_featured, is_active)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
                 """,
                 row
