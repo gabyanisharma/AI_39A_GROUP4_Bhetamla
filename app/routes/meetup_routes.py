@@ -60,7 +60,7 @@ def respond(meetup_id):
 
 @meetup_bp.route('/delete/<int:meetup_id>', methods=['POST'])
 @login_required
-def delete(meetup_id):
+def delete_plan(meetup_id):
     return delete_meetup_plan(meetup_id)
 
 @meetup_bp.route('/confirm-plan/<int:meetup_id>', methods=['POST'])
