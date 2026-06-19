@@ -2,10 +2,36 @@
 {% set active_page = 'plan' %}
 {% set show_advanced = created_meetup is defined and created_meetup %}
 {% set active_meetup = created_meetup if show_advanced else none %}
+{% set show_advanced = created_meetup is defined and created_meetup %}
+{% set active_meetup = created_meetup if show_advanced else none %}
 {% block title %}Plan Meetup — Bhetamल{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  #plan-leaflet-map .leaflet-control-attribution {
+    font-size: 10px;
+  }
+  .plan-map-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    border: 3px solid #fff;
+    box-shadow: 0 5px 16px rgba(8,45,37,.28);
+  }
+  .plan-map-dot.member {
+    background: linear-gradient(135deg,var(--blue),var(--primary));
+  }
+  .plan-map-dot.midpoint {
+    background: linear-gradient(135deg,var(--gold),var(--green));
+  }
+</style>
 <style>
   #plan-leaflet-map .leaflet-control-attribution {
     font-size: 10px;
@@ -38,25 +64,42 @@
     <div class="topbar-search" style="padding:0 14px"><label for="search-plan" style="display:flex;align-items:center;gap:10px;cursor:text;flex:1"><span aria-hidden="true" style="font-size:14px">&#128269;</span><input id="search-plan" type="search" placeholder="Search venues or friends..." aria-label="Search venues or friends" style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
     <div class="topbar-controls">
       <button class="ctrl-btn" type="button" onclick="toggleTheme()">&#127769;</button>
+      <button class="ctrl-btn" type="button" onclick="toggleTheme()">&#127769;</button>
     </div>
+    <button class="sos-btn" type="button" onclick="openModal('modal-sos')">&#10033; SOS</button>
+    <button aria-label="Notifications" type="button" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px">&#128276;</button>
     <button class="sos-btn" type="button" onclick="openModal('modal-sos')">&#10033; SOS</button>
     <button aria-label="Notifications" type="button" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px">&#128276;</button>
   </div>
 
   <div id="plan-phase-create" style="display:{{ 'none' if show_advanced else 'block' }};flex:1;overflow-y:auto;padding:32px;">
+  <div id="plan-phase-create" style="display:{{ 'none' if show_advanced else 'block' }};flex:1;overflow-y:auto;padding:32px;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px;">
       <span style="font-size:22px;">📍</span>
+      <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--primary);letter-spacing:0;">Plan a Meetup</h1>
       <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--primary);letter-spacing:0;">Plan a Meetup</h1>
     </div>
 
     <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
       <div style="flex:1;min-width:320px;max-width:560px;background:var(--white);border-radius:20px;padding:30px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
+    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
+      <div style="flex:1;min-width:320px;max-width:560px;background:var(--white);border-radius:20px;padding:30px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
         <div style="font-weight:700;font-size:17px;color:var(--text);margin-bottom:22px;font-family:'Lora',serif;">Create New Meetup</div>
 
+        <form method="POST" action="{{ url_for('meetup.create') }}" id="create-meetup-form">
         <form method="POST" action="{{ url_for('meetup.create') }}" id="create-meetup-form">
           <input type="hidden" id="pm-lat" name="user_lat" />
           <input type="hidden" id="pm-lng" name="user_lng" />
           <input type="hidden" id="pm-addr" name="user_address" />
+
+          <div style="display:flex;align-items:center;gap:12px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:12px;padding:13px 16px;margin-bottom:20px;">
+            <span style="font-size:18px;flex-shrink:0;">📍</span>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:13px;color:var(--text);" id="pm-loc-label">Location not set</div>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:1px;">Your starting point for midpoint calculation</div>
+            </div>
+            <button type="button" onclick="detectPMLocation()" style="background:none;border:none;color:var(--blue);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;padding:0;flex-shrink:0;">Detect</button>
+          </div>
 
           <div style="display:flex;align-items:center;gap:12px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:12px;padding:13px 16px;margin-bottom:20px;">
             <span style="font-size:18px;flex-shrink:0;">📍</span>
@@ -109,6 +152,7 @@
           </div>
 
           <button class="btn-primary" type="submit" style="width:100%;padding:15px;font-size:15px;border-radius:12px;">
+          <button class="btn-primary" type="submit" style="width:100%;padding:15px;font-size:15px;border-radius:12px;">
             🚀 Create Meetup
           </button>
         </form>
@@ -138,6 +182,7 @@
             {% endif %}
           </div>
         </div>
+        </div>
         {% else %}
         <div style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0;">No meetups yet.</div>
         {% endfor %}
@@ -145,6 +190,8 @@
       </div>
     </div>
   </div>
+
+  {% include "meetup/_plan_advanced.html" %}
 
   {% include "meetup/_plan_advanced.html" %}
 </div>
@@ -161,11 +208,526 @@
 </div>
 
 {% include "meetup/_planner_modals.html" %}
+
+{% include "meetup/_planner_modals.html" %}
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+window.PLAN_CONTEXT = {
+  hasMeetup: {{ 'true' if show_advanced else 'false' }},
+  meetupId: {{ active_meetup.id if show_advanced else 'null' }},
+  confirmUrl: "{{ url_for('meetup.confirm_plan', meetup_id=active_meetup.id) if show_advanced else '' }}",
+  title: {{ (active_meetup.title if show_advanced else '')|tojson }},
+  date: {{ (active_meetup.meetup_date|string if show_advanced and active_meetup.meetup_date else '')|tojson }},
+  time: {{ (active_meetup.meetup_time|string if show_advanced and active_meetup.meetup_time else '')|tojson }},
+  people: {{ (created_members|length if show_advanced else 1) }},
+  mapPoints: {{ (created_map_points if show_advanced else [])|tojson }},
+  midpoint: {{ (created_midpoint if show_advanced else none)|tojson }},
+  creatorName: {{ session.get('user_name', 'You')|tojson }}
+};
+
+var planLeafletMap = null;
+var planMarkerLayer = null;
+var planRouteLayer = null;
+var planRouteVersion = 0;
+var serialResponses = {};
+var midpointDirty = false;
+var routeColors = ['#1565C0', '#1B6B3A', '#D99A00', '#C0392B', '#5D6DFF'];
+var PLAN_LOCATION_LOOKUP = {
+  'thamel': {name:'Thamel', lat:27.7153, lng:85.3123, address:'Thamel, Kathmandu'},
+  'thamel kathmandu': {name:'Thamel', lat:27.7153, lng:85.3123, address:'Thamel, Kathmandu'},
+  'patan': {name:'Patan Durbar Square', lat:27.6726, lng:85.3257, address:'Patan Durbar Square, Lalitpur'},
+  'patan lalitpur': {name:'Patan Durbar Square', lat:27.6726, lng:85.3257, address:'Patan Durbar Square, Lalitpur'},
+  'patan durbar square': {name:'Patan Durbar Square', lat:27.6726, lng:85.3257, address:'Patan Durbar Square, Lalitpur'},
+  'lalitpur': {name:'Lalitpur', lat:27.6588, lng:85.3247, address:'Lalitpur'},
+  'kathmandu': {name:'Kathmandu', lat:27.7172, lng:85.3240, address:'Kathmandu'},
+  'garden of dreams': {name:'Garden of Dreams', lat:27.7140, lng:85.3143, address:'Garden of Dreams, Kathmandu'},
+  'asan': {name:'Asan', lat:27.7072, lng:85.3129, address:'Asan, Kathmandu'},
+  'asan tole': {name:'Asan Tole', lat:27.7072, lng:85.3129, address:'Asan Tole, Kathmandu'},
+  'naxal': {name:'Naxal', lat:27.7177, lng:85.3301, address:'Naxal, Kathmandu'},
+  'sankhamul': {name:'Sankhamul', lat:27.6792, lng:85.3397, address:'Sankhamul, Kathmandu'},
+  'baneshwor': {name:'New Baneshwor', lat:27.6887, lng:85.3420, address:'New Baneshwor, Kathmandu'},
+  'new baneshwor': {name:'New Baneshwor', lat:27.6887, lng:85.3420, address:'New Baneshwor, Kathmandu'},
+  'jawalakhel': {name:'Jawalakhel', lat:27.6720, lng:85.3133, address:'Jawalakhel, Lalitpur'},
+  'boudha': {name:'Boudha Stupa', lat:27.7215, lng:85.3618, address:'Boudha, Kathmandu'},
+  'boudhanath': {name:'Boudha Stupa', lat:27.7215, lng:85.3618, address:'Boudha, Kathmandu'},
+  'bhaktapur': {name:'Bhaktapur Durbar Square', lat:27.6720, lng:85.4281, address:'Bhaktapur Durbar Square'}
+};
+
+function escapePlanHtml(value){
+  return String(value || '').replace(/[&<>"']/g, function(ch){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+  });
+}
+
+function makePlanMapIcon(type, label){
+  var safeLabel = String(label || '•').slice(0, 2).toUpperCase();
+  return L.divIcon({
+    className: '',
+    html: '<div class="plan-map-dot '+type+'">'+escapePlanHtml(safeLabel)+'</div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -18]
+  });
+}
+
+function normalizePlanLocation(value){
+  return String(value || '').trim().toLowerCase().replace(/[^\w\s.-]/g, ' ').replace(/\s+/g, ' ');
+}
+
+function clonePlanPoint(point){
+  if(!point) return null;
+  return {
+    name: point.name || point.address || 'Location',
+    lat: Number(point.lat),
+    lng: Number(point.lng),
+    address: point.address || point.name || ''
+  };
+}
+
+function toPlanPoint(point, fallbackName){
+  if(!point) return null;
+  var lat = Number(point.lat != null ? point.lat : point.latitude);
+  var lng = Number(point.lng != null ? point.lng : point.longitude);
+  if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return {
+    name: point.name || point.full_name || fallbackName || 'Location',
+    lat: lat,
+    lng: lng,
+    address: point.address || point.display_name || point.name || ''
+  };
+}
+
+function geographicMidpoint(points){
+  var usable = (points || []).map(function(point, index){
+    return toPlanPoint(point, 'Location ' + (index + 1));
+  }).filter(Boolean);
+  if(!usable.length) return null;
+
+  var x = 0;
+  var y = 0;
+  var z = 0;
+  usable.forEach(function(point){
+    var lat = point.lat * Math.PI / 180;
+    var lng = point.lng * Math.PI / 180;
+    x += Math.cos(lat) * Math.cos(lng);
+    y += Math.cos(lat) * Math.sin(lng);
+    z += Math.sin(lat);
+  });
+
+  x /= usable.length;
+  y /= usable.length;
+  z /= usable.length;
+
+  var lngMid = Math.atan2(y, x);
+  var hyp = Math.sqrt(x * x + y * y);
+  var latMid = Math.atan2(z, hyp);
+  return {
+    lat: latMid * 180 / Math.PI,
+    lng: lngMid * 180 / Math.PI,
+    address: 'Calculated geographic midpoint'
+  };
+}
+
+function averageLatLng(points){
+  return geographicMidpoint(points);
+}
+
+function fallbackPlanPoints(){
+  return [
+    {name:'You', lat:27.7153, lng:85.3123, address:'Thamel, Kathmandu'},
+    {name:'Friend', lat:27.6766, lng:85.3188, address:'Patan, Lalitpur'}
+  ];
+}
+
+function getPlanMapPoints(){
+  var ctx = window.PLAN_CONTEXT || {};
+  var points = (ctx.mapPoints || []).map(function(point, index){
+    return toPlanPoint(point, 'P' + (index + 1));
+  }).filter(Boolean);
+  return points.length ? points : fallbackPlanPoints();
+}
+
+function getPlanMidpoint(points){
+  var ctx = window.PLAN_CONTEXT || {};
+  var midpoint = toPlanPoint(ctx.midpoint, 'Smart midpoint');
+  return midpoint || geographicMidpoint(points) || {lat:27.7033, lng:85.3186, address:'Patan Durbar Square'};
+}
+
+function formatRouteMeta(distanceMeters, durationSeconds){
+  if(!distanceMeters || !durationSeconds) return '';
+  var km = distanceMeters / 1000;
+  var mins = Math.max(1, Math.round(durationSeconds / 60));
+  return km.toFixed(km >= 10 ? 0 : 1) + ' km · ' + mins + ' min';
+}
+
+function drawRouteLine(latLngs, color, routeLabel){
+  if(!planRouteLayer || !latLngs || latLngs.length < 2) return;
+  L.polyline(latLngs, {
+    color: '#FFFFFF',
+    weight: 10,
+    opacity: .92,
+    lineCap: 'round',
+    lineJoin: 'round'
+  }).addTo(planRouteLayer);
+  var route = L.polyline(latLngs, {
+    color: color,
+    weight: 5,
+    opacity: .96,
+    lineCap: 'round',
+    lineJoin: 'round'
+  }).addTo(planRouteLayer);
+  if(routeLabel) route.bindTooltip(routeLabel, {sticky:true});
+}
+
+function drawFallbackRoute(fromLatLng, toLatLng, color){
+  drawRouteLine([fromLatLng, toLatLng], color, 'Direct route preview');
+  if(planRouteLayer){
+    L.polyline([fromLatLng, toLatLng], {
+      color: color,
+      weight: 2,
+      opacity: .55,
+      dashArray: '5 9'
+    }).addTo(planRouteLayer);
+  }
+}
+
+function fetchRoadRoute(fromLatLng, toLatLng){
+  var from = fromLatLng[1].toFixed(6) + ',' + fromLatLng[0].toFixed(6);
+  var to = toLatLng[1].toFixed(6) + ',' + toLatLng[0].toFixed(6);
+  var url = 'https://router.project-osrm.org/route/v1/driving/' + from + ';' + to + '?overview=full&geometries=geojson&alternatives=false&steps=false';
+  return fetch(url).then(function(response){
+    if(!response.ok) throw new Error('Route unavailable');
+    return response.json();
+  }).then(function(data){
+    if(!data.routes || !data.routes.length || !data.routes[0].geometry){
+      throw new Error('Route missing');
+    }
+    return {
+      latLngs: data.routes[0].geometry.coordinates.map(function(coord){
+        return [coord[1], coord[0]];
+      }),
+      label: formatRouteMeta(data.routes[0].distance, data.routes[0].duration)
+    };
+  });
+}
+
+function drawPlanRoadRoute(fromLatLng, toLatLng, color, version){
+  if(!window.fetch){
+    drawFallbackRoute(fromLatLng, toLatLng, color);
+    return;
+  }
+  fetchRoadRoute(fromLatLng, toLatLng)
+    .then(function(route){
+      if(version !== planRouteVersion) return;
+      drawRouteLine(route.latLngs, color, route.label || 'Road route');
+    })
+    .catch(function(){
+      if(version !== planRouteVersion) return;
+      drawFallbackRoute(fromLatLng, toLatLng, color);
+    });
+}
+
+function renderPlanMap(points, midpoint){
+  if(!planLeafletMap || !window.L) return;
+  var validPoints = (points || []).map(function(point, index){
+    return toPlanPoint(point, 'P' + (index + 1));
+  }).filter(Boolean);
+  if(!validPoints.length) validPoints = fallbackPlanPoints();
+  var validMidpoint = toPlanPoint(midpoint, 'Smart midpoint') || geographicMidpoint(validPoints);
+  if(!validMidpoint) return;
+
+  if(!planRouteLayer) planRouteLayer = L.layerGroup().addTo(planLeafletMap);
+  if(!planMarkerLayer) planMarkerLayer = L.layerGroup().addTo(planLeafletMap);
+  planRouteLayer.clearLayers();
+  planMarkerLayer.clearLayers();
+  var version = ++planRouteVersion;
+  var bounds = [];
+
+  validPoints.forEach(function(point, index){
+    var latLng = [point.lat, point.lng];
+    bounds.push(latLng);
+    L.marker(latLng, {
+      icon: makePlanMapIcon('member', point.name || ('P' + (index + 1)))
+    }).addTo(planMarkerLayer).bindPopup(
+      '<strong>' + escapePlanHtml(point.name || 'Member') + '</strong><br>' +
+      escapePlanHtml(point.address || 'Starting point')
+    );
+  });
+
+  var midLatLng = [validMidpoint.lat, validMidpoint.lng];
+  bounds.push(midLatLng);
+  L.marker(midLatLng, {
+    icon: makePlanMapIcon('midpoint', 'M')
+  }).addTo(planMarkerLayer).bindPopup(
+    '<strong>Smart midpoint</strong><br>' + escapePlanHtml(validMidpoint.address || 'Balanced meeting point')
+  );
+
+  validPoints.forEach(function(point, index){
+    drawPlanRoadRoute(
+      [point.lat, point.lng],
+      midLatLng,
+      routeColors[index % routeColors.length],
+      version
+    );
+  });
+
+  if(bounds.length){
+    planLeafletMap.fitBounds(bounds, {padding:[46, 46], maxZoom:14});
+  }
+  setTimeout(function(){ planLeafletMap.invalidateSize(); }, 180);
+}
+
+function initPlanLeafletMap(){
+  var mapEl = document.getElementById('plan-leaflet-map');
+  var fallback = document.getElementById('plan-map-fallback');
+  if(!mapEl) return;
+  if(!window.L){
+    if(fallback) fallback.style.display = 'flex';
+    return;
+  }
+
+  if(planLeafletMap){
+    renderPlanMap(getPlanMapPoints(), getPlanMidpoint(getPlanMapPoints()));
+    return;
+  }
+
+  var ktmCenter = [27.7172, 85.3240];
+  planLeafletMap = L.map(mapEl, {
+    zoomControl: true,
+    scrollWheelZoom: true
+  }).setView(ktmCenter, 13);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(planLeafletMap);
+
+  planRouteLayer = L.layerGroup().addTo(planLeafletMap);
+  planMarkerLayer = L.layerGroup().addTo(planLeafletMap);
+  var points = getPlanMapPoints();
+  renderPlanMap(points, getPlanMidpoint(points));
+}
+
+function lookupKnownPlanLocation(query){
+  var key = normalizePlanLocation(query);
+  if(!key) return null;
+  if(PLAN_LOCATION_LOOKUP[key]) return clonePlanPoint(PLAN_LOCATION_LOOKUP[key]);
+  var keys = Object.keys(PLAN_LOCATION_LOOKUP);
+  for(var i = 0; i < keys.length; i++){
+    if(key.indexOf(keys[i]) !== -1 || keys[i].indexOf(key) !== -1){
+      return clonePlanPoint(PLAN_LOCATION_LOOKUP[keys[i]]);
+    }
+  }
+  return null;
+}
+
+function parseCoordinateInput(query){
+  var match = String(query || '').match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+  if(!match) return null;
+  var lat = Number(match[1]);
+  var lng = Number(match[2]);
+  if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if(Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return {name:'Custom location', lat:lat, lng:lng, address:lat.toFixed(5) + ', ' + lng.toFixed(5)};
+}
+
+function shortPlanAddress(displayName){
+  if(!displayName) return '';
+  return String(displayName).split(',').slice(0, 3).join(',').trim();
+}
+
+function geocodePlanLocation(entry){
+  var query = typeof entry === 'string' ? entry : entry.query;
+  var sourceLat = typeof entry === 'string' ? null : Number(entry.lat);
+  var sourceLng = typeof entry === 'string' ? null : Number(entry.lng);
+  var sourceValue = typeof entry === 'string' ? '' : (entry.sourceValue || '');
+  var currentValue = String(query || '').trim();
+  if(Number.isFinite(sourceLat) && Number.isFinite(sourceLng) && sourceValue && currentValue === sourceValue){
+    return Promise.resolve({
+      name: entry.name || currentValue || 'Location',
+      lat: sourceLat,
+      lng: sourceLng,
+      address: currentValue || entry.address || ''
+    });
+  }
+  var coords = parseCoordinateInput(currentValue);
+  if(coords) return Promise.resolve(coords);
+  var known = lookupKnownPlanLocation(currentValue);
+  if(known) return Promise.resolve(known);
+  if(!currentValue || !window.fetch) return Promise.resolve(null);
+
+  var searchText = /nepal|kathmandu|lalitpur|bhaktapur/i.test(currentValue)
+    ? currentValue
+    : currentValue + ', Nepal';
+  var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=np&q=' + encodeURIComponent(searchText);
+  return fetch(url, {headers:{'Accept':'application/json'}})
+    .then(function(response){
+      if(!response.ok) throw new Error('Location lookup failed');
+      return response.json();
+    })
+    .then(function(results){
+      if(!results || !results.length) return null;
+      return {
+        name: currentValue,
+        lat: Number(results[0].lat),
+        lng: Number(results[0].lon),
+        address: shortPlanAddress(results[0].display_name) || currentValue
+      };
+    })
+    .catch(function(){ return null; });
+}
+
+function reverseGeocodePlan(lat, lng){
+  if(!window.fetch) return Promise.resolve(lat.toFixed(5) + ', ' + lng.toFixed(5));
+  var url = 'https://nominatim.openstreetmap.org/reverse?format=json&lat=' + encodeURIComponent(lat.toFixed(6)) + '&lon=' + encodeURIComponent(lng.toFixed(6)) + '&zoom=16&addressdetails=0';
+  return fetch(url, {headers:{'Accept':'application/json'}})
+    .then(function(response){
+      if(!response.ok) throw new Error('Reverse lookup failed');
+      return response.json();
+    })
+    .then(function(data){
+      return shortPlanAddress(data.display_name) || (lat.toFixed(5) + ', ' + lng.toFixed(5));
+    })
+    .catch(function(){
+      return lat.toFixed(5) + ', ' + lng.toFixed(5);
+    });
+}
+
+function haversineKm(a, b){
+  var radius = 6371;
+  var dLat = (b.lat - a.lat) * Math.PI / 180;
+  var dLng = (b.lng - a.lng) * Math.PI / 180;
+  var lat1 = a.lat * Math.PI / 180;
+  var lat2 = b.lat * Math.PI / 180;
+  var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * radius * Math.asin(Math.sqrt(h));
+}
+
+function estimateTravelMinutes(points, midpoint){
+  if(!points.length || !midpoint) return 0;
+  var totalKm = points.reduce(function(total, point){
+    return total + haversineKm(point, midpoint);
+  }, 0);
+  var avgKm = totalKm / points.length;
+  return Math.max(4, Math.round((avgKm / 18) * 60));
+}
+
+function addMidpointInput(value, point){
+  var list = document.getElementById('midpoint-location-list');
+  if(!list) return null;
+  var inputs = list.querySelectorAll('.mp-location-input');
+  if(inputs.length >= 6){
+    showToast('You can compare up to 6 locations.');
+    return inputs[inputs.length - 1];
+  }
+  var input = document.createElement('input');
+  input.className = 'field-input mp-location-input';
+  input.placeholder = 'Another location';
+  input.value = value || '';
+  input.addEventListener('input', function(){ midpointDirty = true; });
+  if(point){
+    input.dataset.lat = point.lat;
+    input.dataset.lng = point.lng;
+    input.dataset.name = point.name || '';
+    input.dataset.address = point.address || value || '';
+    input.dataset.sourceValue = value || point.address || '';
+  }
+  list.appendChild(input);
+  return input;
+}
+
+function ensureMidpointInputCount(count){
+  var list = document.getElementById('midpoint-location-list');
+  if(!list) return [];
+  while(list.querySelectorAll('.mp-location-input').length < count){
+    addMidpointInput('');
+  }
+  return Array.prototype.slice.call(list.querySelectorAll('.mp-location-input'));
+}
+
+function seedMidpointInputsFromPlan(){
+  var points = getPlanMapPoints();
+  var inputs = ensureMidpointInputCount(Math.max(2, Math.min(points.length, 6)));
+  points.slice(0, inputs.length).forEach(function(point, index){
+    var input = inputs[index];
+    if(!input) return;
+    var value = point.address || point.name || (point.lat.toFixed(5) + ', ' + point.lng.toFixed(5));
+    input.value = value;
+    input.dataset.lat = point.lat;
+    input.dataset.lng = point.lng;
+    input.dataset.name = point.name || '';
+    input.dataset.address = point.address || value;
+    input.dataset.sourceValue = value;
+  });
+  inputs.forEach(function(input){
+    input.addEventListener('input', function(){ midpointDirty = true; });
+  });
+  midpointDirty = false;
+}
+
+function collectMidpointEntries(){
+  return Array.prototype.slice.call(document.querySelectorAll('.mp-location-input'))
+    .map(function(input){
+      return {
+        query: input.value.trim(),
+        lat: input.dataset.lat,
+        lng: input.dataset.lng,
+        name: input.dataset.name,
+        address: input.dataset.address,
+        sourceValue: input.dataset.sourceValue
+      };
+    })
+    .filter(function(entry){ return entry.query; });
+}
+
+function applyMidpointResult(midpoint, points){
+  if(!midpoint || !points || points.length < 2) return;
+  window.PLAN_CONTEXT = window.PLAN_CONTEXT || {};
+  PLAN_CONTEXT.mapPoints = points.map(function(point){
+    return {name:point.name, lat:point.lat, lng:point.lng, address:point.address};
+  });
+  PLAN_CONTEXT.midpoint = {
+    lat: midpoint.lat,
+    lng: midpoint.lng,
+    address: midpoint.address
+  };
+  var minutes = estimateTravelMinutes(points, midpoint);
+  var result = document.getElementById('midpoint-result');
+  if(result){
+    var heading = result.querySelector('h3');
+    var meta = result.querySelector('p');
+    if(heading) heading.textContent = midpoint.address || 'Calculated midpoint';
+    if(meta) meta.textContent = '~' + minutes + ' min avg travel · ' + points.length + ' locations balanced';
+  }
+  var sumMid = document.getElementById('sum-mid');
+  if(sumMid) sumMid.textContent = midpoint.address || 'Calculated midpoint';
+  var finalMid = document.getElementById('fsum-mid');
+  if(finalMid) finalMid.textContent = midpoint.address || 'Calculated midpoint';
+  renderPlanMap(points, midpoint);
+  midpointDirty = false;
+}
+
+async function calcMidpoint(){
+  var entries = collectMidpointEntries();
+  if(entries.length < 2){
+    showToast('Please enter at least two locations.');
+    var first = document.querySelector('.mp-location-input');
+    if(first) first.focus();
+    return false;
+  }
+
+  showToast('Calculating midpoint...');
+  var points = [];
+  var missing = [];
+  for(var i = 0; i < entries.length; i++){
+    var point = await geocodePlanLocation(entries[i]);
+    if(point && Number.isFinite(point.lat) && Number.isFinite(point.lng)){
+      points.push(point);
 window.PLAN_CONTEXT = {
   hasMeetup: {{ 'true' if show_advanced else 'false' }},
   meetupId: {{ active_meetup.id if show_advanced else 'null' }},
@@ -713,6 +1275,39 @@ async function acceptMidpointStep(){
   completeSerialStep('modal-midpoint', 'midpoint accepted');
   return true;
 }
+      missing.push(entries[i].query);
+    }
+  }
+
+  if(points.length < 2){
+    showToast('Please use clearer place names or coordinates.');
+    return false;
+  }
+
+  var midpoint = geographicMidpoint(points);
+  if(!midpoint){
+    showToast('Could not calculate a midpoint.');
+    return false;
+  }
+  midpoint.address = await reverseGeocodePlan(midpoint.lat, midpoint.lng);
+  applyMidpointResult(midpoint, points);
+  if(missing.length){
+    showToast('Midpoint updated using ' + points.length + ' locations. Check: ' + missing[0]);
+  } else {
+    showToast('Midpoint updated accurately.');
+  }
+  return true;
+}
+
+async function acceptMidpointStep(){
+  if(midpointDirty || !window.PLAN_CONTEXT || !PLAN_CONTEXT.midpoint){
+    var ok = await calcMidpoint();
+    if(!ok) return false;
+  }
+  showToast('Midpoint set!');
+  completeSerialStep('modal-midpoint', 'midpoint accepted');
+  return true;
+}
 
 function detectPMLocation(){
   var label = document.getElementById('pm-loc-label');
@@ -720,7 +1315,49 @@ function detectPMLocation(){
   var lng = document.getElementById('pm-lng');
   var addr = document.getElementById('pm-addr');
   if(!label) return;
+function detectPMLocation(){
+  var label = document.getElementById('pm-loc-label');
+  var lat = document.getElementById('pm-lat');
+  var lng = document.getElementById('pm-lng');
+  var addr = document.getElementById('pm-addr');
+  if(!label) return;
   label.textContent = 'Detecting...';
+  var applyFallback = function(){
+    if(lat) lat.value = '27.715300';
+    if(lng) lng.value = '85.312300';
+    if(addr) addr.value = 'Thamel, Kathmandu';
+    label.textContent = 'Thamel, Kathmandu (detected)';
+    showToast('📍 Location detected: Thamel');
+  };
+  if(!navigator.geolocation){
+    applyFallback();
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(function(pos){
+    if(lat) lat.value = pos.coords.latitude.toFixed(6);
+    if(lng) lng.value = pos.coords.longitude.toFixed(6);
+    if(addr) addr.value = 'Current location';
+    label.textContent = 'Current location detected';
+    showToast('📍 Location detected');
+  }, applyFallback, {timeout: 2500});
+}
+
+function formatPlanDate(dateValue, timeValue){
+  if(!dateValue) return 'Date not set';
+  var pieces = dateValue.split('-').map(Number);
+  var date = new Date(pieces[0], pieces[1] - 1, pieces[2]);
+  var formatted = date.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
+  if(timeValue){
+    var time = timeValue.split(':');
+    date.setHours(Number(time[0] || 0), Number(time[1] || 0), 0);
+    formatted += ' at ' + date.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+  }
+  return formatted;
+}
+
+function confirmAdvancedPlan(){
+  if(!window.PLAN_CONTEXT || !PLAN_CONTEXT.confirmUrl){
+    showToast('🎉 Meetup plan confirmed!');
   var applyFallback = function(){
     if(lat) lat.value = '27.715300';
     if(lng) lng.value = '85.312300';
@@ -901,5 +1538,148 @@ function completeSerialStep(id, value){
     }
   }
 })();
+  var payload = {};
+  if(PLAN_CONTEXT.midpoint && Number.isFinite(Number(PLAN_CONTEXT.midpoint.lat)) && Number.isFinite(Number(PLAN_CONTEXT.midpoint.lng))){
+    payload.midpoint = PLAN_CONTEXT.midpoint;
+  }
+  fetch(PLAN_CONTEXT.confirmUrl, {
+    method:'POST',
+    headers:{
+      'X-Requested-With':'XMLHttpRequest',
+      'Content-Type':'application/json'
+    },
+    body: JSON.stringify(payload)
+  })
+    .then(function(response){ return response.json(); })
+    .then(function(data){
+      if(!data.success){
+        showToast(data.message || 'Could not confirm this meetup.');
+        return;
+      }
+      var note = data.notified ? ' Invites updated for ' + data.notified + ' friend(s).' : '';
+      showToast('🎉 Meetup plan confirmed!' + note);
+    })
+    .catch(function(){ showToast('🎉 Meetup plan confirmed locally.'); });
+}
+
+function currentSerialStepId(){
+  if(typeof window.stepIdx === 'undefined' || !window.STEPS) return null;
+  if(stepIdx < 0 || stepIdx >= STEPS.length) return null;
+  return STEPS[stepIdx].id;
+}
+
+function recordSerialResponse(id, value){
+  if(!id) return;
+  serialResponses[id] = value || true;
+}
+
+function requireSerialResponse(id){
+  var step = (window.STEPS || []).find(function(item){ return item.id === id; });
+  var label = step ? step.label : 'this popup';
+  showToast('Please choose an option for ' + label + '.');
+  return false;
+}
+
+function completeSerialStep(id, value){
+  recordSerialResponse(id, value || 'answered');
+  if(window._planBaseSerialNext) return window._planBaseSerialNext(id);
+  return serialNext(id);
+}
+
+(function(){
+  var baseOpenFinalSummary = window.openFinalSummary;
+  window._planBaseSerialNext = window.serialNext;
+  var baseFinishSerialPlan = window.finishSerialPlan;
+  var baseResetSerialPlan = window.resetSerialPlan;
+  var baseCloseFeatModal = window.closeFeatModal;
+  var baseCloseModal = window.closeModal;
+
+  window.serialNext = function(closingId, responseValue){
+    var currentId = currentSerialStepId();
+    if(responseValue) recordSerialResponse(closingId, responseValue);
+    if(currentId && closingId === currentId && !serialResponses[closingId]){
+      return requireSerialResponse(closingId);
+    }
+    return window._planBaseSerialNext ? window._planBaseSerialNext(closingId) : false;
+  };
+
+  window.finishSerialPlan = function(){
+    var currentId = currentSerialStepId();
+    if(currentId && !serialResponses[currentId]){
+      return requireSerialResponse(currentId);
+    }
+    return baseFinishSerialPlan ? baseFinishSerialPlan() : false;
+  };
+
+  window.resetSerialPlan = function(){
+    serialResponses = {};
+    midpointDirty = false;
+    if(baseResetSerialPlan) return baseResetSerialPlan();
+  };
+
+  window.closeFeatModal = function(id){
+    if(id && id === currentSerialStepId()){
+      return requireSerialResponse(id);
+    }
+    if(baseCloseFeatModal) return baseCloseFeatModal(id);
+  };
+
+  window.closeModal = function(id){
+    if(id && id === currentSerialStepId()){
+      return requireSerialResponse(id);
+    }
+    if(baseCloseModal) return baseCloseModal(id);
+  };
+
+  document.addEventListener('click', function(e){
+    var currentId = currentSerialStepId();
+    if(!currentId || e.target.id !== currentId) return;
+    if(e.target.classList.contains('feat-modal-overlay') || e.target.classList.contains('modal-overlay')){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      requireSerialResponse(currentId);
+    }
+  }, true);
+
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'Escape') return;
+    var currentId = currentSerialStepId();
+    if(!currentId) return;
+    var currentModal = document.getElementById(currentId);
+    if(currentModal && currentModal.classList.contains('open')){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      requireSerialResponse(currentId);
+    }
+  }, true);
+
+  window.openFinalSummary = function(){
+    if(baseOpenFinalSummary) baseOpenFinalSummary();
+    var ctx = window.PLAN_CONTEXT || {};
+    var title = document.getElementById('fsum-title');
+    var dt = document.getElementById('fsum-dt');
+    var people = document.getElementById('fsum-people');
+    if(title && ctx.title) title.textContent = ctx.title;
+    if(dt) dt.textContent = formatPlanDate(ctx.date, ctx.time);
+    if(people) people.textContent = (ctx.people || 1) + ' people';
+  };
+
+  if(window.PLAN_CONTEXT && PLAN_CONTEXT.hasMeetup){
+    var hydratePlanner = function(){
+      var titleEl = document.getElementById('pm-title');
+      if(titleEl && PLAN_CONTEXT.title) titleEl.value = PLAN_CONTEXT.title;
+      if(window.buildSteps) window.buildSteps();
+      seedMidpointInputsFromPlan();
+      initPlanLeafletMap();
+      if(window.showToast) showToast('✅ Meetup created. Continue with smart planning.');
+    };
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', hydratePlanner);
+    } else {
+      hydratePlanner();
+    }
+  }
+})();
 </script>
 {% endblock %}
+
