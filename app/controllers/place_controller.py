@@ -171,7 +171,6 @@ def create_meetup():
                 f'{current_user["full_name"]} invited you to "{title}"!',
                 type='meetup',
                 link=f'/meetup/plan?meetup_id={meetup_id}'
-                link=f'/meetup/plan?meetup_id={meetup_id}'
             )
 
         flash('Meetup created successfully!', 'success')
