@@ -3,6 +3,7 @@ from app.models.notification import EmergencyContact, SOSAlert, Notification
 from app.models.user import User
 from app.auth import get_current_user_id, is_logged_in
 from app import mail
+from app.database import execute_query
 from flask_mail import Message
 from config import Config
 import secrets
@@ -93,24 +94,37 @@ def trigger_sos():
 
     for contact in contacts:
         try:
+            # Look up emergency contact's email — they may be a registered user
+            contact_email = None
+            contact_user = execute_query(
+                "SELECT email FROM users WHERE phone = %s LIMIT 1",
+                (contact['phone'],), fetch=True
+            )
+            if contact_user:
+                contact_email = contact_user[0]['email']
+
+            if not contact_email:
+                # Phone field may contain an email address; skip if unusable
+                contact_email = contact['phone']
+
             msg = Message(
                 subject=f'🚨 SOS Alert from {user["full_name"]}',
-                recipients=[user['email']]  # send to user's email for now
+                recipients=[contact_email]
             )
             msg.html = f"""
                 <h2>🚨 Emergency Alert</h2>
                 <p><strong>{user['full_name']}</strong> has triggered an SOS alert!</p>
-                <p><strong>Contact:</strong> {contact['name']} ({contact['relationship']})</p>
-                <p><strong>Phone:</strong> {contact['phone']}</p>
+                <p><strong>Emergency Contact:</strong> {contact['name']} ({contact['relationship']})</p>
+                <p><strong>Contact Phone:</strong> {contact['phone']}</p>
                 <p><strong>Message:</strong> {message}</p>
                 <p><strong>Location:</strong> <a href="{maps_link}">{maps_link}</a></p>
                 <p><strong>Time:</strong> Just now</p>
                 <hr>
-                <p style="color:red;">Please check on them immediately!</p>
+                <p style="color:red;">Please check on {user['full_name']} immediately!</p>
             """
             mail.send(msg)
         except Exception as e:
-            print(f"SOS email error: {e}")
+            print(f"SOS email error for contact {contact['name']}: {e}")
 
     return jsonify({
         'success':    True,
