@@ -176,10 +176,12 @@
 
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/plan-dynamic.js') }}"></script>
 <script>
 window.PLAN_CONTEXT = {
   hasMeetup: {{ 'true' if show_advanced else 'false' }},
   meetupId: {{ active_meetup.id if show_advanced else 'null' }},
+  currentUserId: {{ current_user_id if current_user_id is defined else 'null' }},
   confirmUrl: "{{ url_for('meetup.confirm_plan', meetup_id=active_meetup.id) if show_advanced else '' }}",
   title: {{ (active_meetup.title if show_advanced else '')|tojson }},
   date: {{ (active_meetup.meetup_date|string if show_advanced and active_meetup.meetup_date else '')|tojson }},

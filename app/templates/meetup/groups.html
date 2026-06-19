@@ -20,18 +20,21 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
       <div>
         <h1 style="font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px;font-family:'Playfair Display',serif;color:var(--primary)">My Groups & Meetups</h1>
-        <p style="color:var(--muted);font-size:13.5px">Meetups, votes, gallery, chat & achievements.</p>
+        <p style="color:var(--muted);font-size:13.5px">Meetups, votes, chat & achievements.</p>
       </div>
-      <a class="btn-primary" href="{{ url_for('meetup.plan') }}" style="width:auto;padding:11px 20px;font-size:13px;text-decoration:none">＋ New Meetup</a>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn-primary" href="{{ url_for('meetup.plan') }}" style="width:auto;padding:11px 20px;font-size:13px;text-decoration:none">＋ New Meetup</a>
+        <a class="btn-sec" href="/meetup/scheduler" style="width:auto;padding:11px 20px;font-size:13px;text-decoration:none;background:#0d9488;color:#fff;border:none">📅 Go to Scheduler</a>
+      </div>
     </div>
 
     <div class="groups-body">
       <div class="groups-main">
 
         <!-- Meetups -->
-        <div class="card" style="margin-bottom:20px">
+        <div class="card" style="padding:20px">
           <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:16px">📅 Your Meetups ({{ meetups|length }})</div>
-          <div id="meetup-list" style="display:flex;flex-direction:column;gap:10px">
+          <div id="meetup-list" style="display:flex;flex-direction:column;gap:10px;max-height:400px;overflow-y:auto">
             {% for m in meetups %}
             <div class="meetup-row-item" data-meetup-id="{{ m.id }}" data-title="{{ m.title|lower }}"
                  style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;border:1.5px solid var(--border);cursor:pointer;transition:border-color .15s"
@@ -61,7 +64,7 @@
         </div>
 
         <!-- Group Vote -->
-        <div class="card" style="margin-bottom:20px" id="vote-panel">
+        <div class="card" style="padding:20px" id="vote-panel">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
             <div style="font-weight:700;font-size:15px;color:var(--primary)">🗳️ Group Vote</div>
             <span id="vote-status-badge" class="badge" style="background:rgba(37,99,235,.12);color:var(--blue)">Select a meetup</span>
@@ -70,37 +73,20 @@
           <div id="vote-organiser-actions" style="display:none;margin-bottom:12px">
             <button type="button" class="btn-primary" style="padding:8px 16px;font-size:12px" onclick="startVote()">Start Venue Vote (24h)</button>
           </div>
+          <div id="vote-no-active" style="text-align:center;padding:16px 0">
+            <div style="font-size:24px;margin-bottom:6px">🗳️</div>
+            <div style="font-size:12px;color:var(--muted)">No active vote</div>
+          </div>
           <div id="vote-options" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
           <div id="vote-results" style="background:var(--input-bg);border-radius:12px;padding:14px;min-height:60px">
             <div style="font-size:12px;color:var(--muted)">Live results appear here when a vote is active.</div>
-          </div>
-        </div>
-
-        <!-- Gallery -->
-        <div class="card" id="gallery-panel">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <div style="font-weight:700;font-size:15px;color:var(--primary)">📸 Meetup Gallery</div>
-          </div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Upload JPG/PNG under 5MB. Toggle public/private per photo.</p>
-          <form id="gallery-upload-form" style="display:none;margin-bottom:14px" enctype="multipart/form-data" onsubmit="return uploadGallery(event)">
-            <input type="file" name="photo" accept=".jpg,.jpeg,.png" required style="font-size:12px;margin-bottom:8px;width:100%">
-            <input type="text" name="caption" placeholder="Caption (optional)" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);margin-bottom:8px;font-size:12px">
-            <label style="font-size:12px;display:flex;align-items:center;gap:6px;margin-bottom:8px">
-              <input type="checkbox" name="is_public" value="1" checked> Public to group
-            </label>
-            <button type="submit" class="btn-primary" style="padding:8px 16px;font-size:12px">Upload Photo</button>
-          </form>
-          <div id="gallery-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;min-height:120px">
-            {% for _ in range(3) %}
-            <div class="gallery-placeholder" style="height:120px;border-radius:10px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted)">📷</div>
-            {% endfor %}
           </div>
         </div>
       </div>
 
       <div class="groups-right">
         <!-- Friends -->
-        <div class="card" style="margin-bottom:16px">
+        <div class="card" style="margin-bottom:16px;padding:20px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
             <div style="font-weight:700;font-size:15px;color:var(--primary)">👥 Friends ({{ friends|length }})</div>
             <a href="{{ url_for('meetup.scheduler_page') }}" class="btn-sec" style="padding:6px 12px;font-size:12px;text-decoration:none">＋ Add</a>
@@ -119,7 +105,7 @@
         </div>
 
         <!-- Group Chat -->
-        <div class="card" style="margin-bottom:16px">
+        <div class="card" style="margin-bottom:16px;padding:20px">
           <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:8px">💬 Group Chat</div>
           {% if chat_groups %}
           <div style="font-size:11px;color:var(--muted);margin-bottom:8px">{{ chat_groups[0].name }} · accepted members only</div>
@@ -137,7 +123,7 @@
         </div>
 
         <!-- Achievements -->
-        <div class="card">
+        <div class="card" style="padding:20px">
           <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:14px">🏅 Achievements</div>
           <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
             {% for a in achievements %}
