@@ -56,14 +56,16 @@ function applyLang(lang){
 function toggleLang(){applyLang(currentLang==='en'?'ne':'en');}
  
 function selectVenue(n){
-  [1,2].forEach(i=>{
-    const v=document.getElementById('venue'+i);
-    const nm=v.querySelector('.venue-name');
-    const sel=i===n;
-    v.classList.toggle('selected',sel);
-    nm.style.color=sel?'var(--blue)':'';
+  var all = document.querySelectorAll('#nearby-dynamic-list .venue-row, #modal-nearby-restaurants .venue-row');
+  all.forEach(function(v, i){
+    var sel = (i + 1) === n;
+    v.classList.toggle('selected', sel);
+    var nm = v.querySelector('.venue-name');
+    if (nm) nm.style.color = sel ? 'var(--blue)' : '';
   });
-  showToast(n===1?'Himalayan Java selected!':'Cafe de Patan selected!');
+  var selected = document.querySelector('#modal-nearby-restaurants .venue-row.selected .venue-name, #modal-nearby-restaurants .venue-row:nth-child(1) .venue-name');
+  var name = selected ? selected.textContent : 'Venue';
+  showToast('Selected: ' + name);
 }
  
 // ── VOTE NAMES MAP ──
@@ -471,17 +473,8 @@ function pickSlot(el){
 }
 
 // ── MIDPOINT CALCULATOR ──
-const MIDPOINT_SPOTS=['Patan Durbar Square','Garden of Dreams, Thamel','Sankhamul Park','Naxal Central Park','Boudha Stupa Area'];
-let mpIdx=0;
-function calcMidpoint(){
-  mpIdx=(mpIdx+1)%MIDPOINT_SPOTS.length;
-  const box=document.getElementById('midpoint-result');
-  const spot=MIDPOINT_SPOTS[mpIdx];
-  box.querySelector('h3').textContent=spot;
-  const mins=[14,20,18,12,22][mpIdx];
-  box.querySelector('p').textContent='~'+mins+' min avg travel · Ideal central point';
-  showToast('Midpoint recalculated: '+spot);
-}
+// NOTE: Real calcMidpoint is defined in plan.html extra_js (async with geocoding).
+// This stub is removed so the real implementation is used on the plan page.
 
 // ── BUDGET FILTER ──
 function updateBudget(val){
@@ -580,15 +573,8 @@ function filterGallery(cat,btn){
 // ═══════════════════════════════════════
 //  PLAN MEETUP — Phase 1 → Phase 2
 // ═══════════════════════════════════════
-function detectPMLocation(){
-  var label = document.getElementById('pm-loc-label');
-  if(!label) return;
-  label.textContent = 'Detecting…';
-  setTimeout(function(){
-    label.textContent = 'Thamel, Kathmandu (detected)';
-    showToast('📍 Location detected: Thamel');
-  }, 800);
-}
+// NOTE: Real calcMidpoint and detectPMLocation are defined in plan.html extra_js.
+// The main.js versions have been removed to avoid overriding the real implementations.
 
 function createMeetupAndProceed(){
   var title = document.getElementById('pm-title') ? document.getElementById('pm-title').value.trim() : '';
@@ -874,7 +860,7 @@ function setSplitMode(mode, btn) {
 }
 function calcSplit() {
   const total = parseFloat(document.getElementById('budget-total').value) || 0;
-  const members = document.querySelectorAll('#split-members .split-member-row');
+  const members = document.querySelectorAll('#split-dynamic-members .split-member-row, #split-members .split-member-row');
   const n = members.length;
   const perPerson = Math.floor(total / n);
   const remainder = total - perPerson * (n - 1);
@@ -882,7 +868,7 @@ function calcSplit() {
     const amt = row.querySelector('.split-amount');
     if (amt) amt.textContent = 'NPR ' + (i === n-1 ? remainder : perPerson).toLocaleString();
   });
-  const summary = document.getElementById('split-summary');
+  const summary = document.getElementById('split-dynamic-summary') || document.getElementById('split-summary');
   if (summary) summary.textContent = 'Equal split: NPR ' + perPerson.toLocaleString() + ' / person';
 }
 

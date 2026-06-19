@@ -883,3 +883,302 @@ CREATE TABLE IF NOT EXISTS imported_calendar_events (
     UNIQUE KEY unique_account_external_event (account_id, external_uid),
     INDEX idx_imported_events_user_time (user_id, starts_at, ends_at)
 );
+
+
+-- =========================================
+-- FRIEND GROUPS (Group Chat feature)
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS friend_groups (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    name     VARCHAR(255) NOT NULL,
+    owner_id INT          NOT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (owner_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+
+-- =========================================
+-- FRIEND GROUP MEMBERS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS friend_group_members (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    group_id INT NOT NULL,
+    user_id  INT NOT NULL,
+
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (group_id)
+        REFERENCES friend_groups(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    UNIQUE KEY unique_group_member (group_id, user_id)
+) ENGINE=InnoDB;
+
+
+-- =========================================
+-- GROUP CHAT MESSAGES
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS group_chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    group_id INT NOT NULL,
+    user_id  INT NOT NULL,
+
+    body       TEXT    NOT NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (group_id)
+        REFERENCES friend_groups(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    INDEX idx_gcm_group_created (group_id, created_at)
+) ENGINE=InnoDB;
+
+
+-- =========================================
+-- GROUP CHAT READ RECEIPTS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS group_chat_reads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    message_id INT NOT NULL,
+    user_id    INT NOT NULL,
+
+    read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (message_id)
+        REFERENCES group_chat_messages(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    UNIQUE KEY unique_chat_read (message_id, user_id)
+) ENGINE=InnoDB;
+
+
+-- =========================================
+-- GROUP CHAT TYPING INDICATORS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS group_chat_typing (
+    group_id INT NOT NULL,
+    user_id  INT NOT NULL,
+
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (group_id, user_id),
+
+    FOREIGN KEY (group_id)
+        REFERENCES friend_groups(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+
+-- =========================================
+-- VENUE VOTES (Group Voting)
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS venue_votes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    meetup_id  INT NOT NULL,
+    created_by INT NOT NULL,
+
+    deadline DATETIME NOT NULL,
+    status   ENUM('open', 'closed') NOT NULL DEFAULT 'open',
+
+    winner_option_id INT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (meetup_id)
+        REFERENCES meetups(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (created_by)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    INDEX idx_venue_votes_meetup_status (meetup_id, status)
+) ENGINE=InnoDB;
+
+
+-- =========================================
+-- VENUE VOTE OPTIONS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS venue_vote_options (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    vote_id       INT          NOT NULL,
+    restaurant_id INT          NULL,
+
+    label   VARCHAR(255) NOT NULL,
+    address VARCHAR(255),
+
+    FOREIGN KEY (vote_id)
+        REFERENCES venue_votes(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (restaurant_id)
+        REFERENCES restaurants(id)
+        ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+
+-- =========================================
+-- VENUE VOTE CASTS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS venue_vote_casts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    vote_id   INT NOT NULL,
+    user_id   INT NOT NULL,
+    option_id INT NOT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (vote_id)
+        REFERENCES venue_votes(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (option_id)
+        REFERENCES venue_vote_options(id)
+        ON DELETE CASCADE,
+
+    UNIQUE KEY unique_vote_cast (vote_id, user_id)
+) ENGINE=InnoDB;
+
+
+-- =========================================
+-- MEETUP GALLERY PHOTOS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS meetup_gallery (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    meetup_id INT          NOT NULL,
+    user_id   INT          NOT NULL,
+
+    file_path VARCHAR(255) NOT NULL,
+    caption   VARCHAR(500) DEFAULT '',
+    is_public BOOLEAN      NOT NULL DEFAULT TRUE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (meetup_id)
+        REFERENCES meetups(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    INDEX idx_gallery_meetup (meetup_id, created_at)
+) ENGINE=InnoDB;
+
+
+-- =========================================
+-- GALLERY LIKES
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS gallery_likes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    gallery_id INT NOT NULL,
+    user_id    INT NOT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (gallery_id)
+        REFERENCES meetup_gallery(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    UNIQUE KEY unique_gallery_like (gallery_id, user_id)
+) ENGINE=InnoDB;
+
+
+-- =========================================
+-- GALLERY COMMENTS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS gallery_comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    gallery_id INT  NOT NULL,
+    user_id    INT  NOT NULL,
+
+    comment    TEXT NOT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (gallery_id)
+        REFERENCES meetup_gallery(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    INDEX idx_gallery_comments_gallery (gallery_id, created_at)
+) ENGINE=InnoDB;
+
+
+-- =========================================
+-- BUDGET SPLIT LOG
+-- (tracks each call to record_budget_split)
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS budget_split_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id   INT NOT NULL,
+    meetup_id INT NOT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (meetup_id)
+        REFERENCES meetups(id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB;
