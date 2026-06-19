@@ -897,3 +897,84 @@ def delete_meetup_plan(meetup_id):
     Meetup.delete_by_creator(meetup_id, user_id)
     flash('Meetup plan deleted.', 'success')
     return redirect(url_for('meetup.plan'))
+
+# ── New API endpoints for dynamic planner modals ─────────────────────
+
+def api_cuisines():
+    if not is_logged_in():
+        return jsonify({'success': False}), 401
+    return jsonify({'success': True, 'cuisines': Restaurant.get_cuisines()})
+
+
+def api_budget_range():
+    if not is_logged_in():
+        return jsonify({'success': False}), 401
+    min_cost, max_cost = Restaurant.get_budget_range()
+    return jsonify({'success': True, 'min': min_cost, 'max': max_cost})
+
+
+def api_ambiences():
+    if not is_logged_in():
+        return jsonify({'success': False}), 401
+    rows = execute_query(
+        "SELECT DISTINCT ambience FROM restaurants WHERE is_active = TRUE AND ambience IS NOT NULL ORDER BY ambience",
+        fetch=True
+    ) or []
+    ambiences = [r['ambience'] for r in rows if r['ambience']]
+    return jsonify({'success': True, 'ambiences': ambiences})
+
+
+def api_offers():
+    if not is_logged_in():
+        return jsonify({'success': False}), 401
+    from app.models.place import RestaurantOffer
+    # Get all active offers with restaurant info
+    rows = execute_query(
+        """
+        SELECT o.*, r.name as restaurant_name, r.address as restaurant_address,
+               r.latitude, r.longitude, r.cuisine, r.rating
+        FROM restaurant_offers o
+        JOIN restaurants r ON o.restaurant_id = r.id
+        WHERE o.is_active = TRUE AND o.valid_until >= CURDATE()
+        ORDER BY o.discount_percent DESC, o.valid_until ASC
+        LIMIT 20
+        """,
+        fetch=True
+    ) or []
+    offers = []
+    for r in rows:
+        offers.append({
+            'id': r['id'],
+            'restaurant_id': r['restaurant_id'],
+            'restaurant_name': r['restaurant_name'],
+            'title': r['title'],
+            'description': r['description'] or '',
+            'discount_percent': r['discount_percent'] or 0,
+            'valid_until': str(r['valid_until']) if r['valid_until'] else None,
+            'cuisine': r['cuisine'] or '',
+            'rating': float(r['rating'] or 0),
+        })
+    return jsonify({'success': True, 'offers': offers})
+
+
+def api_nearby_restaurants():
+    if not is_logged_in():
+        return jsonify({'success': False}), 401
+    lat = request.args.get('lat')
+    lng = request.args.get('lng')
+    radius = float(request.args.get('radius', 3.0))
+    filters = _build_filters(request.args)
+    if lat and lng:
+        restaurants = Restaurant.get_nearby(float(lat), float(lng), radius, filters)
+    else:
+        restaurants = Restaurant.get_all(filters, limit=20)
+    return jsonify({'success': True, 'restaurants': [{
+        'id': r['id'],
+        'name': r['name'],
+        'address': r.get('address', ''),
+        'cuisine': r.get('cuisine', ''),
+        'rating': float(r.get('rating') or 0),
+        'avg_cost_per_person': float(r.get('avg_cost_per_person') or 0),
+        'distance_km': r.get('distance_km'),
+        'ambience': r.get('ambience', ''),
+    } for r in (restaurants or [])]})

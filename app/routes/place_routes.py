@@ -2,7 +2,9 @@ from flask import Blueprint
 from app.routes.user_routes import login_required
 from app.controllers.place_controller import (
     saved_places, restaurants, restaurant_detail,
-    add_review, save_place, remove_saved_place
+    add_review, save_place, remove_saved_place,
+    api_filter_restaurants, api_cuisines, api_budget_range,
+    api_ambiences, api_offers, api_nearby_restaurants
 )
 
 place_bp = Blueprint('place', __name__, url_prefix='/place')
@@ -42,6 +44,31 @@ def remove(place_id):
 def api_restaurants():
     from app.controllers.place_controller import api_filter_restaurants
     return api_filter_restaurants()
+
+@place_bp.route('/api/cuisines')
+@login_required
+def api_cuisines_route():
+    return api_cuisines()
+
+@place_bp.route('/api/budget-range')
+@login_required
+def api_budget_range_route():
+    return api_budget_range()
+
+@place_bp.route('/api/ambiences')
+@login_required
+def api_ambiences_route():
+    return api_ambiences()
+
+@place_bp.route('/api/offers')
+@login_required
+def api_offers_route():
+    return api_offers()
+
+@place_bp.route('/api/nearby')
+@login_required
+def api_nearby_route():
+    return api_nearby_restaurants()
 
 @place_bp.route('/offer/<int:offer_id>/save', methods=['POST'])
 @login_required
