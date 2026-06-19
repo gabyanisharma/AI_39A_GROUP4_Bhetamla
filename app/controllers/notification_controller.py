@@ -43,6 +43,8 @@ def add_contact():
             return redirect(url_for('user.safety_page'))
 
         EmergencyContact.create(get_current_user_id(), name, phone, relationship)
+        from app.services import achievement_service
+        achievement_service.on_emergency_contact_added(get_current_user_id())
         flash('Emergency contact added!', 'success')
 
     return redirect(url_for('user.safety_page'))
@@ -173,12 +175,63 @@ def notifications():
     if not is_logged_in():
         return redirect(url_for('auth.login'))
 
+    from app.models.notification_preference import (
+        NotificationPreference, SmartAlertEngine
+    )
+
     user_id = get_current_user_id()
+
+    # Generate any due smart alerts before showing the feed.
+    try:
+        SmartAlertEngine.run(user_id)
+    except Exception as e:  # never let alert generation break the page
+        print(f"Smart alert engine error: {e}")
+
+    prefs   = NotificationPreference.get_or_create(user_id)
     notifs  = Notification.get_by_user(user_id)
     Notification.mark_all_read(user_id)
 
     return render_template('user/notifications.html',
-                           notifications=notifs)
+                           notifications=notifs,
+                           prefs=prefs)
+
+
+def update_notification_preferences():
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+
+    from app.models.notification_preference import NotificationPreference
+
+    user_id = get_current_user_id()
+
+    def _checkbox(name):
+        return 1 if request.form.get(name) else 0
+
+    def _int_or_none(name):
+        raw = request.form.get(name, '').strip()
+        if raw == '':
+            return None
+        try:
+            return int(raw)
+        except ValueError:
+            return None
+
+    lead = _int_or_none('reminder_lead_hours')
+    if lead is None:
+        lead = 24
+    lead = max(1, min(lead, 168))  # clamp 1h .. 1 week
+
+    NotificationPreference.update(user_id, {
+        'smart_alerts_enabled': _checkbox('smart_alerts_enabled'),
+        'meetup_reminders':     _checkbox('meetup_reminders'),
+        'invite_alerts':        _checkbox('invite_alerts'),
+        'trending_alerts':      _checkbox('trending_alerts'),
+        'reminder_lead_hours':  lead,
+        'quiet_hours_start':    _int_or_none('quiet_hours_start'),
+        'quiet_hours_end':      _int_or_none('quiet_hours_end'),
+    })
+    flash('Notification preferences saved.', 'success')
+    return redirect(url_for('user.notifications_page'))
 
 
 def mark_read(notification_id):

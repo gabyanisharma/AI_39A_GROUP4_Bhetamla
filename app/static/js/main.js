@@ -361,10 +361,48 @@ function closeNotifPanel(){
   document.getElementById('notif-overlay').style.display='none';
 }
 
-// SOS TRIGGER
+// SOS TRIGGER — sends live location to the backend, which logs the alert
+// and notifies the user's emergency contacts. Surfaces the cancel PIN.
 function triggerSOS(){
   closeModal('modal-sos');
-  showToast('🚨 SOS Alert Sent! Contacts notified with your location.');
+  showToast('🚨 Sending SOS…');
+
+  var send = function(lat, lng){
+    fetch('/notification/trigger-sos', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+      body: JSON.stringify({latitude: lat, longitude: lng})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d && d.success){
+        if(typeof sosActive !== 'undefined') sosActive = true;
+        var badge = document.getElementById('sos-status-badge');
+        if(badge){
+          badge.innerHTML = '<div style="width:9px;height:9px;border-radius:50%;background:var(--red);flex-shrink:0;"></div><span style="font-size:12.5px;font-weight:700;color:var(--red)">SOS ACTIVE</span>';
+          badge.style.background = '#FFEBEE';
+        }
+        showToast('🚨 SOS sent! Emergency contacts notified.');
+        if(d.cancel_pin){
+          alert('SOS alert active.\n\nYour cancel PIN is: ' + d.cancel_pin +
+                '\n\nKeep this PIN to deactivate the alert from the Safety page.');
+        }
+      } else {
+        showToast((d && d.message) || 'Could not send SOS.');
+      }
+    })
+    .catch(function(){ showToast('Could not send SOS. Check your connection.'); });
+  };
+
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      function(pos){ send(pos.coords.latitude, pos.coords.longitude); },
+      function(){ send(null, null); },
+      {timeout: 4000}
+    );
+  } else {
+    send(null, null);
+  }
 }
 
 // FORGOT PASSWORD

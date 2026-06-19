@@ -640,4 +640,206 @@ CREATE TABLE IF NOT EXISTS saved_routes (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- =========================================
+-- TRENDING MEETUP SPOTS (Explore Feed)
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS trending_spots (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    address VARCHAR(255),
+
+    latitude DECIMAL(10,8),
+    longitude DECIMAL(11,8),
+
+    category VARCHAR(100),
+    cuisine VARCHAR(100),
+    ambience VARCHAR(100),
+
+    price_range ENUM('budget', 'mid', 'expensive') DEFAULT 'mid',
+    avg_cost_per_person DECIMAL(10,2),
+
+    rating DECIMAL(3,2) DEFAULT 0,
+    review_count INT DEFAULT 0,
+    trend_score DECIMAL(5,2) DEFAULT 0,
+
+    image_url VARCHAR(255),
+    thumbnail_url VARCHAR(255),
+
+    is_active BOOLEAN DEFAULT TRUE,
+    is_featured BOOLEAN DEFAULT FALSE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- =========================================
+-- USER SPOT INTERACTIONS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS user_spot_interactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NOT NULL,
+    spot_id INT NOT NULL,
+
+    interaction_type ENUM('view', 'like', 'save', 'share', 'visit') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (spot_id) REFERENCES trending_spots(id) ON DELETE CASCADE,
+
+    UNIQUE KEY unique_user_spot_interaction (user_id, spot_id, interaction_type)
+);
+
+-- =========================================
+-- SPOT RECOMMENDATIONS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS spot_recommendations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NOT NULL,
+    spot_id INT NOT NULL,
+    recommended_by INT,
+    recommendation_reason VARCHAR(255),
+    score DECIMAL(5,2) DEFAULT 0,
+
+    is_dismissed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (spot_id) REFERENCES trending_spots(id) ON DELETE CASCADE,
+    FOREIGN KEY (recommended_by) REFERENCES users(id) ON DELETE SET NULL,
+
+    UNIQUE KEY unique_user_spot_recommendation (user_id, spot_id)
+);
+
+-- =========================================
+-- SMART NOTIFICATION ALERTS
+-- =========================================
+
+CREATE TABLE IF NOT EXISTS notification_preferences (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NOT NULL,
+
+    -- Master switch for smart alerts.
+    smart_alerts_enabled BOOLEAN DEFAULT TRUE,
+
+    -- Per-category toggles.
+    meetup_reminders BOOLEAN DEFAULT TRUE,
+    invite_alerts BOOLEAN DEFAULT TRUE,
+    trending_alerts BOOLEAN DEFAULT TRUE,
+
+    -- How many hours before a meetup to fire the reminder.
+    reminder_lead_hours INT DEFAULT 24,
+
+    -- Quiet hours on a 24h clock - alerts in this window are suppressed.
+    quiet_hours_start TINYINT NULL,
+    quiet_hours_end TINYINT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+
+    UNIQUE KEY unique_user_pref (user_id)
+);
+
+-- Idempotency log so the smart-alert engine never fires the same alert twice.
+CREATE TABLE IF NOT EXISTS smart_alert_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NOT NULL,
+    alert_key VARCHAR(191) NOT NULL,
+    notification_id INT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+
+    UNIQUE KEY unique_user_alert (user_id, alert_key)
+);
+
 -- Indexes for fast lookups are created conditionally in app/database.py
+
+CREATE TABLE IF NOT EXISTS meetup_plan_preferences (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    meetup_id INT NOT NULL,
+    user_id INT NOT NULL,
+    cuisine VARCHAR(100),
+    budget_min INT DEFAULT 200,
+    budget_max INT DEFAULT 2000,
+    ambience VARCHAR(100),
+    selected_venue VARCHAR(255),
+    selected_venue_lat DECIMAL(10,8),
+    selected_venue_lng DECIMAL(11,8),
+    ride_option VARCHAR(100),
+    notes TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (meetup_id) REFERENCES meetups(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_pref (meetup_id, user_id)
+);
+-- =========================================
+-- BUDGET SPLIT RECORDS
+-- Append to schema.sql after meetup_plan_preferences
+--
+-- One canonical split row per meetup.
+-- record_budget_split() upserts on uq_bsr_meetup so calling
+-- "Send Split" multiple times is safe.
+-- recorded_by tracks the last user who pushed the button.
+-- badge_hint 'penny_pincher' is returned to the client on success.
+-- =========================================
+ 
+CREATE TABLE IF NOT EXISTS budget_split_records (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+ 
+    meetup_id           INT          NOT NULL,
+    recorded_by         INT          NOT NULL,
+ 
+    total_bill          DECIMAL(10,2) DEFAULT 0
+                            CHECK (total_bill >= 0),
+ 
+    member_count        INT           DEFAULT 1
+                            CHECK (member_count > 0),
+ 
+    per_person_amount   DECIMAL(10,2) DEFAULT 0
+                            CHECK (per_person_amount >= 0),
+ 
+    -- Snapshot of the modal summary line,
+    -- e.g. "Equal split: NPR 1,167 / person"
+    split_summary       VARCHAR(255),
+ 
+    recorded_at         DATETIME      DEFAULT CURRENT_TIMESTAMP
+                            ON UPDATE CURRENT_TIMESTAMP,
+ 
+    FOREIGN KEY (meetup_id)
+        REFERENCES meetups(id)  ON DELETE CASCADE,
+ 
+    FOREIGN KEY (recorded_by)
+        REFERENCES users(id)    ON DELETE CASCADE,
+ 
+    -- One canonical split per meetup.
+    -- The upsert in record_budget_split() keeps this in sync.
+    UNIQUE KEY uq_bsr_meetup (meetup_id)
+);
+
+-- =========================================
+-- APP RATING & FEEDBACK (US27)
+-- General product feedback with a 1–5 star
+-- rating and an optional message.
+-- =========================================
+CREATE TABLE IF NOT EXISTS app_feedback (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    rating TINYINT NOT NULL,
+    category VARCHAR(50) DEFAULT 'general',
+    message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_feedback_user (user_id, created_at)
+);

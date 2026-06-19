@@ -1,10 +1,12 @@
 from flask import Flask, session, redirect, url_for
 from flask_mail import Mail
+from flask_socketio import SocketIO
 from config import Config
 from app.translations import get_translations
 from app.database import initialize_db
 
 mail = Mail()
+socketio = SocketIO(cors_allowed_origins='*', async_mode='threading')
 
 def create_app():
     app = Flask(__name__)
@@ -50,7 +52,9 @@ def create_app():
     from app.routes.meetup_routes import meetup_bp
     from app.routes.place_routes import place_bp
     from app.controllers.fare_alert_controller import fare_alert_bp
-    from app.routes.ride_routes import ride_bp 
+    from app.routes.ride_routes import ride_bp
+    from app.routes.explore_routes import explore_bp
+    from app.routes.analytics_routes import analytics_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
@@ -58,7 +62,13 @@ def create_app():
     app.register_blueprint(meetup_bp)
     app.register_blueprint(place_bp)
     app.register_blueprint(fare_alert_bp, url_prefix='/fare-alert')
-    app.register_blueprint(ride_bp)  
+    app.register_blueprint(ride_bp)
+    app.register_blueprint(explore_bp)
+    app.register_blueprint(analytics_bp)
+
+    socketio.init_app(app)
+    from app.socket_events import register_socket_events
+    register_socket_events(socketio)
 
     @app.route('/')
     def index():
@@ -67,3 +77,6 @@ def create_app():
         return redirect(url_for('auth.login'))
 
     return app
+
+def get_socketio():
+    return socketio
