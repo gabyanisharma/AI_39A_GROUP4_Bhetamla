@@ -1,11 +1,13 @@
 from flask import (render_template, request,
-                   redirect, url_for, flash, jsonify)
+                   redirect, url_for, flash, jsonify, session)
 from app.auth import get_current_user_id, is_logged_in
 from app.models.meetup import Meetup, MeetupMember
 from app.models.user import User
+from app.models.route import SavedRoute
 from app.database import execute_query
 import math
 from datetime import datetime
+
 
 
 # ── Kathmandu ride pricing constants ──────────────────────────────
@@ -213,3 +215,100 @@ def budget_split(meetup_id):
     }
 
     return jsonify({'success': True, 'data': split_data})
+
+
+
+# ── Record budget split → unlocks Penny Pincher badge (US2) ───────
+def record_budget_split(meetup_id):
+    """
+    POST /meetup/budget-split/<meetup_id>/record
+    Called by the planner "Send Split" button.
+    Persists the split event so the Penny Pincher achievement
+    can be awarded on the next badge evaluation pass.
+    """
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+
+    user_id = get_current_user_id()
+    data    = request.get_json() or {}
+
+    total_bill    = data.get('total_bill', 0)
+    split_summary = data.get('split_summary', '')
+
+    # Fetch member count for the split denominator
+    member_rows = execute_query(
+        "SELECT COUNT(*) AS cnt FROM meetup_members WHERE meetup_id = %s",
+        (meetup_id,), fetch=True
+    )
+    member_count = (member_rows[0]['cnt'] if member_rows else 1) or 1
+    per_person   = round(float(total_bill) / member_count, 2) if total_bill else 0
+
+    execute_query(
+        """
+        INSERT INTO budget_split_records
+            (meetup_id, recorded_by, total_bill, member_count,
+             per_person_amount, split_summary, recorded_at)
+        VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+        ON DUPLICATE KEY UPDATE
+            total_bill          = VALUES(total_bill),
+            member_count        = VALUES(member_count),
+            per_person_amount   = VALUES(per_person_amount),
+            split_summary       = VALUES(split_summary),
+            recorded_at         = CURRENT_TIMESTAMP
+        """,
+        (meetup_id, user_id, total_bill, member_count,
+         per_person, split_summary)
+    )
+
+    return jsonify({
+        'success':        True,
+        'per_person':     per_person,
+        'member_count':   member_count,
+        'badge_hint':     'penny_pincher'   # client can optimistically show unlock
+    })
+
+
+
+def route_planner_page():
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+    user_id = get_current_user_id()
+    saved_routes = SavedRoute.get_by_user(user_id)
+    return render_template('ride/route_planner.html', saved_routes=saved_routes)
+
+
+# ── Save a multi-stop route (AJAX POST) ───────────────────────────
+def save_route():
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': 'Not logged in'}), 401
+
+    user_id = get_current_user_id()
+    data = request.get_json() or {}
+
+    route_name        = data.get('route_name', 'My Route').strip() or 'My Route'
+    waypoints         = data.get('waypoints', [])
+    optimize_by       = data.get('optimize_by', 'time')
+    total_distance_km = data.get('total_distance_km', 0)
+    total_duration_min= data.get('total_duration_min', 0)
+
+    if len(waypoints) < 2:
+        return jsonify({'success': False, 'message': 'Need at least 2 stops.'}), 400
+
+    SavedRoute.save(
+        user_id=user_id,
+        route_name=route_name,
+        waypoints=waypoints,
+        optimize_by=optimize_by,
+        total_distance_km=round(float(total_distance_km), 2),
+        total_duration_min=int(total_duration_min)
+    )
+    return jsonify({'success': True, 'message': f'Route "{route_name}" saved!'})
+
+
+# ── Delete a saved route (AJAX POST) ──────────────────────────────
+def delete_route(route_id):
+    if not is_logged_in():
+        return jsonify({'success': False}), 401
+    user_id = get_current_user_id()
+    SavedRoute.delete(route_id, user_id)
+    return jsonify({'success': True})
