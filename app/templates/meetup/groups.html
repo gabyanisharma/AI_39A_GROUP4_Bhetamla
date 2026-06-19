@@ -47,7 +47,7 @@
                 <span style="background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">
                   {{ 'Organiser' if m.created_by == current_user_id else 'Member' }}
                 </span>
-                <form method="POST" action="{{ url_for('meetup.delete', meetup_id=m.id) }}" onsubmit="return confirm('Remove from My Groups? It stays in History & Analytics.');" onclick="event.stopPropagation()">
+                <form method="POST" action="{{ url_for('meetup.delete_plan', meetup_id=m.id) }}" onsubmit="return confirm('Remove from My Groups? It stays in History & Analytics.');" onclick="event.stopPropagation()">
                   <button type="submit" title="Remove from My Groups" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted)">✕</button>
                 </form>
               </div>
