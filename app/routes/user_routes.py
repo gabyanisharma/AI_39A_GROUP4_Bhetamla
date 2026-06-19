@@ -2,7 +2,7 @@ from flask import Blueprint, redirect, url_for, render_template, session
 from functools import wraps
 from app.auth import is_logged_in
 from app.controllers.user_controller import (
-    profile, settings, support
+    profile, settings, support, submit_feedback
 )
 from app.controllers.notification_controller import safety
 from datetime import datetime
@@ -130,3 +130,9 @@ def notifications_page():
 @login_required
 def support_page():
     return support()
+
+
+@user_bp.route('/feedback', methods=['POST'])
+@login_required
+def feedback_submit():
+    return submit_feedback()
