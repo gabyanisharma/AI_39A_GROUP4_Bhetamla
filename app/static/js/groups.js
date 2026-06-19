@@ -3,6 +3,7 @@
   let selectedMeetupId = cfg.meetups && cfg.meetups.length ? cfg.meetups[0].id : null;
   let votePollTimer = null;
   let socket = null;
+  let chatGroupId = null;
 
   function selectedMeetup() {
     return (cfg.meetups || []).find(m => m.id === selectedMeetupId);
@@ -14,9 +15,7 @@
       el.style.borderColor = parseInt(el.dataset.meetupId, 10) === id ? 'var(--blue)' : 'var(--border)';
     });
     refreshVotePanel();
-    refreshGallery();
-    const form = document.getElementById('gallery-upload-form');
-    if (form) form.style.display = id ? 'block' : 'none';
+    connectMeetupChat(id);
   };
 
   async function refreshVotePanel() {
@@ -99,84 +98,6 @@
     if (data.success) refreshVotePanel();
   }
 
-  async function refreshGallery() {
-    if (!selectedMeetupId) return;
-    const grid = document.getElementById('gallery-grid');
-    if (!grid) return;
-    const res = await fetch(`/meetup/${selectedMeetupId}/gallery/list`);
-    if (!res.ok) {
-      grid.innerHTML = '<div class="gallery-placeholder" style="grid-column:span 3;text-align:center;padding:30px;color:var(--muted)">Select a meetup to view gallery</div>';
-      return;
-    }
-    const data = await res.json();
-    const photos = data.photos || [];
-    if (!photos.length) {
-      grid.innerHTML = '';
-      for (let i = 0; i < 3; i++) {
-        grid.innerHTML += '<div class="gallery-placeholder" style="height:120px;border-radius:10px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted)">📷</div>';
-      }
-      return;
-    }
-    grid.innerHTML = photos.map(p => `
-      <div style="position:relative;border-radius:10px;overflow:hidden;height:120px;background:var(--input-bg)">
-        <img src="${p.url}" alt="" style="width:100%;height:100%;object-fit:cover">
-        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:9px;padding:4px 6px">
-          ❤️ ${p.like_count} · 💬 ${p.comment_count} · ${p.is_public ? '🌐' : '🔒'}
-        </div>
-        ${p.user_id === cfg.currentUserId ? `<button onclick="deletePhoto(${p.id})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:10px;padding:2px 6px">✕</button>` : ''}
-        ${p.user_id === cfg.currentUserId ? `<button onclick="togglePhotoPrivacy(${p.id}, ${p.is_public})" style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:9px;padding:2px 5px">${p.is_public ? 'Public' : 'Private'}</button>` : ''}
-        <button onclick="likePhoto(${p.id})" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:10px;padding:2px 6px">♥</button>
-        <button onclick="commentPhoto(${p.id})" style="position:absolute;top:4px;left:28px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:10px;padding:2px 6px">💬</button>
-      </div>
-    `).join('');
-  }
-
-  window.uploadGallery = async function (e) {
-    e.preventDefault();
-    const form = e.target;
-    const fd = new FormData(form);
-    if (!fd.get('is_public')) fd.append('is_public', '0');
-    const res = await fetch(`/meetup/${selectedMeetupId}/gallery/upload`, { method: 'POST', body: fd });
-    const data = await res.json();
-    if (data.success) {
-      form.reset();
-      refreshGallery();
-      if (typeof showToast === 'function') showToast('📸 Photo uploaded');
-    } else if (typeof showToast === 'function') showToast(data.message || 'Upload failed');
-    return false;
-  };
-
-  window.deletePhoto = async function (id) {
-    if (!confirm('Delete your photo?')) return;
-    await fetch(`/meetup/gallery/${id}/delete`, { method: 'POST' });
-    refreshGallery();
-  };
-
-  window.likePhoto = async function (id) {
-    await fetch(`/meetup/gallery/${id}/like`, { method: 'POST' });
-    refreshGallery();
-  };
-
-  window.commentPhoto = async function (id) {
-    const text = prompt('Add a comment:');
-    if (!text || !text.trim()) return;
-    await fetch(`/meetup/gallery/${id}/comment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ comment: text.trim() })
-    });
-    refreshGallery();
-  };
-
-  window.togglePhotoPrivacy = async function (id, isPublic) {
-    await fetch(`/meetup/gallery/${id}/privacy`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_public: !isPublic })
-    });
-    refreshGallery();
-  };
-
   window.recordBudgetSplit = async function () {
     if (!selectedMeetupId) {
       alert("Please select a meetup first!");
@@ -203,15 +124,20 @@
     }
   };
 
-  function initChat() {
-    if (!cfg.chatGroupId || typeof io === 'undefined') return;
+  function initSocket() {
+    if (socket || typeof io === 'undefined') return;
     socket = io({ withCredentials: true });
-    socket.emit('join_group', { group_id: cfg.chatGroupId });
 
-    loadChatMessages();
-
-    socket.on('new_message', msg => appendChatMessage(msg));
+    socket.on('new_message', msg => {
+      if (msg.group_id !== chatGroupId) return;
+      appendChatMessage(msg);
+      // New-message alert, unless the chat is muted or it's our own message.
+      if (msg.user_id !== cfg.currentUserId && !isChatMuted() && typeof showToast === 'function') {
+        showToast('💬 ' + (msg.full_name || 'New message') + ': ' + (msg.body || '').slice(0, 60));
+      }
+    });
     socket.on('user_typing', data => {
+      if (data.group_id !== chatGroupId) return;
       const el = document.getElementById('chat-typing');
       if (el) el.textContent = data.full_name + ' is typing…';
       setTimeout(() => { if (el) el.textContent = ''; }, 3000);
@@ -224,15 +150,56 @@
     const input = document.getElementById('chat-input');
     if (input) {
       input.addEventListener('input', () => {
-        socket.emit('typing', { group_id: cfg.chatGroupId });
+        if (chatGroupId) socket.emit('typing', { group_id: chatGroupId });
       });
     }
   }
 
+  // Resolve the selected meetup's shared chat group, join its room and load
+  // history. All accepted members of the meetup share this single room.
+  async function connectMeetupChat(meetupId) {
+    const emptyEl = document.getElementById('chat-empty');
+    const activeEl = document.getElementById('chat-active');
+    const label = document.getElementById('chat-group-label');
+    if (!meetupId) {
+      if (emptyEl) emptyEl.style.display = 'block';
+      if (activeEl) activeEl.style.display = 'none';
+      return;
+    }
+    let data;
+    try {
+      const res = await fetch(`/meetup/${meetupId}/chat/group`);
+      data = await res.json();
+    } catch (e) { data = { success: false }; }
+
+    if (!data || !data.success) {
+      if (emptyEl) {
+        emptyEl.style.display = 'block';
+        emptyEl.textContent = (data && data.message) || 'Chat unavailable for this meetup.';
+      }
+      if (activeEl) activeEl.style.display = 'none';
+      return;
+    }
+
+    initSocket();
+    if (socket && chatGroupId && chatGroupId !== data.group_id) {
+      socket.emit('leave_group', { group_id: chatGroupId });
+    }
+    chatGroupId = data.group_id;
+    if (socket) socket.emit('join_group', { group_id: chatGroupId });
+
+    const meetup = (cfg.meetups || []).find(m => m.id === meetupId);
+    if (label) label.textContent = (meetup ? meetup.title : 'Meetup') + ' · accepted members only';
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (activeEl) activeEl.style.display = 'block';
+    refreshMuteBtn();
+    loadChatMessages();
+  }
+
   async function loadChatMessages() {
     const box = document.getElementById('chat-messages');
-    if (!box || !cfg.chatGroupId) return;
-    const res = await fetch(`/meetup/chat/${cfg.chatGroupId}/messages`);
+    if (!box || !chatGroupId) return;
+    const res = await fetch(`/meetup/chat/${chatGroupId}/messages`);
     const data = await res.json();
     box.innerHTML = '';
     (data.messages || []).forEach(appendChatMessage);
@@ -251,18 +218,19 @@
     div.dataset.msgId = msg.id;
     div.style.marginBottom = '8px';
     const readCount = (msg.read_by && msg.read_by.length) ? ` · seen ${msg.read_by.length}` : '';
+    const stamp = formatChatTime(msg.created_at);
     div.innerHTML =
       `<strong>${escapeChatHtml(msg.full_name || 'User')}</strong>: ` +
       `<span class="chat-body">${escapeChatHtml(msg.body)}</span>` +
-      `<span style="color:var(--muted);font-size:10px">${readCount}</span> ` +
+      `<span style="color:var(--muted);font-size:10px">${stamp ? ' · ' + stamp : ''}${readCount}</span> ` +
       `<button type="button" class="chat-translate-btn" style="background:none;border:none;color:var(--blue);font-size:10px;cursor:pointer;padding:0">Translate</button>` +
       `<div class="chat-translation" data-loaded="0" style="display:none;font-size:12px;color:var(--muted);margin-top:2px;padding-left:8px;border-left:2px solid var(--border)"></div>`;
     const btn = div.querySelector('.chat-translate-btn');
     if (btn) btn.addEventListener('click', () => translateChatMessage(btn, msg.body || ''));
     box.appendChild(div);
     box.scrollTop = box.scrollHeight;
-    if (socket && msg.id) {
-      socket.emit('mark_read', { message_id: msg.id, group_id: cfg.chatGroupId });
+    if (socket && msg.id && chatGroupId) {
+      socket.emit('mark_read', { message_id: msg.id, group_id: chatGroupId });
     }
   }
 
@@ -304,15 +272,72 @@
       });
   }
 
+  function formatChatTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // ── Mute (client-side, per meetup) ──────────────────────────────
+  function muteKey() { return 'bhetamla_chat_mute_' + selectedMeetupId; }
+  function isChatMuted() { return localStorage.getItem(muteKey()) === '1'; }
+  function refreshMuteBtn() {
+    const btn = document.getElementById('chat-mute-btn');
+    if (!btn) return;
+    btn.textContent = isChatMuted() ? '🔕 Muted' : '🔔 Mute';
+  }
+  window.toggleChatMute = function () {
+    localStorage.setItem(muteKey(), isChatMuted() ? '0' : '1');
+    refreshMuteBtn();
+    if (typeof showToast === 'function') showToast(isChatMuted() ? 'Chat muted' : 'Chat unmuted');
+  };
+
+  window.copyChatInvite = async function () {
+    if (!selectedMeetupId) return;
+    try {
+      const res = await fetch(`/meetup/${selectedMeetupId}/chat/invite-link`);
+      const data = await res.json();
+      if (!data.success) { if (typeof showToast === 'function') showToast(data.message || 'Could not create link'); return; }
+      await navigator.clipboard.writeText(data.link);
+      if (typeof showToast === 'function') showToast('🔗 Invite link copied!');
+      else prompt('Share this invite link:', data.link);
+    } catch (e) {
+      if (typeof showToast === 'function') showToast('Could not copy link');
+    }
+  };
+
+  window.leaveChat = async function () {
+    if (!selectedMeetupId || !confirm('Leave this chat? You can rejoin via an invite link.')) return;
+    await fetch(`/meetup/${selectedMeetupId}/chat/leave`, { method: 'POST' });
+    const activeEl = document.getElementById('chat-active');
+    const emptyEl = document.getElementById('chat-empty');
+    if (activeEl) activeEl.style.display = 'none';
+    if (emptyEl) { emptyEl.style.display = 'block'; emptyEl.textContent = 'You left this chat.'; }
+    if (socket && chatGroupId) socket.emit('leave_group', { group_id: chatGroupId });
+    chatGroupId = null;
+  };
+
+  window.shareRestaurant = function () {
+    const sel = document.getElementById('chat-share-select');
+    if (!sel || !sel.value || !socket || !chatGroupId) return;
+    const opt = sel.options[sel.selectedIndex];
+    const name = opt.getAttribute('data-name');
+    const addr = opt.getAttribute('data-addr');
+    const body = `📍 How about ${name}?${addr ? ' (' + addr + ')' : ''}`;
+    socket.emit('send_message', { group_id: chatGroupId, body: body });
+    sel.value = '';
+  };
+
   window.sendChatMessage = function () {
     const input = document.getElementById('chat-input');
-    if (!input || !socket || !input.value.trim()) return;
-    socket.emit('send_message', { group_id: cfg.chatGroupId, body: input.value.trim() });
+    if (!input || !socket || !chatGroupId || !input.value.trim()) return;
+    socket.emit('send_message', { group_id: chatGroupId, body: input.value.trim() });
     input.value = '';
   };
 
   document.addEventListener('DOMContentLoaded', () => {
     if (selectedMeetupId) selectMeetup(selectedMeetupId);
-    initChat();
+    else connectMeetupChat(null);
   });
 })();

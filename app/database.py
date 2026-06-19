@@ -140,6 +140,25 @@ def _repair_existing_schema(cursor):
     _ensure_column(cursor, 'users', 'updated_at',
                    "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     _ensure_column(cursor, 'sos_alerts', 'cancelled_at', "cancelled_at TIMESTAMP NULL")
+    _ensure_column(cursor, 'emergency_contacts', 'email', "email VARCHAR(255) NULL")
+    _ensure_column(cursor, 'users', 'verification_token_expiry', "verification_token_expiry DATETIME NULL")
+    _ensure_column(cursor, 'venue_votes', 'restart_count', "restart_count INT DEFAULT 0")
+    _ensure_column(cursor, 'meetups', 'invite_code', "invite_code VARCHAR(32) NULL")
+    try:
+        cursor.execute("ALTER TABLE meetups ADD UNIQUE KEY unique_invite_code (invite_code)")
+    except Exception:
+        pass
+    # Users who left a meetup chat: excluded from membership re-sync.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS group_chat_optout (
+            group_id INT NOT NULL,
+            user_id INT NOT NULL,
+            left_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (group_id, user_id),
+            FOREIGN KEY (group_id) REFERENCES friend_groups(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
     _ensure_column(cursor, 'meetups', 'group_id', "group_id INT NULL")
     _ensure_column(cursor, 'meetups', 'midpoint_lat', "midpoint_lat DECIMAL(10,8) NULL")
     _ensure_column(cursor, 'meetups', 'midpoint_lng', "midpoint_lng DECIMAL(11,8) NULL")
@@ -332,6 +351,20 @@ def _ensure_group_features_schema(cursor):
                 'vote','gallery','chat','achievement'
             ) DEFAULT 'general'
         """)
+    except Exception:
+        pass
+
+    # Link a friend_group to a meetup so every accepted member shares one
+    # chat room (fixes per-user-group message split). Nullable keeps the
+    # legacy friends-circle groups working.
+    try:
+        cursor.execute("ALTER TABLE friend_groups ADD COLUMN meetup_id INT NULL")
+    except Exception:
+        pass
+    try:
+        cursor.execute(
+            "ALTER TABLE friend_groups ADD UNIQUE KEY unique_meetup_group (meetup_id)"
+        )
     except Exception:
         pass
 

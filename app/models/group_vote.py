@@ -106,6 +106,26 @@ class GroupVote:
             closed_ids.append(vote['id'])
         return closed_ids
 
+    MAX_RESTARTS = 1  # after this many tie-breaks, fall back to a deterministic winner
+
+    @staticmethod
+    def _restart_vote(vote_id, hours=24):
+        """Re-open a tied vote for another round: clear casts, set a fresh
+        deadline and bump the restart counter."""
+        deadline = datetime.now() + timedelta(hours=hours)
+        execute_query("DELETE FROM venue_vote_casts WHERE vote_id = %s", (vote_id,))
+        execute_query(
+            """
+            UPDATE venue_votes
+            SET status = 'open', deadline = %s,
+                winner_option_id = NULL,
+                restart_count = COALESCE(restart_count, 0) + 1
+            WHERE id = %s
+            """,
+            (deadline, vote_id)
+        )
+        return deadline
+
     @staticmethod
     def _finalize_vote(vote_id, meetup_id):
         results = GroupVote.get_results(vote_id)
@@ -115,6 +135,18 @@ class GroupVote:
                 (vote_id,)
             )
             return None
+
+        # Draw detection: if the top options are tied (with at least one vote)
+        # restart the poll for a runoff, up to MAX_RESTARTS times.
+        top = results[0]['vote_count'] or 0
+        tied = [r for r in results if (r['vote_count'] or 0) == top]
+        if top > 0 and len(tied) > 1:
+            vote = GroupVote.get_by_id(vote_id)
+            if (vote.get('restart_count') or 0) < GroupVote.MAX_RESTARTS:
+                deadline = GroupVote._restart_vote(vote_id)
+                return {'restarted': True, 'deadline': deadline,
+                        'tied': [t['label'] for t in tied]}
+
         winner = results[0]
         execute_query(
             """

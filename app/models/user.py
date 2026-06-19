@@ -25,11 +25,15 @@ class User:
     def create(full_name, email, phone, password):
         password_hash = generate_password_hash(password)
         verification_token = secrets.token_urlsafe(32)
+        token_expiry = datetime.now() + timedelta(hours=24)
         query = """
-            INSERT INTO users (full_name, email, phone, password_hash, verification_token)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO users
+                (full_name, email, phone, password_hash,
+                 verification_token, verification_token_expiry)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """
-        return execute_query(query, (full_name, email, phone, password_hash, verification_token))
+        return execute_query(query, (full_name, email, phone, password_hash,
+                                     verification_token, token_expiry))
 
     @classmethod
     def get_by_id(cls, user_id):
@@ -49,8 +53,16 @@ class User:
 
     @staticmethod
     def get_by_verification_token(token):
-        query = "SELECT * FROM users WHERE verification_token = %s"
-        results = execute_query(query, (token,), fetch=True)
+        # Enforce the 24h expiry promised in the verification email. Rows
+        # predating the expiry column (NULL) are treated as still valid so
+        # existing unverified users are not locked out.
+        query = """
+            SELECT * FROM users
+            WHERE verification_token = %s
+              AND (verification_token_expiry IS NULL
+                   OR verification_token_expiry > %s)
+        """
+        results = execute_query(query, (token, datetime.now()), fetch=True)
         return results[0] if results else None
 
     @staticmethod

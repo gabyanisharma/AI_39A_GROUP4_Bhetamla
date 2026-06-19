@@ -70,6 +70,16 @@ def create_app():
     from app.socket_events import register_socket_events
     register_socket_events(socketio)
 
+    # Proactive notification scheduler (meeting reminders, smart alerts, fare
+    # drops). Disable with BHETAMLA_SCHEDULER=0 (e.g. during tests).
+    import os as _os
+    if _os.environ.get('BHETAMLA_SCHEDULER', '1') != '0':
+        try:
+            from app.services.background_scheduler import start as _start_scheduler
+            _start_scheduler(app)
+        except Exception as _e:
+            print(f'Scheduler not started: {_e}')
+
     @app.route('/')
     def index():
         if session.get('user_id'):
