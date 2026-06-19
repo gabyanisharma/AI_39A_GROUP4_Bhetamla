@@ -8,6 +8,7 @@ from app.controllers.notification_controller import send_notification
 from app.models.place import Restaurant, RestaurantReview
 from app.models.meetup_route import MeetupRoute
 import math
+from flask import render_template, request, redirect, url_for, flash, jsonify
 
 # ── Midpoint calculation ───────────────────────────────────────────
 def calculate_midpoint(locations):
@@ -61,10 +62,75 @@ def plan_meetup(created_meetup_id=None):
     user_id  = get_current_user_id()
     friends  = Friend.get_friends(user_id)
     meetups  = Meetup.get_by_user(user_id)
+
+    created_meetup = None
+    created_members = []
+    created_map_points = []
+    created_midpoint = None
+
+    if created_meetup_id:
+        try:
+            created_meetup_id = int(created_meetup_id)
+        except (TypeError, ValueError):
+            created_meetup_id = None
+
+    if created_meetup_id:
+        candidate = Meetup.get_by_id(created_meetup_id)
+        if candidate:
+            members = MeetupMember.get_by_meetup(created_meetup_id)
+            is_member = any(m['user_id'] == user_id for m in members)
+            if candidate['created_by'] == user_id or is_member:
+                created_meetup = candidate
+                created_members = members
+                for member in members:
+                    if member.get('latitude') is None or member.get('longitude') is None:
+                        continue
+                    created_map_points.append({
+                        'name': member.get('full_name') or 'Member',
+                        'lat': float(member['latitude']),
+                        'lng': float(member['longitude']),
+                        'address': member.get('address') or '',
+                    })
+                if candidate.get('midpoint_lat') and candidate.get('midpoint_lng'):
+                    created_midpoint = {
+                        'lat': float(candidate['midpoint_lat']),
+                        'lng': float(candidate['midpoint_lng']),
+                        'address': candidate.get('midpoint_address') or 'Smart midpoint',
+                    }
+                elif len(created_map_points) >= 2:
+                    midpoint_lat, midpoint_lng = calculate_midpoint([
+                        {'latitude': point['lat'], 'longitude': point['lng']}
+                        for point in created_map_points
+                    ])
+                    if midpoint_lat is not None and midpoint_lng is not None:
+                        created_midpoint = {
+                            'lat': midpoint_lat,
+                            'lng': midpoint_lng,
+                            'address': 'Calculated geographic midpoint',
+                        }
+
     return render_template('meetup/plan.html',
                            friends=friends,
                            meetups=meetups,
-                           created_meetup_id=created_meetup_id) 
+                           created_meetup_id=created_meetup_id,
+                           created_meetup=created_meetup,
+                           created_members=created_members,
+                           created_map_points=created_map_points,
+                           created_midpoint=created_midpoint,
+                           current_user_id=user_id)
+
+    user_id  = get_current_user_id()
+    friends  = Friend.get_friends(user_id)
+    meetups  = Meetup.get_by_user(user_id)
+    return render_template('meetup/plan.html',
+                           friends=friends,
+                           meetups=meetups,
+                           created_meetup_id=created_meetup_id,
+                           created_meetup=created_meetup,
+                           created_members=created_members,
+                           created_map_points=created_map_points,
+                           created_midpoint=created_midpoint,
+                           current_user_id=user_id)
 
 
 # ── Create new meetup ──────────────────────────────────────────────
@@ -104,7 +170,7 @@ def create_meetup():
                 'Meetup Invitation',
                 f'{current_user["full_name"]} invited you to "{title}"!',
                 type='meetup',
-                link=f'/meetup/view/{meetup_id}'
+                link=f'/meetup/plan?meetup_id={meetup_id}'
             )
 
         flash('Meetup created successfully!', 'success')
@@ -495,3 +561,77 @@ def toggle_offer_reminder(offer_id):
     RestaurantOffer.toggle_reminder(get_current_user_id(), offer_id, remind_me)
     flash('Reminder preferences updated.', 'success')
     return redirect(request.referrer or url_for('place.restaurants_page'))
+
+def confirm_meetup_plan(meetup_id):
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': 'Login required.'}), 401
+
+    meetup = Meetup.get_by_id(meetup_id)
+    if not meetup:
+        return jsonify({'success': False, 'message': 'Meetup not found.'}), 404
+
+    user_id = get_current_user_id()
+    if meetup['created_by'] != user_id:
+        return jsonify({
+            'success': False,
+            'message': 'Only the meetup creator can confirm this plan.'
+        }), 403
+
+    current_user = User.get_by_id(user_id)
+    members = MeetupMember.get_by_meetup(meetup_id)
+    notified = 0
+    payload = request.get_json(silent=True) or {}
+    midpoint = payload.get('midpoint') or {}
+
+    try:
+        midpoint_lat = float(midpoint.get('lat'))
+        midpoint_lng = float(midpoint.get('lng'))
+        midpoint_address = (midpoint.get('address') or '').strip()
+    except (TypeError, ValueError):
+        midpoint_lat = midpoint_lng = None
+        midpoint_address = ''
+
+    if midpoint_lat is not None and midpoint_lng is not None:
+        Meetup.update_midpoint(
+            meetup_id,
+            midpoint_lat,
+            midpoint_lng,
+            midpoint_address
+        )
+
+    for member in members:
+        if member['user_id'] == user_id:
+            continue
+        send_notification(
+            member['user_id'],
+            'Meetup Plan Confirmed',
+            f'{current_user["full_name"]} confirmed the plan for "{meetup["title"]}".',
+            type='meetup',
+            link=f'/meetup/plan?meetup_id={meetup_id}'
+        )
+        notified += 1
+
+    return jsonify({
+        'success': True,
+        'message': 'Meetup plan confirmed.',
+        'notified': notified
+    })
+
+
+def delete_meetup_plan(meetup_id):
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+
+    meetup = Meetup.get_by_id(meetup_id)
+    if not meetup:
+        flash('Meetup plan not found.', 'error')
+        return redirect(url_for('meetup.plan'))
+
+    user_id = get_current_user_id()
+    if meetup['created_by'] != user_id:
+        flash('Only the meetup creator can delete this plan.', 'error')
+        return redirect(url_for('meetup.plan', meetup_id=meetup_id))
+
+    Meetup.delete_by_creator(meetup_id, user_id)
+    flash('Meetup plan deleted.', 'success')
+    return redirect(url_for('meetup.plan'))
