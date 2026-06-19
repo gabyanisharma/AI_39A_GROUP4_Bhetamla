@@ -1,7 +1,17 @@
 import os
+import ssl
+import json as _json
+import urllib.parse
+import urllib.request
 from uuid import uuid4
 
-from flask import request, jsonify, render_template, redirect, url_for, flash, current_app
+try:
+    import certifi
+    _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+except Exception:
+    _SSL_CONTEXT = ssl.create_default_context()
+
+from flask import request, jsonify, render_template, redirect, url_for, flash, current_app, session
 from werkzeug.utils import secure_filename
 
 from app.auth import get_current_user_id, is_logged_in
@@ -375,3 +385,53 @@ def record_budget_split(meetup_id):
     )
     achievement_service.on_budget_split_used(user_id)
     return jsonify({'success': True})
+
+
+# ── Chat message translation, English ⇄ Nepali (US17) ──────────────
+TRANSLATE_LANGS = {'en': 'English', 'ne': 'Nepali'}
+
+
+def _translate_text(text, target):
+    """Translate via Google's free gtx endpoint (no API key). Source is
+    auto-detected. Returns the translated string, or None on failure."""
+    url = ('https://translate.googleapis.com/translate_a/single'
+           '?client=gtx&sl=auto&tl=' + urllib.parse.quote(target) +
+           '&dt=t&q=' + urllib.parse.quote(text))
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req, timeout=6, context=_SSL_CONTEXT) as resp:
+        data = _json.loads(resp.read().decode('utf-8'))
+    segments = data[0] or []
+    translated = ''.join(seg[0] for seg in segments if seg and seg[0])
+    return translated or None
+
+
+def translate_message():
+    """Translate a chat message into the user's preferred language."""
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': 'Login required.'}), 401
+
+    payload = request.get_json(silent=True) or {}
+    text = (payload.get('text') or '').strip()
+    target = payload.get('target') or session.get('language') or 'en'
+    if target not in TRANSLATE_LANGS:
+        target = 'en'
+
+    if not text:
+        return jsonify({'success': False, 'message': 'Nothing to translate.'}), 400
+
+    try:
+        translated = _translate_text(text, target)
+    except Exception as exc:
+        print('Translation error:', exc)
+        return jsonify({'success': False,
+                        'message': 'Translation service unavailable.'}), 502
+
+    if not translated:
+        return jsonify({'success': False, 'message': 'Could not translate.'}), 502
+
+    return jsonify({
+        'success': True,
+        'translated': translated,
+        'target': target,
+        'target_name': TRANSLATE_LANGS[target],
+    })

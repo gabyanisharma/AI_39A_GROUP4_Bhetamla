@@ -238,6 +238,12 @@
     (data.messages || []).forEach(appendChatMessage);
   }
 
+  function escapeChatHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
   function appendChatMessage(msg) {
     const box = document.getElementById('chat-messages');
     if (!box) return;
@@ -245,12 +251,57 @@
     div.dataset.msgId = msg.id;
     div.style.marginBottom = '8px';
     const readCount = (msg.read_by && msg.read_by.length) ? ` · seen ${msg.read_by.length}` : '';
-    div.innerHTML = `<strong>${msg.full_name || 'User'}</strong>: ${msg.body}<span style="color:var(--muted);font-size:10px">${readCount}</span>`;
+    div.innerHTML =
+      `<strong>${escapeChatHtml(msg.full_name || 'User')}</strong>: ` +
+      `<span class="chat-body">${escapeChatHtml(msg.body)}</span>` +
+      `<span style="color:var(--muted);font-size:10px">${readCount}</span> ` +
+      `<button type="button" class="chat-translate-btn" style="background:none;border:none;color:var(--blue);font-size:10px;cursor:pointer;padding:0">Translate</button>` +
+      `<div class="chat-translation" data-loaded="0" style="display:none;font-size:12px;color:var(--muted);margin-top:2px;padding-left:8px;border-left:2px solid var(--border)"></div>`;
+    const btn = div.querySelector('.chat-translate-btn');
+    if (btn) btn.addEventListener('click', () => translateChatMessage(btn, msg.body || ''));
     box.appendChild(div);
     box.scrollTop = box.scrollHeight;
     if (socket && msg.id) {
       socket.emit('mark_read', { message_id: msg.id, group_id: cfg.chatGroupId });
     }
+  }
+
+  // US17 — translate a chat message into the user's preferred language.
+  // Original text stays visible; the translation shows beneath it.
+  function translateChatMessage(btn, text) {
+    const wrap = btn.closest('[data-msg-id]');
+    const slot = wrap ? wrap.querySelector('.chat-translation') : null;
+    if (!slot || !text.trim()) return;
+
+    if (slot.dataset.loaded === '1') {        // toggle off
+      slot.style.display = 'none';
+      slot.dataset.loaded = '0';
+      btn.textContent = 'Translate';
+      return;
+    }
+
+    btn.textContent = 'Translating…';
+    fetch('/meetup/chat/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({ text: text })
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.success) {
+          slot.textContent = '🌐 ' + d.translated;
+          slot.style.display = 'block';
+          slot.dataset.loaded = '1';
+          btn.textContent = 'Hide';
+        } else {
+          btn.textContent = 'Translate';
+          if (typeof showToast === 'function') showToast((d && d.message) || 'Translation failed.');
+        }
+      })
+      .catch(() => {
+        btn.textContent = 'Translate';
+        if (typeof showToast === 'function') showToast('Translation failed.');
+      });
   }
 
   window.sendChatMessage = function () {

@@ -19,6 +19,7 @@ from app.controllers.group_features_controller import (
     groups_page, hide_from_groups, start_vote, cast_vote, vote_results,
     upload_gallery, gallery_list, delete_gallery_photo, toggle_gallery_like,
     gallery_comment, gallery_privacy, chat_messages, record_budget_split,
+    translate_message,
 )
 
 meetup_bp = Blueprint('meetup', __name__, url_prefix='/meetup')
@@ -158,6 +159,12 @@ def gallery_privacy_route(photo_id):
 @login_required
 def chat_messages_route(group_id):
     return chat_messages(group_id)
+
+
+@meetup_bp.route('/chat/translate', methods=['POST'])
+@login_required
+def chat_translate():
+    return translate_message()
 
 
 @meetup_bp.route('/budget-split/<int:meetup_id>/record', methods=['POST'])
