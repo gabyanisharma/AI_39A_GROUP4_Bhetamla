@@ -9,7 +9,8 @@ from app.controllers.meetup_controller import (
 from app.controllers.place_controller import (
     plan_meetup, create_meetup, view_meetup as view_meetup_ctrl,
     update_location, get_midpoint, add_suggestion,
-    respond_meetup, confirm_meetup_plan, delete_meetup_plan
+    respond_meetup, confirm_meetup_plan, delete_meetup_plan,
+    save_plan_preferences, get_plan_preferences
 )
 from app.controllers.meetup_route_controller import (
     get_meetup_route, save_meetup_route, delete_meetup_route
@@ -67,6 +68,18 @@ def delete_plan(meetup_id):
 @login_required
 def confirm_plan(meetup_id):
     return confirm_meetup_plan(meetup_id)
+
+
+@meetup_bp.route('/<int:meetup_id>/preferences', methods=['POST'])
+@login_required
+def save_preferences(meetup_id):
+    return save_plan_preferences(meetup_id)
+
+
+@meetup_bp.route('/<int:meetup_id>/preferences', methods=['GET'])
+@login_required
+def load_preferences(meetup_id):
+    return get_plan_preferences(meetup_id)
 
 
 @meetup_bp.route('/groups')

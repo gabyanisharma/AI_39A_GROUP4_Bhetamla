@@ -60,7 +60,7 @@
       <div class="filter-chip" onclick="toggleChip(this)">🌱 Vegetarian</div>
     </div>
     <div class="feat-btn-row">
-      <button class="btn-primary" type="button" onclick="showToast('Preferences saved!');completeSerialStep('modal-cuisine-preference','preferences applied')">Apply</button>
+      <button class="btn-primary" type="button" onclick="savePlanPreferences({cuisine: readCuisineSelection()});showToast('Preferences saved!');completeSerialStep('modal-cuisine-preference','preferences applied')">Apply</button>
       <button class="btn-sec" type="button" onclick="completeSerialStep('modal-cuisine-preference','preferences skipped')">Skip →</button>
     </div>
   </div>
@@ -87,7 +87,7 @@
       <div class="filter-chip" onclick="setBudgetPreset(this,2000)">Fine 2000+</div>
     </div>
     <div class="feat-btn-row">
-      <button class="btn-primary" type="button" onclick="showToast('Budget applied!');completeSerialStep('modal-budget-filter','budget applied')">Apply</button>
+      <button class="btn-primary" type="button" onclick="savePlanPreferences({budget_min: 200, budget_max: readBudgetSelection()});showToast('Budget applied!');completeSerialStep('modal-budget-filter','budget applied')">Apply</button>
       <button class="btn-sec" type="button" onclick="completeSerialStep('modal-budget-filter','budget skipped')">Skip →</button>
     </div>
   </div>
@@ -106,7 +106,7 @@
       <div class="ambience-pill" onclick="toggleAmbience(this)"><div class="ambience-pill-icon">📚</div><div class="ambience-pill-label">Quiet</div></div>
     </div>
     <div class="feat-btn-row">
-      <button class="btn-primary" type="button" onclick="showToast('Ambience applied!');completeSerialStep('modal-ambience-filter','ambience applied')">Apply</button>
+      <button class="btn-primary" type="button" onclick="savePlanPreferences({ambience: readAmbienceSelection()});showToast('Ambience applied!');completeSerialStep('modal-ambience-filter','ambience applied')">Apply</button>
       <button class="btn-sec" type="button" onclick="completeSerialStep('modal-ambience-filter','ambience skipped')">Skip →</button>
     </div>
   </div>
@@ -127,7 +127,7 @@
       <div style="flex:1"><div class="venue-name">Museum Garden Café</div><div class="venue-rating">⭐ 4.8 · 3 min walk · NPR 600–1200</div></div>
     </div>
     <div class="feat-btn-row">
-      <button class="btn-primary" type="button" onclick="showToast('Venue updated!');completeSerialStep('modal-nearby-restaurants','venue selected')">Set Venue</button>
+      <button class="btn-primary" type="button" onclick="savePlanPreferences({selected_venue: readVenueSelection()});showToast('Venue updated!');completeSerialStep('modal-nearby-restaurants','venue selected')">Set Venue</button>
       <button class="btn-sec" type="button" onclick="completeSerialStep('modal-nearby-restaurants','venue skipped')">Skip →</button>
     </div>
   </div>
@@ -175,7 +175,7 @@
     <div class="restaurant-card"><div class="rest-emoji">🛵</div><div style="flex:1"><div class="rest-name">Pathao Bike</div><div class="rest-meta">~12 mins · NPR 85–110 · Fastest option</div></div></div>
     <div class="restaurant-card"><div class="rest-emoji">🚕</div><div style="flex:1"><div class="rest-name">Tootle Car</div><div class="rest-meta">~18 mins · NPR 200–260 · Comfortable</div></div></div>
     <div class="feat-btn-row">
-      <button class="btn-primary" type="button" onclick="showToast('Ride option saved!');completeSerialStep('modal-ride-cost','ride saved')">Save Ride</button>
+      <button class="btn-primary" type="button" onclick="savePlanPreferences({ride_option: readRideSelection()});showToast('Ride option saved!');completeSerialStep('modal-ride-cost','ride saved')">Save Ride</button>
       <button class="btn-sec" type="button" onclick="completeSerialStep('modal-ride-cost','ride skipped')">Skip →</button>
     </div>
   </div>
