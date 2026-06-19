@@ -3,118 +3,348 @@
 {% block title %}Dashboard — Bhetamल{% endblock %}
 
 {% block page_content %}
-<!-- DASHBOARD -->
 <div id="page-dashboard" class="page active" role="main">
+
+  <!-- ── TOP BAR ──────────────────────────────────────────────────────────── -->
   <div class="topbar">
-    <div class="topbar-search" role="search" style="padding:0 14px">
+    <div class="topbar-search" role="search" style="padding:0 14px;flex:1">
       <label for="search-dashboard" style="display:flex;align-items:center;gap:10px;cursor:text;flex:1">
         <span aria-hidden="true" style="font-size:14px">&#128269;</span>
-        <input id="search-dashboard" type="search" placeholder="Search meetups, friends, or places..." aria-label="Search meetups, friends, or places" style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0">
+        <input id="search-dashboard" type="search"
+               placeholder="Search meetups, friends, or places..."
+               aria-label="Search meetups, friends, or places"
+               style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0">
       </label>
     </div>
-    <div class="topbar-controls">
+    <div class="topbar-controls" style="display:flex;align-items:center;gap:10px;">
+      <!-- Language toggle -->
+      <button class="ctrl-btn" id="lang-toggle" onclick="toggleLang()" style="font-size:12px;font-weight:600;letter-spacing:.5px">
+        EN | नेपाली
+      </button>
       <button class="ctrl-btn" id="theme-toggle" onclick="toggleTheme()">&#127769; <span id="theme-label">Dark</span></button>
+      <button class="sos-btn" onclick="openModal('modal-sos')" style="cursor:pointer">&#10033; SOS</button>
+      <button aria-label="Notifications" onclick="openNotifPanel()"
+              style="background:none;border:none;cursor:pointer;font-size:20px;position:relative">
+        &#128276;
+        {% if pending_invites %}
+        <span style="position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
+          {{ pending_invites|length }}
+        </span>
+        {% endif %}
+      </button>
+      <div class="avatar" style="width:34px;height:34px;background:var(--blue);font-size:13px">
+        {{ session.get('user_name','U')[0]|upper }}
+      </div>
     </div>
-    <button class="sos-btn" onclick="openModal('modal-sos')" style="cursor:pointer">&#10033; SOS</button>
-    <button aria-label="Notifications" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;position:relative">&#128276;</button>
-    <div class="avatar" style="width:34px;height:34px;background:var(--blue);font-size:13px">{{ session.get('user_name','U')[0]|upper }}</div>
   </div>
-  <div class="dash-inner">
+
+  {# today_str is passed from backend as YYYY-MM-DD for date comparisons #}
+  {% set today_str = today_iso %}
+  <!-- ── TWO-COLUMN LAYOUT ─────────────────────────────────────────────────── -->
+  <div class="dash-inner" style="display:grid;grid-template-columns:1fr 320px;gap:24px;padding:24px;align-items:start;">
+
+    <!-- ── LEFT / MAIN COLUMN ─────────────────────────────────────────────── -->
     <div class="dash-main">
-      <div class="dash-header" style="background:linear-gradient(135deg,#0e2d22 0%,#14322A 35%,#1c3f56 75%,#1A56C4 120%);border-radius:22px;padding:32px 36px;margin-bottom:32px;position:relative;overflow:hidden;box-shadow:0 8px 40px rgba(14,45,34,.35);">
+
+      <!-- Hero Banner -->
+      <div style="background:linear-gradient(135deg,#0e2d22 0%,#14322A 35%,#1c3f56 75%,#1A56C4 120%);border-radius:22px;padding:32px 36px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 8px 40px rgba(14,45,34,.35);">
+        <!-- decorative blobs -->
         <div style="position:absolute;top:-40px;right:-20px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(200,153,58,.14) 0%,transparent 70%);pointer-events:none;"></div>
         <div style="position:absolute;bottom:-50px;right:60px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(26,86,196,.18) 0%,transparent 70%);pointer-events:none;"></div>
         <div style="position:absolute;top:0;left:36px;right:36px;height:1px;background:linear-gradient(90deg,transparent,rgba(200,153,58,.4),transparent);"></div>
-        <div>
-          <div style="font-size:11px;font-weight:600;letter-spacing:2.5px;color:rgba(200,153,58,.85);text-transform:uppercase;margin-bottom:8px;font-family:'DM Sans',sans-serif;">{{ today }}</div>
-          <div class="dash-title" style="color:#fff;font-size:40px;font-family:'Playfair Display',serif;font-weight:700;letter-spacing:-1px;line-height:1.1;">Hello, {{ session.get('user_name','there') }} <span style="font-style:italic;font-weight:600;opacity:.9"></span></div>
-          <div class="dash-sub" style="color:rgba(255,255,255,.6);margin-top:8px;font-family:'Lora',serif;font-size:14px;font-weight:400;font-style:italic;">
-            {% if meetups %}
-              You have {{ meetups|length }} meetup{{ 's' if meetups|length != 1 else '' }} planned. Ready for another adventure?
+
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
+          <div>
+            <div style="font-size:11px;font-weight:600;letter-spacing:2.5px;color:rgba(200,153,58,.85);text-transform:uppercase;margin-bottom:8px;font-family:'DM Sans',sans-serif;">{{ today }}</div>
+            <div style="color:#fff;font-size:38px;font-family:'Playfair Display',serif;font-weight:700;letter-spacing:-1px;line-height:1.1;">
+              Hello, {{ session.get('user_name','there') }} <span style="font-style:italic;">✦</span>
+            </div>
+            <div style="color:rgba(255,255,255,.65);margin-top:8px;font-family:'Lora',serif;font-size:14px;font-style:italic;">
+              {% if pending_invites and todays_meetups %}
+                Ready for another adventure? {{ pending_invites|length }} pending invite{{ 's' if pending_invites|length != 1 else '' }} &amp; {{ todays_meetups|length }} active meetup{{ 's' if todays_meetups|length != 1 else '' }} await you today.
+              {% elif meetups %}
+                You have {{ meetups|length }} meetup{{ 's' if meetups|length != 1 else '' }} planned. Ready for another adventure?
+              {% else %}
+                No meetups yet — start planning your first one!
+              {% endif %}
+            </div>
+
+            <!-- Status pills -->
+            <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+              {% if todays_meetups %}
+              <span style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;backdrop-filter:blur(8px);">
+                📆 {{ todays_meetups|length }} Meetup{{ 's' if todays_meetups|length != 1 else '' }} Today
+              </span>
+              {% endif %}
+              {% if pending_invites %}
+              <span style="background:rgba(168,85,247,.18);border:1px solid rgba(168,85,247,.35);color:#d8b4fe;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;backdrop-filter:blur(8px);">
+                📩 {{ pending_invites|length }} Pending Invite{{ 's' if pending_invites|length != 1 else '' }}
+              </span>
+              {% endif %}
+              <span style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;backdrop-filter:blur(8px);">
+                ● All Systems Go
+              </span>
+            </div>
+          </div>
+
+          <button class="btn-primary"
+                  style="align-self:center;padding:12px 22px;font-size:13.5px;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.28);letter-spacing:.4px;white-space:nowrap;"
+                  onclick="window.location='{{ url_for('meetup.plan') }}'">
+            ✦ Create Meetup
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Stats Strip ──────────────────────────────────────────────────── -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;">
+
+        <div style="background:var(--card-bg,#fff);border-radius:14px;padding:16px 18px;border:1px solid var(--border,#ddeee5);box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#14322A,#1B6B3A);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📍</div>
+          <div>
+            <div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,#14322A);line-height:1;">{{ saved_count }}</div>
+            <div style="font-size:11px;color:#4A6657;font-weight:500;margin-top:1px;">Spots Saved</div>
+          </div>
+        </div>
+
+        <div style="background:var(--card-bg,#fff);border-radius:14px;padding:16px 18px;border:1px solid var(--border,#ddeee5);box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#1A56C4,#0D3FA1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🤝</div>
+          <div>
+            <div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,#14322A);line-height:1;">{{ friends_count }}</div>
+            <div style="font-size:11px;color:#4A6657;font-weight:500;margin-top:1px;">Friends Active</div>
+          </div>
+        </div>
+
+        <div style="background:var(--card-bg,#fff);border-radius:14px;padding:16px 18px;border:1px solid var(--border,#ddeee5);box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#C8993A,#A07820);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🏅</div>
+          <div>
+            <div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,#14322A);line-height:1;">{{ badges_count }}</div>
+            <div style="font-size:11px;color:#4A6657;font-weight:500;margin-top:1px;">Badges Earned</div>
+          </div>
+        </div>
+
+        <div style="background:var(--card-bg,#fff);border-radius:14px;padding:16px 18px;border:1px solid var(--border,#ddeee5);box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#C2416E,#96213e);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📆</div>
+          <div>
+            <div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,#14322A);line-height:1;">{{ meetups|length }}</div>
+            <div style="font-size:11px;color:#4A6657;font-weight:500;margin-top:1px;">Total Meetups</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── YOUR WORLD TODAY label ────────────────────────────────────────── -->
+      <div style="text-align:center;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--muted,#8a9e92);text-transform:uppercase;margin-bottom:20px;">Your World Today</div>
+
+      <!-- ── Active Meetups ─────────────────────────────────────────────────── -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="font-size:17px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,#14322A);">Active Meetups</div>
+        <a href="{{ url_for('meetup.groups') }}" style="font-size:13px;color:var(--blue);font-weight:600;text-decoration:none;">View All →</a>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:32px;">
+        {% for m in meetups[:4] %}
+        {% set members = meetup_member_map.get(m['id'], []) %}
+        <article style="background:var(--card-bg,#fff);border-radius:16px;padding:20px;border:1px solid var(--border,#e8f0eb);box-shadow:0 2px 16px rgba(20,50,42,.07);cursor:pointer;transition:transform .15s,box-shadow .15s;"
+                 onclick="window.location='{{ url_for('meetup.view_meetup', meetup_id=m['id']) }}'"
+                 onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 24px rgba(20,50,42,.13)'"
+                 onmouseleave="this.style.transform='';this.style.boxShadow='0 2px 16px rgba(20,50,42,.07)'"
+                 tabindex="0">
+
+          <!-- Member avatar row + status badge -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;">
+              {% for mem in members[:3] %}
+              <div style="width:28px;height:28px;border-radius:50%;background:{% if loop.index == 1 %}#2563EB{% elif loop.index == 2 %}#7C3AED{% else %}#059669{% endif %};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;margin-left:{% if not loop.first %}-8px{% else %}0{% endif %};z-index:{{ 10 - loop.index }};">
+                {{ mem.full_name[0]|upper if mem.full_name else '?' }}
+              </div>
+              {% endfor %}
+              {% if members|length > 3 %}
+              <div style="width:28px;height:28px;border-radius:50%;background:#F1F5F9;color:#475569;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;margin-left:-8px;">
+                +{{ members|length - 3 }}
+              </div>
+              {% endif %}
+            </div>
+
+            {% if m['status'] == 'active' or (m.get('meetup_date') and m['meetup_date']|string == today_str) %}
+            <span style="background:rgba(245,158,11,.12);color:#D97706;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:.5px;">HAPPENING NOW</span>
+            {% elif m.get('creator_name') == session.get('user_name') %}
+            <span style="background:rgba(37,99,235,.1);color:#1D4ED8;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:.5px;">CREATED BY YOU</span>
             {% else %}
-              No meetups yet — start planning your first one!
+            <span style="background:rgba(5,150,105,.1);color:#047857;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:.5px;">CONFIRMED</span>
             {% endif %}
           </div>
-        </div>
-        <div class="dash-actions" style="flex-shrink:0;align-self:center;flex-direction:column;gap:10px;">
-          <button class="btn-primary" style="width:auto;padding:12px 22px;font-size:13.5px;margin-top:0;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.28);letter-spacing:.4px;" onclick="window.location='{{ url_for('meetup.plan') }}'">✦ Create Meetup</button>
-        </div>
-      </div>
 
-      <!-- Stats strip -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;">
-        <div style="background:#fff;border-radius:14px;padding:16px 18px;border:1px solid #ddeee5;box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
-          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#14322A,#1B6B3A);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📍</div>
-          <div><div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:#14322A;line-height:1;">—</div><div style="font-size:11px;color:#4A6657;font-weight:500;margin-top:1px;">Spots Saved</div></div>
-        </div>
-        <div style="background:#fff;border-radius:14px;padding:16px 18px;border:1px solid #ddeee5;box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
-          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#1A56C4,#0D3FA1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🤝</div>
-          <div><div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:#14322A;line-height:1;">—</div><div style="font-size:11px;color:#4A6657;font-weight:500;margin-top:1px;">Friends Active</div></div>
-        </div>
-        <div style="background:#fff;border-radius:14px;padding:16px 18px;border:1px solid #ddeee5;box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
-          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#C8993A,#A07820);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🏅</div>
-          <div><div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:#14322A;line-height:1;">—</div><div style="font-size:11px;color:#4A6657;font-weight:500;margin-top:1px;">Badges Earned</div></div>
-        </div>
-        <div style="background:#fff;border-radius:14px;padding:16px 18px;border:1px solid #ddeee5;box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
-          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#C2416E,#96213e);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📆</div>
-          <div><div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:#14322A;line-height:1;">{{ meetups|length }}</div><div style="font-size:11px;color:#4A6657;font-weight:500;margin-top:1px;">Total Meetups</div></div>
-        </div>
-      </div>
+          <div style="font-size:15px;font-weight:700;color:var(--heading,#14322A);margin-bottom:6px;font-family:'Playfair Display',serif;">{{ m['title'] }}</div>
 
-      <div class="section-header">
-        <div class="section-title">Your Meetups</div>
-        <div class="view-all" onclick="window.location='{{ url_for('meetup.groups') }}'">View All →</div>
-      </div>
-      <div class="meetup-grid">
-        {% for m in meetups[:3] %}
-        <article class="meetup-card {% if loop.first %}active-border{% endif %}" tabindex="0" onclick="window.location='{{ url_for('meetup.view_meetup', meetup_id=m.id) }}'">
-          <div class="meetup-avatars">
-            <span class="badge" style="background:rgba(5,150,105,.12);color:var(--green)">{{ 'CREATED BY YOU' if m.creator_name == session.get('user_name') else 'INVITED' }}</span>
+          {% if m.get('midpoint_address') %}
+          <div style="font-size:12px;color:var(--muted,#667f72);display:flex;align-items:center;gap:5px;margin-bottom:8px;">
+            <span style="color:#E53E3E">📍</span> {{ m['midpoint_address'] }}
           </div>
-          <div class="meetup-name">{{ m.title }}</div>
-          <div class="meetup-loc">&#128205; {{ m.midpoint_address or 'Location not set yet' }}</div>
-          <div class="meetup-foot">
-            <div class="meetup-time">&#128336;
-              {% if m.meetup_date %}{{ m.meetup_date }}{% if m.meetup_time %} · {{ m.meetup_time }}{% endif %}{% else %}Date not set{% endif %}
+          {% endif %}
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border,#eef2ee);">
+            <div style="font-size:12px;color:var(--muted,#667f72);">
+              {% if m.get('meetup_date') %}
+                📅
+                {% if m['meetup_date']|string == today_str %}
+                  Today{% if m.get('meetup_time') %} · {{ m['meetup_time'] }}{% endif %}
+                {% else %}
+                  {{ m['meetup_date'] }}{% if m.get('meetup_time') %} · {{ m['meetup_time'] }}{% endif %}
+                {% endif %}
+              {% else %}
+                Date not set
+              {% endif %}
             </div>
-            <span style="color:var(--blue);font-size:18px">&#10148;</span>
+            <span style="color:var(--blue,#2563EB);font-size:16px">&#10148;</span>
           </div>
         </article>
         {% else %}
-        <div class="meetup-card" style="text-align:center;color:var(--muted);padding:24px">
-          You don't have any meetups yet. <a href="{{ url_for('meetup.plan') }}" style="color:var(--blue);font-weight:600">Plan one →</a>
+        <div style="background:var(--card-bg,#fff);border-radius:16px;padding:32px;border:1px dashed var(--border,#ddeee5);text-align:center;color:var(--muted);">
+          No meetups yet. <a href="{{ url_for('meetup.plan') }}" style="color:var(--blue);font-weight:600">Plan one →</a>
         </div>
         {% endfor %}
       </div>
 
-        </div>
-        <div class="spot-card" style="position:relative;overflow:hidden;height:160px;" onclick="window.location='{{ url_for('place.restaurants_page') }}'" tabindex="0" role="button">
-          <img src="https://images.unsplash.com/photo-1605640840605-14ac1855827b?w=600&h=400&fit=crop&auto=format" alt="Thamel Kathmandu" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
-          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 20%,rgba(0,0,0,.82) 100%);"></div>
-          <span class="badge" style="background:var(--blue);color:#fff;position:absolute;top:10px;left:10px;font-size:10px;z-index:2;">⚡ TRENDING</span>
-          <div class="spot-name" style="position:relative;z-index:2;font-size:13.5px;">Thamel</div>
-          <div class="spot-desc" style="position:relative;z-index:2;">Lively streets, cafés, rooftop bars &amp; night energy.</div>
-        </div>
-        <div class="spot-card" style="position:relative;overflow:hidden;height:160px;" onclick="window.location='{{ url_for('place.restaurants_page') }}'" tabindex="0" role="button">
-          <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop&auto=format" alt="Boudhanath Stupa" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">
-          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 20%,rgba(0,0,0,.82) 100%);"></div>
-          <span class="badge" style="background:var(--purple);color:#fff;position:absolute;top:10px;left:10px;font-size:10px;z-index:2;">🕌 SPIRITUAL HUB</span>
-          <div class="spot-name" style="position:relative;z-index:2;font-size:13.5px;">Boudhanath Stupa</div>
-          <div class="spot-desc" style="position:relative;z-index:2;">Peaceful walks, cozy café circles &amp; stunning views.</div>
-        </div>
+      <!-- ── Explore Trending Spots ─────────────────────────────────────────── -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="font-size:17px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,#14322A);">Explore Trending Spots</div>
+        <a href="{{ url_for('place.restaurants_page') }}" style="font-size:13px;color:var(--blue);font-weight:600;text-decoration:none;">View All →</a>
       </div>
-    </div>
 
-    <aside class="dash-right">
-      <div class="card" style="margin-bottom:16px">
-        <div style="font-weight:700;font-size:15px;margin-bottom:14px;font-family:'Playfair Display',serif;">Pending Invites</div>
-        <div style="font-size:13px;color:var(--muted);text-align:center;padding:10px 0">No pending invites right now.</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+
+        {% set spots = [
+          {
+            'name': 'Basantapur Durbar Square',
+            'desc': 'Historic heart of Kathmandu — temples, street food & vibes.',
+            'badge': '✦ MOST POPULAR',
+            'badge_color': '#C8993A',
+            'img': 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=600&h=400&fit=crop&auto=format'
+          },
+          {
+            'name': 'Thamel',
+            'desc': 'Lively streets, cafés, rooftop bars & night energy.',
+            'badge': '⚡ TRENDING',
+            'badge_color': '#2563EB',
+            'img': 'https://images.unsplash.com/photo-1605640840605-14ac1855827b?w=600&h=400&fit=crop&auto=format'
+          },
+          {
+            'name': 'Boudhanath Stupa',
+            'desc': 'Peaceful walks, cozy café circles & stunning views.',
+            'badge': '🕌 SPIRITUAL HUB',
+            'badge_color': '#7C3AED',
+            'img': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop&auto=format'
+          },
+          {
+            'name': 'Pashupatinath Temple',
+            'desc': 'Sacred riverside temple — a landmark of Kathmandu\'s soul.',
+            'badge': '🔥 ICONIC',
+            'badge_color': '#DC2626',
+            'img': 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=600&h=400&fit=crop&auto=format'
+          },
+          {
+            'name': 'Patan Durbar Square',
+            'desc': 'Ancient courtyards, art galleries & Newari cuisine nearby.',
+            'badge': '🏛 HERITAGE',
+            'badge_color': '#059669',
+            'img': 'https://images.unsplash.com/photo-1558618047-f4e80c5f3cbc?w=600&h=400&fit=crop&auto=format'
+          },
+          {
+            'name': 'Swayambhunath',
+            'desc': 'Panoramic Kathmandu views & spiritual sunrise walks.',
+            'badge': '🐒 MONKEY TEMPLE',
+            'badge_color': '#D97706',
+            'img': 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?w=600&h=400&fit=crop&auto=format'
+          }
+        ] %}
+
+        {% for spot in spots %}
+        <div onclick="window.location='{{ url_for('place.restaurants_page') }}'"
+             tabindex="0" role="button"
+             style="position:relative;overflow:hidden;height:175px;border-radius:14px;cursor:pointer;transition:transform .15s;"
+             onmouseenter="this.style.transform='scale(1.02)'"
+             onmouseleave="this.style.transform=''">
+          <img src="{{ spot.img }}" alt="{{ spot.name }}"
+               style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"
+               onerror="this.style.display='none'">
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 10%,rgba(0,0,0,.80) 100%);"></div>
+          <span style="background:{{ spot.badge_color }};color:#fff;position:absolute;top:10px;left:10px;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:.5px;z-index:2;">
+            {{ spot.badge }}
+          </span>
+          <div style="position:absolute;bottom:12px;left:12px;right:12px;z-index:2;">
+            <div style="color:#fff;font-size:13.5px;font-weight:700;font-family:'Playfair Display',serif;margin-bottom:3px;">{{ spot.name }}</div>
+            <div style="color:rgba(255,255,255,.75);font-size:11px;line-height:1.4;">{{ spot.desc }}</div>
+          </div>
+        </div>
+        {% endfor %}
+
       </div>
+    </div><!-- end dash-main -->
+
+    <!-- ── RIGHT SIDEBAR ──────────────────────────────────────────────────── -->
+    <aside style="display:flex;flex-direction:column;gap:16px;position:sticky;top:24px;">
+
+      <!-- Pending Invites -->
+      <div style="background:var(--card-bg,#fff);border-radius:16px;padding:20px;border:1px solid var(--border,#e8f0eb);box-shadow:0 2px 12px rgba(20,50,42,.06);">
+        <div style="font-weight:700;font-size:15px;margin-bottom:14px;font-family:'Playfair Display',serif;color:var(--heading,#14322A);">Pending Invites</div>
+
+        {% if pending_invites %}
+          {% for inv in pending_invites %}
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border,#eef2ee);">
+            <!-- Avatar initials -->
+            <div style="width:36px;height:36px;border-radius:50%;background:{{ ['#2563EB','#7C3AED','#059669','#DC2626','#D97706'][loop.index0 % 5] }};color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              {{ inv.inviter_name[0]|upper if inv.inviter_name else '?' }}{{ inv.inviter_name.split(' ')[1][0]|upper if inv.inviter_name and inv.inviter_name.split(' ')|length > 1 else '' }}
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;color:var(--heading,#14322A);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ inv.inviter_name }}</div>
+              <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">invited you to "{{ inv.title[:22] }}{% if inv.title|length > 22 %}…{% endif %}"</div>
+            </div>
+            <!-- Accept / Decline -->
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <form method="POST" action="{{ url_for('meetup.respond', meetup_id=inv.meetup_id) }}" style="display:inline">
+                <input type="hidden" name="action" value="accept">
+                <button type="submit"
+                        style="width:28px;height:28px;border-radius:50%;background:#D1FAE5;border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;"
+                        title="Accept">✓</button>
+              </form>
+              <form method="POST" action="{{ url_for('meetup.respond', meetup_id=inv.meetup_id) }}" style="display:inline">
+                <input type="hidden" name="action" value="decline">
+                <button type="submit"
+                        style="width:28px;height:28px;border-radius:50%;background:#FEE2E2;border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;"
+                        title="Decline">✕</button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+        <div style="font-size:13px;color:var(--muted);text-align:center;padding:16px 0;">No pending invites right now.</div>
+        {% endif %}
+      </div>
+
+      <!-- Mini Calendar -->
+      <div style="background:var(--card-bg,#fff);border-radius:16px;padding:20px;border:1px solid var(--border,#e8f0eb);box-shadow:0 2px 12px rgba(20,50,42,.06);">
+        <div id="mini-cal" style="font-family:'DM Sans',sans-serif;"></div>
+
+        <!-- Upcoming meetups under calendar -->
+        {% if meetups %}
+        <div style="margin-top:14px;border-top:1px solid var(--border,#eef2ee);padding-top:14px;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:10px;">Upcoming</div>
+          {% for m in meetups[:3] %}
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;"
+               onclick="window.location='{{ url_for('meetup.view_meetup', meetup_id=m['id']) }}'">
+            <div style="width:8px;height:8px;border-radius:50%;background:{{ ['#2563EB','#059669','#D97706'][loop.index0 % 3] }};flex-shrink:0;"></div>
+            <div style="font-size:12px;color:var(--text,#1a2e1f);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ m['title'] }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
     </aside>
-  </div>
-</div>
+  </div><!-- end dash-inner -->
+</div><!-- end page-dashboard -->
 
-<!-- SOS Modal -->
+<!-- ── SOS Modal ─────────────────────────────────────────────────────────────── -->
 <div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
   <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
     <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
@@ -125,4 +355,81 @@
     <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
   </div>
 </div>
+
+<!-- ── Mini Calendar Script ───────────────────────────────────────────────────── -->
+<script>
+(function renderMiniCal() {
+  const el = document.getElementById('mini-cal');
+  if (!el) return;
+
+  // Meetup dates from backend for dot markers
+  const meetupDates = new Set([
+    {% for m in meetups %}
+      {% if m.get('meetup_date') %}"{{ m['meetup_date'] }}"{% if not loop.last %},{% endif %}{% endif %}
+    {% endfor %}
+  ]);
+
+  let year  = new Date().getFullYear();
+  let month = new Date().getMonth(); // 0-indexed
+  const todayDate = new Date().getDate();
+  const todayMonth = new Date().getMonth();
+  const todayYear  = new Date().getFullYear();
+
+  function pad(n) { return String(n).padStart(2,'0'); }
+
+  function render() {
+    const first = new Date(year, month, 1).getDay(); // 0=Sun
+    const days  = new Date(year, month + 1, 0).getDate();
+    const monthName = new Date(year, month).toLocaleString('default', { month:'long' });
+
+    const dow = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+    let html = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <button onclick="calNav(-1)" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted,#667f72);padding:4px 8px;">‹</button>
+        <div style="font-size:14px;font-weight:700;color:var(--heading,#14322A);font-family:'Playfair Display',serif;">${monthName} ${year}</div>
+        <button onclick="calNav(1)" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted,#667f72);padding:4px 8px;">›</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;">
+    `;
+
+    // Day-of-week headers
+    dow.forEach(d => {
+      html += `<div style="font-size:10px;font-weight:600;color:var(--muted,#8a9e92);padding:4px 0;">${d}</div>`;
+    });
+
+    // Empty cells before first day
+    for (let i = 0; i < first; i++) {
+      html += `<div></div>`;
+    }
+
+    // Day cells
+    for (let d = 1; d <= days; d++) {
+      const dateStr = `${year}-${pad(month+1)}-${pad(d)}`;
+      const isToday = d === todayDate && month === todayMonth && year === todayYear;
+      const hasMeetup = meetupDates.has(dateStr);
+
+      html += `<div style="position:relative;padding:5px 2px;border-radius:8px;font-size:12px;font-weight:${isToday?'700':'400'};
+        color:${isToday?'#fff':'var(--text,#1a2e1f)'};
+        background:${isToday?'#14322A':'transparent'};
+        cursor:default;">
+        ${d}
+        ${hasMeetup && !isToday ? `<div style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#2563EB;"></div>` : ''}
+      </div>`;
+    }
+
+    html += `</div>`;
+    el.innerHTML = html;
+  }
+
+  window.calNav = function(dir) {
+    month += dir;
+    if (month < 0)  { month = 11; year--; }
+    if (month > 11) { month = 0;  year++; }
+    render();
+  };
+
+  render();
+})();
+</script>
 {% endblock %}
