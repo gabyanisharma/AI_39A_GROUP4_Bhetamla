@@ -22,6 +22,9 @@ import os
 # Ensure project root is on the path
 sys.path.insert(0, os.path.dirname(__file__))
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 from app import create_app
 from app.database import get_db_connection, execute_query
 from app.models.notification import Notification

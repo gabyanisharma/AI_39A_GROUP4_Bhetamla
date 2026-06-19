@@ -8,8 +8,7 @@ class Config:
 
     MYSQL_HOST     = os.getenv('MYSQL_HOST', 'localhost')
     MYSQL_USER     = os.getenv('MYSQL_USER', 'root')
-    # Load MySQL password from environment; do NOT keep plaintext passwords in source.
-    MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD')
+    MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD', '12345')
     MYSQL_DB       = os.getenv('MYSQL_DB', 'bhetamla_db')
     MYSQL_DATABASE = os.getenv('MYSQL_DATABASE', MYSQL_DB)
 
