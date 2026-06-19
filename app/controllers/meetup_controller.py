@@ -185,3 +185,4 @@ def get_restaurants_data():
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return []
+    

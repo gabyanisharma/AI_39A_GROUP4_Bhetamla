@@ -5,10 +5,13 @@
 {% block page_content %}
 <div id="page-groups" class="page active" style="flex-direction:column" role="main">
   <div class="topbar">
-    <div class="topbar-search" style="padding:0 14px"><label for="search-groups" style="display:flex;align-items:center;gap:10px;cursor:text;flex:1"><span aria-hidden="true" style="font-size:14px">&#128269;</span><input id="search-groups" type="search" placeholder="Search meetups..." oninput="filterMeetups(this.value)" aria-label="Search meetups" style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
-    <div class="topbar-controls">
-      <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
+    <div class="topbar-search" style="padding:0 14px">
+      <label for="search-groups" style="display:flex;align-items:center;gap:10px;cursor:text;flex:1">
+        <span aria-hidden="true" style="font-size:14px">&#128269;</span>
+        <input id="search-groups" type="search" placeholder="Search meetups..." oninput="filterMeetups(this.value)" aria-label="Search meetups" style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0">
+      </label>
     </div>
+    <div class="topbar-controls"><button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button></div>
     <button class="sos-btn" onclick="openModal('modal-sos')">&#10033; SOS</button>
     <button aria-label="Notifications" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px">&#128276;</button>
   </div>
@@ -17,7 +20,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
       <div>
         <h1 style="font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px;font-family:'Playfair Display',serif;color:var(--primary)">My Groups & Meetups</h1>
-        <p style="color:var(--muted);font-size:13.5px">All your meetups, friends, and group activity in one place.</p>
+        <p style="color:var(--muted);font-size:13.5px">Meetups, votes, gallery, chat & achievements.</p>
       </div>
       <a class="btn-primary" href="{{ url_for('meetup.plan') }}" style="width:auto;padding:11px 20px;font-size:13px;text-decoration:none">＋ New Meetup</a>
     </div>
@@ -25,26 +28,30 @@
     <div class="groups-body">
       <div class="groups-main">
 
-        <!-- All meetups -->
+        <!-- Meetups -->
         <div class="card" style="margin-bottom:20px">
           <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:16px">📅 Your Meetups ({{ meetups|length }})</div>
           <div id="meetup-list" style="display:flex;flex-direction:column;gap:10px">
             {% for m in meetups %}
-            <a href="{{ url_for('meetup.view_meetup', meetup_id=m.id) }}" class="meetup-row-item" data-title="{{ m.title|lower }}" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;border:1.5px solid var(--border);text-decoration:none;color:inherit;transition:border-color .15s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div class="meetup-row-item" data-meetup-id="{{ m.id }}" data-title="{{ m.title|lower }}"
+                 style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;border:1.5px solid var(--border);cursor:pointer;transition:border-color .15s"
+                 onclick="selectMeetup({{ m.id }})">
               <div style="width:44px;height:44px;border-radius:12px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📅</div>
               <div style="flex:1;min-width:0">
                 <div style="font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.title }}</div>
                 <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
-                  {{ m.meetup_date or 'Date not set' }}{% if m.midpoint_address %} · 📍 {{ m.midpoint_address }}{% endif %}
+                  {{ m.meetup_date or 'Date not set' }}{% if m.winning_venue_name %} · 🏆 {{ m.winning_venue_name }}{% elif m.midpoint_address %} · 📍 {{ m.midpoint_address }}{% endif %}
                 </div>
               </div>
-              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+              <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
                 <span style="background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">
-                  {{ 'Organiser' if m.created_by == session.get('user_id') else 'Member' }}
+                  {{ 'Organiser' if m.created_by == current_user_id else 'Member' }}
                 </span>
-                <span style="font-size:10px;color:var(--muted)">{{ m.status|capitalize if m.status else 'Planned' }}</span>
+                <form method="POST" action="{{ url_for('meetup.remove_from_groups', meetup_id=m.id) }}" onsubmit="return confirm('Remove from My Groups? It stays in History & Analytics.');" onclick="event.stopPropagation()">
+                  <button type="submit" title="Remove from My Groups" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted)">✕</button>
+                </form>
               </div>
-            </a>
+            </div>
             {% else %}
             <div style="text-align:center;color:var(--muted);font-size:13px;padding:20px 0">
               No meetups yet. <a href="{{ url_for('meetup.plan') }}" style="color:var(--blue);font-weight:600">Create one →</a>
@@ -53,39 +60,46 @@
           </div>
         </div>
 
-        <!-- Group vote — coming soon shell -->
-        <div class="card" style="margin-bottom:20px">
+        <!-- Group Vote -->
+        <div class="card" style="margin-bottom:20px" id="vote-panel">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
             <div style="font-weight:700;font-size:15px;color:var(--primary)">🗳️ Group Vote</div>
-            <span class="badge" style="background:rgba(200,153,58,.12);color:var(--gold)">Coming Soon</span>
+            <span id="vote-status-badge" class="badge" style="background:rgba(37,99,235,.12);color:var(--blue)">Select a meetup</span>
           </div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Let your group vote on the next meetup venue. This feature is in development.</p>
-          <div style="background:var(--input-bg);border-radius:12px;padding:20px;text-align:center">
-            <div style="font-size:32px;margin-bottom:10px">🗳️</div>
-            <div style="font-weight:600;font-size:14px;margin-bottom:6px">Venue Voting</div>
-            <div style="font-size:12.5px;color:var(--muted)">Once your group has meetups planned, you'll be able to start a vote to pick the best venue together.</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Organisers start a 24h venue vote with 3 options. Accepted members cast one vote each.</p>
+          <div id="vote-organiser-actions" style="display:none;margin-bottom:12px">
+            <button type="button" class="btn-primary" style="padding:8px 16px;font-size:12px" onclick="startVote()">Start Venue Vote (24h)</button>
+          </div>
+          <div id="vote-options" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+          <div id="vote-results" style="background:var(--input-bg);border-radius:12px;padding:14px;min-height:60px">
+            <div style="font-size:12px;color:var(--muted)">Live results appear here when a vote is active.</div>
           </div>
         </div>
 
-        <!-- Gallery — coming soon shell -->
-        <div class="card">
+        <!-- Gallery -->
+        <div class="card" id="gallery-panel">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
             <div style="font-weight:700;font-size:15px;color:var(--primary)">📸 Meetup Gallery</div>
-            <span class="badge" style="background:rgba(200,153,58,.12);color:var(--gold)">Coming Soon</span>
           </div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Share photos from your meetups with the group.</p>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Upload JPG/PNG under 5MB. Toggle public/private per photo.</p>
+          <form id="gallery-upload-form" style="display:none;margin-bottom:14px" enctype="multipart/form-data" onsubmit="return uploadGallery(event)">
+            <input type="file" name="photo" accept=".jpg,.jpeg,.png" required style="font-size:12px;margin-bottom:8px;width:100%">
+            <input type="text" name="caption" placeholder="Caption (optional)" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);margin-bottom:8px;font-size:12px">
+            <label style="font-size:12px;display:flex;align-items:center;gap:6px;margin-bottom:8px">
+              <input type="checkbox" name="is_public" value="1" checked> Public to group
+            </label>
+            <button type="submit" class="btn-primary" style="padding:8px 16px;font-size:12px">Upload Photo</button>
+          </form>
+          <div id="gallery-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;min-height:120px">
             {% for _ in range(3) %}
-            <div style="height:120px;border-radius:10px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted)">📷</div>
+            <div class="gallery-placeholder" style="height:120px;border-radius:10px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted)">📷</div>
             {% endfor %}
           </div>
         </div>
-
-      </div><!-- /groups-main -->
+      </div>
 
       <div class="groups-right">
-
-        <!-- Friends / group members -->
+        <!-- Friends -->
         <div class="card" style="margin-bottom:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
             <div style="font-weight:700;font-size:15px;color:var(--primary)">👥 Friends ({{ friends|length }})</div>
@@ -100,61 +114,72 @@
             </div>
           </div>
           {% else %}
-          <div style="font-size:13px;color:var(--muted)">No friends yet. <a href="{{ url_for('meetup.scheduler_page') }}" style="color:var(--blue);font-weight:600">Find people →</a></div>
+          <div style="font-size:13px;color:var(--muted)">No friends yet.</div>
           {% endfor %}
         </div>
 
-        <!-- Group chat — coming soon shell -->
+        <!-- Group Chat -->
         <div class="card" style="margin-bottom:16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div style="font-weight:700;font-size:15px;color:var(--primary)">💬 Group Chat</div>
-            <span class="badge" style="background:rgba(200,153,58,.12);color:var(--gold)">Coming Soon</span>
+          <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:8px">💬 Group Chat</div>
+          {% if chat_groups %}
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">{{ chat_groups[0].name }} · accepted members only</div>
+          <div id="chat-messages" style="height:220px;overflow-y:auto;background:var(--input-bg);border-radius:12px;padding:10px;margin-bottom:8px;font-size:12px"></div>
+          <div id="chat-typing" style="font-size:11px;color:var(--muted);min-height:16px;margin-bottom:6px"></div>
+          <div style="display:flex;gap:8px">
+            <input id="chat-input" type="text" placeholder="Type a message…" maxlength="500"
+                   style="flex:1;padding:8px 12px;border-radius:10px;border:1px solid var(--border);font-size:12px"
+                   onkeydown="if(event.key==='Enter')sendChatMessage()">
+            <button type="button" class="btn-primary" style="padding:8px 14px;font-size:12px" onclick="sendChatMessage()">Send</button>
           </div>
-          <div style="background:var(--input-bg);border-radius:12px;padding:20px;text-align:center">
-            <div style="font-size:28px;margin-bottom:8px">💬</div>
-            <div style="font-size:12.5px;color:var(--muted)">Group messaging is in development. For now, coordinate via the meetup planner and scheduler.</div>
-          </div>
+          {% else %}
+          <div style="font-size:12px;color:var(--muted)">Add friends to start group chat.</div>
+          {% endif %}
         </div>
 
-        <!-- Achievement badges — coming soon shell -->
+        <!-- Achievements -->
         <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <div style="font-weight:700;font-size:15px;color:var(--primary)">🏅 Achievements</div>
-            <span class="badge" style="background:rgba(200,153,58,.12);color:var(--gold)">Coming Soon</span>
-          </div>
-          <div style="display:flex;gap:10px">
-            <div class="badge-item" style="flex:1;opacity:.5">
-              <div class="badge-icon" style="background:var(--blue)">🏃</div>
-              <div class="badge-label">Explorer</div>
-              <div class="badge-sub">5 Places</div>
+          <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:14px">🏅 Achievements</div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+            {% for a in achievements %}
+            <div class="badge-item" style="opacity:{{ '1' if a.unlocked_at else '0.45' }};text-align:center;padding:10px;background:var(--input-bg);border-radius:12px">
+              <div class="badge-icon" style="width:40px;height:40px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:18px">
+                {% if a.unlocked_at %}🏅{% else %}🔒{% endif %}
+              </div>
+              <div class="badge-label" style="font-weight:700;font-size:11px">{{ a.title }}</div>
+              <div class="badge-sub" style="font-size:10px;color:var(--muted);margin-top:2px">{{ a.description[:40] }}{% if a.description|length > 40 %}…{% endif %}</div>
             </div>
-            <div class="badge-item" style="flex:1;opacity:.5">
-              <div class="badge-icon" style="background:var(--green)">🎉</div>
-              <div class="badge-label">Socialite</div>
-              <div class="badge-sub">10 Meetups</div>
-            </div>
+            {% endfor %}
           </div>
         </div>
-
       </div>
     </div>
   </div>
 </div>
 
-<!-- SOS Modal -->
 <div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
   <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
     <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
     <div style="font-size:48px;margin-bottom:10px">🆘</div>
     <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
-    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
-    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
-    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
+    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel</button>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+window.GROUPS_CONFIG = {
+  currentUserId: {{ current_user_id }},
+  chatGroupId: {{ chat_groups[0].id if chat_groups else 'null' }},
+  meetups: [
+    {% for m in meetups %}
+    { id: {{ m.id }}, title: {{ m.title|tojson }}, isOrganiser: {{ 'true' if m.created_by == current_user_id else 'false' }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+};
+</script>
+<script src="{{ url_for('static', filename='js/groups.js') }}"></script>
 <script>
 function filterMeetups(q) {
   document.querySelectorAll('.meetup-row-item').forEach(el => {

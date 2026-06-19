@@ -1,3 +1,10 @@
+import os
+import sys
+
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
 import pymysql
 from config import Config
 from datetime import time, timedelta
@@ -72,7 +79,14 @@ def execute_query(query, params=None, fetch=False):
 def initialize_db():
     """Run this once to create your database and tables if they don't exist."""
     import os
-    create_database_if_not_exists()
+    try:
+        create_database_if_not_exists()
+    except Exception as e:
+        # Likely a connection/auth error - warn and skip DB initialization so app can start.
+        print("Warning: could not connect to MySQL to initialize database:", str(e))
+        print("If you intend to use MySQL, verify MYSQL_HOST, MYSQL_USER and MYSQL_PASSWORD in config.py or .env.")
+        return
+
     schema_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'schema.sql')
     with open(schema_path, 'r', encoding='utf-8') as f:
         schema_sql = f.read()
@@ -86,7 +100,10 @@ def initialize_db():
             for statement in statements:
                 cursor.execute(statement)
             _repair_existing_schema(cursor)
+            _ensure_group_features_schema(cursor)
+            _seed_achievements(cursor)
             _seed_demo_data(cursor)
+            _seed_trending_spots(cursor)
         connection.commit()
     finally:
         connection.close()
@@ -137,6 +154,219 @@ def _repair_existing_schema(cursor):
     _ensure_column(cursor, 'notifications', 'link', "link VARCHAR(255) NULL")
     _ensure_index(cursor, 'fare_alert', 'idx_fare_alert_user', "INDEX idx_fare_alert_user (userID, isActive)")
     _ensure_index(cursor, 'fare_history', 'idx_fare_history_meetup', "INDEX idx_fare_history_meetup (meetupID, mode, recordedAt)")
+    _ensure_index(cursor, 'trending_spots', 'idx_trending_spots_feed', "INDEX idx_trending_spots_feed (is_active, trend_score)")
+    _ensure_index(cursor, 'user_spot_interactions', 'idx_spot_interactions_spot', "INDEX idx_spot_interactions_spot (spot_id, interaction_type)")
+    _ensure_index(cursor, 'spot_recommendations', 'idx_spot_recommendations_user', "INDEX idx_spot_recommendations_user (user_id, is_dismissed)")
+    _ensure_index(cursor, 'notifications', 'idx_notifications_user_read', "INDEX idx_notifications_user_read (user_id, is_read)")
+    _ensure_index(cursor, 'smart_alert_log', 'idx_smart_alert_user', "INDEX idx_smart_alert_user (user_id, alert_key)")
+    _ensure_column(cursor, 'meetup_members', 'hidden_from_groups',
+                   "hidden_from_groups BOOLEAN DEFAULT FALSE")
+    _ensure_column(cursor, 'meetups', 'winning_restaurant_id',
+                   "winning_restaurant_id INT NULL")
+    _ensure_column(cursor, 'meetups', 'winning_venue_name',
+                   "winning_venue_name VARCHAR(255) NULL")
+
+
+def _ensure_group_features_schema(cursor):
+    """Tables for group vote, gallery, chat, and achievements."""
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS venue_votes (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            meetup_id INT NOT NULL,
+            created_by INT NOT NULL,
+            deadline DATETIME NOT NULL,
+            status ENUM('open', 'closed') DEFAULT 'open',
+            winner_option_id INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (meetup_id) REFERENCES meetups(id) ON DELETE CASCADE,
+            FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS venue_vote_options (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            vote_id INT NOT NULL,
+            restaurant_id INT NULL,
+            label VARCHAR(255) NOT NULL,
+            address VARCHAR(255),
+            FOREIGN KEY (vote_id) REFERENCES venue_votes(id) ON DELETE CASCADE,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE SET NULL
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS venue_vote_casts (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            vote_id INT NOT NULL,
+            option_id INT NOT NULL,
+            user_id INT NOT NULL,
+            voted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (vote_id) REFERENCES venue_votes(id) ON DELETE CASCADE,
+            FOREIGN KEY (option_id) REFERENCES venue_vote_options(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_vote_user (vote_id, user_id)
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS meetup_gallery (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            meetup_id INT NOT NULL,
+            user_id INT NOT NULL,
+            file_path VARCHAR(255) NOT NULL,
+            caption VARCHAR(500),
+            is_public BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (meetup_id) REFERENCES meetups(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS gallery_likes (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            gallery_id INT NOT NULL,
+            user_id INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (gallery_id) REFERENCES meetup_gallery(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_gallery_like (gallery_id, user_id)
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS gallery_comments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            gallery_id INT NOT NULL,
+            user_id INT NOT NULL,
+            comment TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (gallery_id) REFERENCES meetup_gallery(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS friend_groups (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            owner_id INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS friend_group_members (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            group_id INT NOT NULL,
+            user_id INT NOT NULL,
+            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (group_id) REFERENCES friend_groups(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_group_member (group_id, user_id)
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS group_chat_messages (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            group_id INT NOT NULL,
+            user_id INT NOT NULL,
+            body TEXT NOT NULL,
+            is_deleted BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (group_id) REFERENCES friend_groups(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS group_chat_reads (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            message_id INT NOT NULL,
+            user_id INT NOT NULL,
+            read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (message_id) REFERENCES group_chat_messages(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_message_read (message_id, user_id)
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS group_chat_typing (
+            group_id INT NOT NULL,
+            user_id INT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (group_id, user_id),
+            FOREIGN KEY (group_id) REFERENCES friend_groups(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS achievements (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            unlock_key VARCHAR(50) NOT NULL UNIQUE,
+            title VARCHAR(100) NOT NULL,
+            description TEXT NOT NULL,
+            badge_icon VARCHAR(255) NOT NULL
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_achievements (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            achievement_id INT NOT NULL,
+            unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (achievement_id) REFERENCES achievements(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_user_achievement (user_id, achievement_id)
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS budget_split_log (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            meetup_id INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (meetup_id) REFERENCES meetups(id) ON DELETE CASCADE
+        )
+    """)
+    try:
+        cursor.execute("""
+            ALTER TABLE notifications
+            MODIFY type ENUM(
+                'meetup','friend','reminder','sos','general',
+                'vote','gallery','chat','achievement'
+            ) DEFAULT 'general'
+        """)
+    except Exception:
+        pass
+
+
+ACHIEVEMENTS_SEED = [
+    ('first_contact', 'First Contact',
+     'Created or joined your very first meetup.', 'first_contact.png'),
+    ('road_tripper', 'Road Tripper',
+     'Successfully completed 5 meetups.', 'road_tripper.png'),
+    ('penny_pincher', 'Penny Pincher',
+     'Used the Budget Split feature to settle ride costs.', 'penny_pincher.png'),
+    ('democratic_leader', 'Democratic Leader',
+     'Created a Group Voting poll in a meetup.', 'democratic_leader.png'),
+    ('lifeline', 'Lifeline',
+     'Set up your Emergency Alerts or emergency contacts profile.', 'lifeline.png'),
+    ('social_butterfly', 'Social Butterfly',
+     'Sent your first message in a meetup group chat.', 'social_butterfly.png'),
+    ('reliable_rider', 'Reliable Rider',
+     'Attended 3 consecutive meetups successfully.', 'reliable_rider.png'),
+]
+
+
+def _seed_achievements(cursor):
+    for unlock_key, title, description, badge_icon in ACHIEVEMENTS_SEED:
+        cursor.execute(
+            """
+            INSERT INTO achievements (unlock_key, title, description, badge_icon)
+            VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                title = VALUES(title),
+                description = VALUES(description),
+                badge_icon = VALUES(badge_icon)
+            """,
+            (unlock_key, title, description, badge_icon)
+        )
 
 
 def _seed_demo_data(cursor):
@@ -219,3 +449,67 @@ def _seed_demo_data(cursor):
                 """,
                 row
             )
+
+
+def _seed_trending_spots(cursor):
+    """Seed curated spots for the Explore feed of trending meetup spots."""
+    # name, description, address, lat, lng, category, cuisine, ambience,
+    # price_range, avg_cost, rating, review_count, trend_score, is_featured
+    spots = [
+        ('The Old House', 'Riverside lounge with live music and a relaxed deck — a weekend favourite.',
+         'Jhamsikhel, Lalitpur', 27.6745, 85.3120, 'Lounge', 'Continental', 'lively',
+         'expensive', 1800, 4.7, 240, 92.5, True),
+        ('Cafe Soma', 'Garden cafe tucked in Patan, great for long catch-ups over coffee.',
+         'Pulchowk, Lalitpur', 27.6790, 85.3170, 'Cafe', 'Cafe', 'cozy',
+         'mid', 700, 4.6, 188, 81.0, True),
+        ('Trisara', 'Open-air Newari courtyard restaurant buzzing on weekend evenings.',
+         'Lazimpat, Kathmandu', 27.7220, 85.3210, 'Restaurant', 'Nepali', 'lively',
+         'mid', 1300, 4.5, 165, 76.0, True),
+        ('Places Restaurant & Bar', 'Rooftop spot with skyline views popular for group hangouts.',
+         'Thamel, Kathmandu', 27.7160, 85.3110, 'Restaurant', 'Continental', 'lively',
+         'mid', 1100, 4.4, 142, 70.0, False),
+        ('Karma Coffee', 'Specialty coffee roaster — quiet, laptop-friendly mornings.',
+         'Jhamsikhel, Lalitpur', 27.6758, 85.3142, 'Cafe', 'Cafe', 'quiet',
+         'budget', 450, 4.5, 121, 64.0, False),
+        ('Or2K Rooftop', 'Cushioned rooftop seating, vegetarian mezze, and a chill crowd.',
+         'Mandala Street, Thamel', 27.7152, 85.3119, 'Restaurant', 'Mediterranean', 'cozy',
+         'mid', 950, 4.3, 207, 58.0, False),
+        ('Le Sherpa', 'Farm-to-table garden venue, weekend farmers market draws crowds.',
+         'Maharajgunj, Kathmandu', 27.7380, 85.3290, 'Restaurant', 'Continental', 'cozy',
+         'expensive', 2000, 4.6, 134, 55.0, False),
+        ('Himalayan Java Durbar Marg', 'Flagship cafe, central meeting point in the heart of the city.',
+         'Durbar Marg, Kathmandu', 27.7110, 85.3180, 'Cafe', 'Coffee', 'lively',
+         'mid', 650, 4.4, 312, 51.0, False),
+    ]
+
+    for row in spots:
+        cursor.execute("SELECT id FROM trending_spots WHERE name = %s LIMIT 1", (row[0],))
+        existing = cursor.fetchone()
+        if existing:
+            cursor.execute(
+                """
+                UPDATE trending_spots
+                SET description = %s, address = %s, latitude = %s, longitude = %s,
+                    category = %s, cuisine = %s, ambience = %s, price_range = %s,
+                    avg_cost_per_person = %s, rating = %s, review_count = %s,
+                    trend_score = %s, is_featured = %s, is_active = TRUE
+                WHERE id = %s
+                """,
+                (*row[1:], existing['id'])
+            )
+        else:
+            cursor.execute(
+                """
+                INSERT INTO trending_spots
+                    (name, description, address, latitude, longitude, category,
+                     cuisine, ambience, price_range, avg_cost_per_person, rating,
+                     review_count, trend_score, is_featured, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
+                """,
+                row
+            )
+
+
+if __name__ == '__main__':
+    initialize_db()
+    print('Database initialized.')
