@@ -108,14 +108,13 @@
         <div class="card" style="margin-bottom:16px;padding:20px">
           <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:8px">💬 Group Chat</div>
           {% if chat_groups %}
-          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">{{ chat_groups[0].name }} · accepted members only</div>
-          <div id="chat-messages" style="height:220px;overflow-y:auto;background:var(--input-bg);border-radius:12px;padding:10px;margin-bottom:8px;font-size:12px"></div>
-          <div id="chat-typing" style="font-size:11px;color:var(--muted);min-height:16px;margin-bottom:6px"></div>
-          <div style="display:flex;gap:8px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">{{ active_chat_group.name }} · accepted members only</div>
+          <div id="chat-messages" class="direct-chat-messages"></div>
+          <div id="chat-typing" class="direct-chat-typing"></div>
+          <div class="direct-chat-compose">
             <input id="chat-input" type="text" placeholder="Type a message…" maxlength="500"
-                   style="flex:1;padding:8px 12px;border-radius:10px;border:1px solid var(--border);font-size:12px"
                    onkeydown="if(event.key==='Enter')sendChatMessage()">
-            <button type="button" class="btn-primary" style="padding:8px 14px;font-size:12px" onclick="sendChatMessage()">Send</button>
+            <button type="button" onclick="sendChatMessage()">Send</button>
           </div>
           {% else %}
           <div style="font-size:12px;color:var(--muted)">Add friends to start group chat.</div>
@@ -136,7 +135,7 @@
             </div>
             {% endfor %}
           </div>
-        </div>
+        </div>    
       </div>
     </div>
   </div>
@@ -157,14 +156,16 @@
 <script>
 window.GROUPS_CONFIG = {
   currentUserId: {{ current_user_id }},
-  chatGroupId: {{ chat_groups[0].id if chat_groups else 'null' }},
+  chatGroupId: {{ active_chat_group.id if active_chat_group else 'null' }},
+  chatTitle: {{ (chat_partner.full_name if chat_partner else 'Group Chat')|tojson }},
+  profileUploadBase: "{{ url_for('static', filename='uploads/profiles/') }}",
   meetups: [
     {% for m in meetups %}
     { id: {{ m.id }}, title: {{ m.title|tojson }}, isOrganiser: {{ 'true' if m.created_by == current_user_id else 'false' }} }{% if not loop.last %},{% endif %}
     {% endfor %}
   ]
 };
-</script>
+</script> 
 <script src="{{ url_for('static', filename='js/groups.js') }}"></script>
 <script>
 function filterMeetups(q) {

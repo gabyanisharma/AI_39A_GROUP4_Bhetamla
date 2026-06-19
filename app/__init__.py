@@ -82,4 +82,9 @@ def create_app():
     def index():
         return redirect(url_for('user.dashboard') if session.get('user_id') else url_for('auth.login'))
 
+    @app.route('/users/settings', methods=['GET', 'POST'])
+    def settings_plural_alias():
+        from app.controllers.user_controller import settings
+        return settings()
+
     return app

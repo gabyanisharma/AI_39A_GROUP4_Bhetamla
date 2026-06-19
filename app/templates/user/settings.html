@@ -11,7 +11,11 @@
       <button class="ctrl-btn" type="button" onclick="togglePref('theme')">{{ '☀️ Light' if user.theme_preference == 'dark' else '🌙 Dark' }}</button>
     </div>
     <span style="font-size:13px;font-weight:600;color:var(--muted)">{{ session.get('user_name','User') }}</span>
+    {% if user.profile_pic and user.profile_pic != 'default.png' %}
+    <img src="{{ url_for('static', filename='uploads/profiles/' ~ user.profile_pic) }}" alt="{{ user.full_name }}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid rgba(20,95,227,.18)">
+    {% else %}
     <div class="avatar" style="width:34px;height:34px;background:var(--blue);font-size:13px">{{ session.get('user_name','U')[0]|upper }}</div>
+    {% endif %}
   </div>
 
   <div class="settings-inner">
@@ -21,7 +25,11 @@
       <div class="card" style="margin-bottom:20px">
         <div class="profile-card-inner">
           <div class="profile-avatar-wrap">
+            {% if user.profile_pic and user.profile_pic != 'default.png' %}
+            <img src="{{ url_for('static', filename='uploads/profiles/' ~ user.profile_pic) }}" alt="{{ user.full_name }}" style="width:74px;height:74px;border-radius:50%;object-fit:cover;border:3px solid var(--white);box-shadow:0 6px 18px rgba(8,45,37,.16)">
+            {% else %}
             <div class="avatar" style="width:74px;height:74px;background:var(--blue);font-size:26px">{{ (user.full_name or 'U')[0]|upper }}</div>
+            {% endif %}
             {% if user.is_verified %}<div class="profile-avatar-badge">&#10003;</div>{% endif %}
           </div>
           <div style="flex:1">
@@ -73,6 +81,13 @@
         <div style="font-weight:700;font-size:15px;margin-bottom:12px">&#128274; Password</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Change the password used to sign in to your account.</p>
         <button class="btn-sec" type="button" style="font-size:13px;padding:10px 16px" onclick="openModal('modal-change-password')">Change Password</button>
+      </div>
+
+      <!-- Profile picture -->
+      <div class="card" style="margin-bottom:20px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px">Profile Picture</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Upload a JPG, PNG, GIF, or WEBP image. It updates your sidebar profile across the app.</p>
+        <button class="btn-sec" type="button" style="font-size:13px;padding:10px 16px" onclick="openModal('modal-profile-picture')">Change Profile Picture</button>
       </div>
 
       <!-- Decorative: Wallet & Payments — no backend wallet system exists -->
@@ -135,7 +150,7 @@
   <div class="modal-box" style="max-width:480px">
     <button class="modal-close" type="button" onclick="closeModal('modal-edit-profile')">✕</button>
     <div class="modal-title">Edit Profile</div>
-    <form method="POST" action="{{ url_for('user.settings_page') }}">
+    <form method="POST" action="{{ url_for('user.settings_page') }}" enctype="multipart/form-data">
       <input type="hidden" name="action" value="update_profile">
       <div style="margin-bottom:14px"><label class="field-label" for="ep-fullname">Full Name</label><input class="field-input" id="ep-fullname" name="full_name" value="{{ user.full_name }}" required /></div>
       <div style="margin-bottom:14px"><label class="field-label" for="ep-phone">Phone</label><input class="field-input" id="ep-phone" name="phone" value="{{ user.phone or '' }}" /></div>
@@ -151,7 +166,33 @@
           <option value="public" {% if user.transport_preference == 'public' %}selected{% endif %}>Public Transport</option>
         </select>
       </div>
+      <div style="margin-bottom:20px">
+        <label class="field-label" for="ep-profile-pic">Profile Picture</label>
+        <input class="field-input" id="ep-profile-pic" name="profile_pic" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
+      </div>
       <button class="btn-primary" type="submit">Save Changes</button>
+    </form>
+  </div>
+</div>
+
+<!-- Profile Picture Modal -->
+<div class="modal-overlay" id="modal-profile-picture" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:420px">
+    <button class="modal-close" type="button" onclick="closeModal('modal-profile-picture')">x</button>
+    <div class="modal-title">Change Profile Picture</div>
+    <div class="modal-sub">This updates your profile image anywhere the app shows your account.</div>
+    <form method="POST" action="{{ url_for('user.settings_page') }}" enctype="multipart/form-data">
+      <input type="hidden" name="action" value="update_profile">
+      <input type="hidden" name="full_name" value="{{ user.full_name }}">
+      <input type="hidden" name="phone" value="{{ user.phone or '' }}">
+      <input type="hidden" name="budget_preference" value="{{ user.budget_preference or 0 }}">
+      <input type="hidden" name="cuisine_preference" value="{{ user.cuisine_preference or '' }}">
+      <input type="hidden" name="transport_preference" value="{{ user.transport_preference or 'any' }}">
+      <div style="margin-bottom:20px">
+        <label class="field-label" for="profile-picture-file">Choose Image</label>
+        <input class="field-input" id="profile-picture-file" name="profile_pic" type="file" accept="image/png,image/jpeg,image/gif,image/webp" required />
+      </div>
+      <button class="btn-primary" type="submit">Upload Picture</button>
     </form>
   </div>
 </div>

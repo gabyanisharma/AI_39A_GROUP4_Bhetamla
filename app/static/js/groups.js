@@ -169,19 +169,39 @@
     });
   }
 
+  function profileSnippet(msg) {
+    const name = msg.full_name || 'User';
+    if (msg.profile_pic && msg.profile_pic !== 'default.png') {
+      return `<img class="direct-chat-avatar" src="${cfg.profileUploadBase}${escapeChatHtml(msg.profile_pic)}" alt="${escapeChatHtml(name)}" style="width:28px;height:28px;font-size:10px">`;
+    }
+    return `<div class="direct-chat-avatar" style="width:28px;height:28px;font-size:10px">${escapeChatHtml(name.slice(0, 2).toUpperCase())}</div>`;
+  }
+
+  function chatTime(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
   function appendChatMessage(msg) {
     const box = document.getElementById('chat-messages');
     if (!box) return;
+    const existing = msg.id ? box.querySelector(`[data-msg-id="${msg.id}"]`) : null;
+    if (existing) return;
     const div = document.createElement('div');
     div.dataset.msgId = msg.id;
-    div.style.marginBottom = '8px';
+    const mine = Number(msg.user_id) === Number(cfg.currentUserId);
+    div.className = `chat-message-row${mine ? ' mine' : ''}`;
     const readCount = (msg.read_by && msg.read_by.length) ? ` · seen ${msg.read_by.length}` : '';
     div.innerHTML =
-      `<strong>${escapeChatHtml(msg.full_name || 'User')}</strong>: ` +
-      `<span class="chat-body">${escapeChatHtml(msg.body)}</span>` +
-      `<span style="color:var(--muted);font-size:10px">${readCount}</span> ` +
-      `<button type="button" class="chat-translate-btn" style="background:none;border:none;color:var(--blue);font-size:10px;cursor:pointer;padding:0">Translate</button>` +
-      `<div class="chat-translation" data-loaded="0" style="display:none;font-size:12px;color:var(--muted);margin-top:2px;padding-left:8px;border-left:2px solid var(--border)"></div>`;
+      profileSnippet(msg) +
+      `<div class="chat-message-stack">` +
+        `<div class="chat-message-meta">${escapeChatHtml(mine ? 'You' : (msg.full_name || cfg.chatTitle || 'User'))}${chatTime(msg.created_at) ? ' - ' + escapeChatHtml(chatTime(msg.created_at)) : ''}${readCount}</div>` +
+        `<div class="chat-bubble">${escapeChatHtml(msg.body)}</div>` +
+        `<button type="button" class="chat-translate-btn">Translate</button>` +
+        `<div class="chat-translation" data-loaded="0" style="display:none;font-size:12px;color:var(--muted);margin-top:2px;padding-left:8px;border-left:2px solid var(--border)"></div>` +
+      `</div>`;
     const btn = div.querySelector('.chat-translate-btn');
     if (btn) btn.addEventListener('click', () => translateChatMessage(btn, msg.body || ''));
     box.appendChild(div);
