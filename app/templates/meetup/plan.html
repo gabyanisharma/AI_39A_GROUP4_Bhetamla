@@ -143,7 +143,7 @@
           <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;">
             <span style="background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">{{ m.status|title }}</span>
             {% if m.created_by == current_user_id %}
-            <form method="POST" action="{{ url_for('meetup.delete', meetup_id=m.id) }}" onsubmit="return confirm('Delete this meetup plan?');" style="margin:0;">
+            <form method="POST" action="{{ url_for('meetup.delete_plan', meetup_id=m.id) }}" onsubmit="return confirm('Delete this meetup plan?');" style="margin:0;">
               <button type="submit" aria-label="Delete {{ m.title }}" title="Delete plan" style="width:30px;height:30px;border-radius:9px;border:1.5px solid rgba(192,57,43,.25);background:#FFEBEE;color:var(--red);font-size:13px;font-weight:800;cursor:pointer;">✕</button>
             </form>
             {% endif %}
@@ -763,6 +763,67 @@ function formatPlanDate(dateValue, timeValue){
     formatted += ' at ' + date.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
   }
   return formatted;
+}
+
+// ── Plan popup preferences → backend ─────────────────────────
+// Cuisine chips had no handler defined anywhere; define it here so
+// selections toggle (multi-select) before we read them.
+function toggleChip(el){
+  if(el) el.classList.toggle('active');
+}
+
+function planPrefMeetupId(){
+  var ctx = window.PLAN_CONTEXT || {};
+  return (ctx.hasMeetup && ctx.meetupId) ? ctx.meetupId : null;
+}
+
+// Fire-and-forget save of one popup's slice. No-op (resolves false) when
+// there's no saved meetup yet, so the "new meetup" flow is unchanged.
+function savePlanPreferences(fields){
+  var id = planPrefMeetupId();
+  if(!id || !window.fetch || !fields) return Promise.resolve(false);
+  var clean = {};
+  Object.keys(fields).forEach(function(k){
+    var v = fields[k];
+    if(v !== null && v !== undefined && v !== '') clean[k] = v;
+  });
+  if(!Object.keys(clean).length) return Promise.resolve(false);
+  return fetch('/meetup/' + id + '/preferences', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+    body: JSON.stringify(clean)
+  }).then(function(r){ return r.json(); }).catch(function(){ return false; });
+}
+
+function readCuisineSelection(){
+  var chips = document.querySelectorAll('#modal-cuisine-preference .filter-chip.active');
+  return Array.prototype.map.call(chips, function(c){ return c.textContent.trim(); }).join(', ');
+}
+
+function readAmbienceSelection(){
+  var pills = document.querySelectorAll('#modal-ambience-filter .ambience-pill.active');
+  return Array.prototype.map.call(pills, function(p){
+    var label = p.querySelector('.ambience-pill-label');
+    return (label ? label.textContent : p.textContent).trim();
+  }).join(', ');
+}
+
+function readBudgetSelection(){
+  var input = document.querySelector('#modal-budget-filter input[type=range]');
+  var val = input ? Number(input.value) : null;
+  return Number.isFinite(val) ? val : null;
+}
+
+function readVenueSelection(){
+  var row = document.querySelector('#modal-nearby-restaurants .venue-row.selected') ||
+            document.querySelector('#modal-nearby-restaurants .venue-row');
+  var name = row ? row.querySelector('.venue-name') : null;
+  return name ? name.textContent.trim() : '';
+}
+
+function readRideSelection(){
+  var card = document.querySelector('#modal-ride-cost .restaurant-card .rest-name');
+  return card ? card.textContent.trim() : '';
 }
 
 function confirmAdvancedPlan(){

@@ -1,6 +1,7 @@
 from flask import (render_template, request, redirect,
                    url_for, flash, jsonify, session)
 from app.models.meetup import Meetup, MeetupMember, PlaceSuggestion
+from app.models.meetup_preference import MeetupPlanPreference
 from app.models.base_model import Friend
 from app.models.user import User
 from app.auth import get_current_user_id, is_logged_in
@@ -626,6 +627,108 @@ def delete_meetup_plan(meetup_id):
     Meetup.delete_by_creator(meetup_id, user_id)
     flash('Meetup plan deleted.', 'success')
     return redirect(url_for('meetup.plan'))
+
+
+# ── Plan popup preferences (cuisine, budget, ambience, venue, ride) ──
+def _can_access_meetup(meetup, user_id):
+    """A meetup creator or any of its members may save planning choices."""
+    if meetup['created_by'] == user_id:
+        return True
+    members = MeetupMember.get_by_meetup(meetup['id'])
+    return any(m['user_id'] == user_id for m in members)
+
+
+def _pref_to_int(value):
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _pref_to_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def save_plan_preferences(meetup_id):
+    """Persist the choices made in the serial Plan Meetup popups.
+
+    Accepts a JSON body with any subset of the planner fields so each
+    popup can save its own slice as the user advances through the flow.
+    """
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': 'Login required.'}), 401
+
+    meetup = Meetup.get_by_id(meetup_id)
+    if not meetup:
+        return jsonify({'success': False, 'message': 'Meetup not found.'}), 404
+
+    user_id = get_current_user_id()
+    if not _can_access_meetup(meetup, user_id):
+        return jsonify({
+            'success': False,
+            'message': 'You are not part of this meetup.'
+        }), 403
+
+    payload = request.get_json(silent=True) or {}
+
+    fields = {}
+    if 'cuisine' in payload:
+        fields['cuisine'] = (str(payload.get('cuisine') or '').strip())[:100]
+    if 'ambience' in payload:
+        fields['ambience'] = (str(payload.get('ambience') or '').strip())[:100]
+    if 'ride_option' in payload:
+        fields['ride_option'] = (str(payload.get('ride_option') or '').strip())[:100]
+    if 'notes' in payload:
+        fields['notes'] = str(payload.get('notes') or '').strip()
+    if 'selected_venue' in payload:
+        fields['selected_venue'] = (str(payload.get('selected_venue') or '').strip())[:255]
+    if 'budget_min' in payload:
+        fields['budget_min'] = _pref_to_int(payload.get('budget_min'))
+    if 'budget_max' in payload:
+        fields['budget_max'] = _pref_to_int(payload.get('budget_max'))
+    if 'selected_venue_lat' in payload:
+        fields['selected_venue_lat'] = _pref_to_float(payload.get('selected_venue_lat'))
+    if 'selected_venue_lng' in payload:
+        fields['selected_venue_lng'] = _pref_to_float(payload.get('selected_venue_lng'))
+
+    # Drop keys that failed validation so we never write garbage.
+    fields = {k: v for k, v in fields.items() if v is not None and v != ''}
+
+    if not fields:
+        return jsonify({
+            'success': False,
+            'message': 'No valid preferences supplied.'
+        }), 400
+
+    MeetupPlanPreference.upsert(meetup_id, user_id, fields)
+
+    return jsonify({
+        'success': True,
+        'message': 'Preferences saved.',
+        'saved': list(fields.keys())
+    })
+
+
+def get_plan_preferences(meetup_id):
+    """Return the caller's saved planning choices for a meetup."""
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': 'Login required.'}), 401
+
+    meetup = Meetup.get_by_id(meetup_id)
+    if not meetup:
+        return jsonify({'success': False, 'message': 'Meetup not found.'}), 404
+
+    user_id = get_current_user_id()
+    if not _can_access_meetup(meetup, user_id):
+        return jsonify({'success': False, 'message': 'You are not part of this meetup.'}), 403
+
+    prefs = MeetupPlanPreference.get(meetup_id, user_id) or {}
+    return jsonify({'success': True, 'preferences': prefs})
+
+
 def confirm_meetup_plan(meetup_id):
     if not is_logged_in():
         return jsonify({'success': False, 'message': 'Login required.'}), 401
