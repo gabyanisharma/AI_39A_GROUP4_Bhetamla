@@ -843,3 +843,43 @@ CREATE TABLE IF NOT EXISTS app_feedback (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_feedback_user (user_id, created_at)
 );
+
+-- =========================================
+-- CALENDAR SYNC (US29)
+-- In-app calendar connections plus imported
+-- .ics events for conflict detection.
+-- =========================================
+CREATE TABLE IF NOT EXISTS calendar_accounts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    provider ENUM('google', 'outlook', 'apple', 'other') DEFAULT 'other',
+    account_email VARCHAR(190) NOT NULL,
+    display_name VARCHAR(190),
+    permission_scope ENUM('read', 'write', 'read_write') DEFAULT 'read_write',
+    is_active BOOLEAN DEFAULT TRUE,
+    last_sync_at DATETIME NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_calendar_account (user_id, account_email),
+    INDEX idx_calendar_accounts_user_active (user_id, is_active)
+);
+
+CREATE TABLE IF NOT EXISTS imported_calendar_events (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    account_id INT NOT NULL,
+    external_uid VARCHAR(191) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    location VARCHAR(255),
+    starts_at DATETIME NOT NULL,
+    ends_at DATETIME NOT NULL,
+    is_all_day BOOLEAN DEFAULT FALSE,
+    source ENUM('ics_upload', 'manual_sync') DEFAULT 'ics_upload',
+    imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (account_id) REFERENCES calendar_accounts(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_account_external_event (account_id, external_uid),
+    INDEX idx_imported_events_user_time (user_id, starts_at, ends_at)
+);
