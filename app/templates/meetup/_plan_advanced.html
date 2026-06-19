@@ -20,7 +20,7 @@
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="btn-sec" type="button" onclick="resetSerialPlan()" style="font-size:12px;padding:8px 14px;">Start Over</button>
         {% if show_advanced and active_meetup.created_by == current_user_id %}
-        <form method="POST" action="{{ url_for('meetup.delete', meetup_id=active_meetup.id) }}" onsubmit="return confirm('Delete this meetup plan?');" style="margin:0;">
+        <form method="POST" action="{{ url_for('meetup.delete_plan', meetup_id=active_meetup.id) }}" onsubmit="return confirm('Delete this meetup plan?');" style="margin:0;">
           <button class="btn-sec" type="submit" style="font-size:12px;padding:8px 14px;color:var(--red);border-color:rgba(192,57,43,.35);">Delete Plan</button>
         </form>
         {% endif %}
