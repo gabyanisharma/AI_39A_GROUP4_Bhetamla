@@ -9,7 +9,8 @@ from app.controllers.meetup_controller import (
 from app.controllers.place_controller import (
     plan_meetup, create_meetup, view_meetup as view_meetup_ctrl,
     update_location, get_midpoint, add_suggestion,
-    respond_meetup, confirm_meetup_plan, delete_meetup_plan
+    respond_meetup, confirm_meetup_plan, delete_meetup_plan,
+    save_plan_preferences, get_plan_preferences, meetup_calendar
 )
 from app.controllers.meetup_route_controller import (
     get_meetup_route, save_meetup_route, delete_meetup_route
@@ -18,6 +19,7 @@ from app.controllers.group_features_controller import (
     groups_page, hide_from_groups, start_vote, cast_vote, vote_results,
     upload_gallery, gallery_list, delete_gallery_photo, toggle_gallery_like,
     gallery_comment, gallery_privacy, chat_messages, record_budget_split,
+    translate_message,
 )
 
 meetup_bp = Blueprint('meetup', __name__, url_prefix='/meetup')
@@ -69,15 +71,33 @@ def confirm_plan(meetup_id):
     return confirm_meetup_plan(meetup_id)
 
 
+@meetup_bp.route('/<int:meetup_id>/preferences', methods=['POST'])
+@login_required
+def save_preferences(meetup_id):
+    return save_plan_preferences(meetup_id)
+
+
+@meetup_bp.route('/<int:meetup_id>/preferences', methods=['GET'])
+@login_required
+def load_preferences(meetup_id):
+    return get_plan_preferences(meetup_id)
+
+
+@meetup_bp.route('/<int:meetup_id>/calendar.ics', methods=['GET'])
+@login_required
+def calendar_ics(meetup_id):
+    return meetup_calendar(meetup_id)
+
+
 @meetup_bp.route('/groups')
 @login_required
 def groups():
     return groups_page()
 
 
-@meetup_bp.route('/delete/<int:meetup_id>', methods=['POST'])
+@meetup_bp.route('/groups/hide/<int:meetup_id>', methods=['POST'])
 @login_required
-def delete(meetup_id):
+def remove_from_groups(meetup_id):
     return hide_from_groups(meetup_id)
 
 
@@ -139,6 +159,12 @@ def gallery_privacy_route(photo_id):
 @login_required
 def chat_messages_route(group_id):
     return chat_messages(group_id)
+
+
+@meetup_bp.route('/chat/translate', methods=['POST'])
+@login_required
+def chat_translate():
+    return translate_message()
 
 
 @meetup_bp.route('/budget-split/<int:meetup_id>/record', methods=['POST'])
