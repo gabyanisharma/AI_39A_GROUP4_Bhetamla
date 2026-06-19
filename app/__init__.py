@@ -1,10 +1,12 @@
 from flask import Flask, session, redirect, url_for
 from flask_mail import Mail
+from flask_socketio import SocketIO
 from config import Config
 from app.translations import get_translations
 from app.database import initialize_db
 
 mail = Mail()
+socketio = SocketIO(cors_allowed_origins='*', async_mode='threading')
 
 def create_app():
     app = Flask(__name__)
@@ -64,6 +66,10 @@ def create_app():
     app.register_blueprint(explore_bp)
     app.register_blueprint(analytics_bp)
 
+    socketio.init_app(app)
+    from app.socket_events import register_socket_events
+    register_socket_events(socketio)
+
     @app.route('/')
     def index():
         if session.get('user_id'):
@@ -71,3 +77,6 @@ def create_app():
         return redirect(url_for('auth.login'))
 
     return app
+
+def get_socketio():
+    return socketio
