@@ -827,3 +827,19 @@ CREATE TABLE IF NOT EXISTS budget_split_records (
     -- The upsert in record_budget_split() keeps this in sync.
     UNIQUE KEY uq_bsr_meetup (meetup_id)
 );
+
+-- =========================================
+-- APP RATING & FEEDBACK (US27)
+-- General product feedback with a 1–5 star
+-- rating and an optional message.
+-- =========================================
+CREATE TABLE IF NOT EXISTS app_feedback (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    rating TINYINT NOT NULL,
+    category VARCHAR(50) DEFAULT 'general',
+    message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_feedback_user (user_id, created_at)
+);
