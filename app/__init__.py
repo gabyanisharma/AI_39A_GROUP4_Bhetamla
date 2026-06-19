@@ -55,6 +55,7 @@ def create_app():
     from app.routes.ride_routes import ride_bp
     from app.routes.explore_routes import explore_bp
     from app.routes.analytics_routes import analytics_bp
+    from app.routes.calendar_routes import calendar_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
@@ -65,6 +66,7 @@ def create_app():
     app.register_blueprint(ride_bp)
     app.register_blueprint(explore_bp)
     app.register_blueprint(analytics_bp)
+    app.register_blueprint(calendar_bp)
 
     socketio.init_app(app)
     from app.socket_events import register_socket_events
