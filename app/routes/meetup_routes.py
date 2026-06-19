@@ -75,9 +75,9 @@ def groups():
     return groups_page()
 
 
-@meetup_bp.route('/delete/<int:meetup_id>', methods=['POST'])
+@meetup_bp.route('/groups/hide/<int:meetup_id>', methods=['POST'])
 @login_required
-def delete(meetup_id):
+def remove_from_groups(meetup_id):
     return hide_from_groups(meetup_id)
 
 
