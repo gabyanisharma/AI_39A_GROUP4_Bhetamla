@@ -12,11 +12,8 @@ socketio = SocketIO(cors_allowed_origins='*', async_mode='threading')
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
-    
-    # Set default secret key for sessions
     app.secret_key = getattr(Config, 'SECRET_KEY', 'bhetamla_secret_key_123')
 
-    # Initialize extensions
     mail.init_app(app)
 
     @app.context_processor
@@ -30,23 +27,13 @@ def create_app():
             from app.models.place import RestaurantOffer
             user_id = session.get('user_id')
             offers = RestaurantOffer.get_saved_by_user(user_id)
-            expiring_offers = []
-            if offers:
-                for o in offers:
-                    if o['remind_me']:
-                        expiring_offers.append({
-                            'title': 'Offer Expiring Soon!',
-                            'body': f"{o['title']} at {o['restaurant_name']} expires on {o['valid_until']}.",
-                            'time': 'Just now'
-                        })
-            return dict(header_notifications=expiring_offers)
+            return dict(header_notifications=[{'title': 'Offer', 'body': 'Check it out'} for o in offers if o.get('remind_me')])
         return dict(header_notifications=[])
 
-    # Initialize DB
     with app.app_context():
         initialize_db()
 
-    # Import and register blueprints
+    # Register Blueprints
     from app.routes.auth_routes import auth_bp
     from app.routes.user_routes import user_bp
     from app.routes.notification_routes import notification_bp
@@ -57,7 +44,9 @@ def create_app():
     from app.routes.explore_routes import explore_bp
     from app.routes.analytics_routes import analytics_bp
     from app.routes.calendar_routes import calendar_bp
+    from app.controllers.distance_controller import distance_bp
 
+    app.register_blueprint(distance_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
     app.register_blueprint(notification_bp)
@@ -91,11 +80,6 @@ def create_app():
 
     @app.route('/')
     def index():
-        if session.get('user_id'):
-            return redirect(url_for('user.dashboard'))
-        return redirect(url_for('auth.login'))
+        return redirect(url_for('user.dashboard') if session.get('user_id') else url_for('auth.login'))
 
     return app
-
-def get_socketio():
-    return socketio
