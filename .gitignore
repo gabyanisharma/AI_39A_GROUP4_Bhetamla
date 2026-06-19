@@ -31,6 +31,9 @@ db.sqlite3
 # Ignore logs
 *.log
 
+# User uploads
+app/static/uploads/
+
 run_stderr.log
 run_stdout.log
 notes.txt

@@ -171,9 +171,12 @@ def create_meetup():
                 f'{current_user["full_name"]} invited you to "{title}"!',
                 type='meetup',
                 link=f'/meetup/plan?meetup_id={meetup_id}'
+                link=f'/meetup/plan?meetup_id={meetup_id}'
             )
 
         flash('Meetup created successfully!', 'success')
+        from app.services import achievement_service
+        achievement_service.on_meetup_created(user_id)
         return redirect(url_for('meetup.plan',
                                 meetup_id=meetup_id))
 
@@ -342,6 +345,8 @@ def respond_meetup(meetup_id):
 
     if action == 'accept':
         MeetupMember.accept(meetup_id, user_id)
+        from app.services import achievement_service
+        achievement_service.on_meetup_joined(user_id)
         flash('You joined the meetup!', 'success')
     elif action == 'decline':
         MeetupMember.decline(meetup_id, user_id)
@@ -562,6 +567,79 @@ def toggle_offer_reminder(offer_id):
     flash('Reminder preferences updated.', 'success')
     return redirect(request.referrer or url_for('place.restaurants_page'))
 
+def confirm_meetup_plan(meetup_id):
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': 'Login required.'}), 401
+
+    meetup = Meetup.get_by_id(meetup_id)
+    if not meetup:
+        return jsonify({'success': False, 'message': 'Meetup not found.'}), 404
+
+    user_id = get_current_user_id()
+    if meetup['created_by'] != user_id:
+        return jsonify({
+            'success': False,
+            'message': 'Only the meetup creator can confirm this plan.'
+        }), 403
+
+    current_user = User.get_by_id(user_id)
+    members = MeetupMember.get_by_meetup(meetup_id)
+    notified = 0
+    payload = request.get_json(silent=True) or {}
+    midpoint = payload.get('midpoint') or {}
+
+    try:
+        midpoint_lat = float(midpoint.get('lat'))
+        midpoint_lng = float(midpoint.get('lng'))
+        midpoint_address = (midpoint.get('address') or '').strip()
+    except (TypeError, ValueError):
+        midpoint_lat = midpoint_lng = None
+        midpoint_address = ''
+
+    if midpoint_lat is not None and midpoint_lng is not None:
+        Meetup.update_midpoint(
+            meetup_id,
+            midpoint_lat,
+            midpoint_lng,
+            midpoint_address
+        )
+
+    for member in members:
+        if member['user_id'] == user_id:
+            continue
+        send_notification(
+            member['user_id'],
+            'Meetup Plan Confirmed',
+            f'{current_user["full_name"]} confirmed the plan for "{meetup["title"]}".',
+            type='meetup',
+            link=f'/meetup/plan?meetup_id={meetup_id}'
+        )
+        notified += 1
+
+    return jsonify({
+        'success': True,
+        'message': 'Meetup plan confirmed.',
+        'notified': notified
+    })
+
+
+def delete_meetup_plan(meetup_id):
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+
+    meetup = Meetup.get_by_id(meetup_id)
+    if not meetup:
+        flash('Meetup plan not found.', 'error')
+        return redirect(url_for('meetup.plan'))
+
+    user_id = get_current_user_id()
+    if meetup['created_by'] != user_id:
+        flash('Only the meetup creator can delete this plan.', 'error')
+        return redirect(url_for('meetup.plan', meetup_id=meetup_id))
+
+    Meetup.delete_by_creator(meetup_id, user_id)
+    flash('Meetup plan deleted.', 'success')
+    return redirect(url_for('meetup.plan'))
 def confirm_meetup_plan(meetup_id):
     if not is_logged_in():
         return jsonify({'success': False, 'message': 'Login required.'}), 401
