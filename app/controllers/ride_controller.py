@@ -204,6 +204,7 @@ def budget_split(meetup_id):
         'avg_car':         round(total_car  / count) if count else 0,
         'avg_taxi':        round(total_taxi / count) if count else 0,
         'members': [{
+            'user_id':    e['user_id'],
             'name':       e['full_name'],
             'distance':   float(e['distance_km'] or 0),
             'bike_cost':  float(e['pathao_bike_cost'] or 0),
