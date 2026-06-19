@@ -1,3 +1,4 @@
+import os
 from flask import Flask, session, redirect, url_for
 from flask_mail import Mail
 from flask_socketio import SocketIO
@@ -71,6 +72,22 @@ def create_app():
     socketio.init_app(app)
     from app.socket_events import register_socket_events
     register_socket_events(socketio)
+
+    # Start the background scheduler (only in the main process, not in the
+    # Werkzeug reloader child, and never during testing).
+    if not app.config.get('TESTING') and os.environ.get('WERKZEUG_RUN_MAIN') != 'false':
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from app.services.offer_reminder_service import check_expiring_offers
+
+        scheduler = BackgroundScheduler(daemon=True)
+        scheduler.add_job(
+            func=check_expiring_offers,
+            trigger='interval',
+            hours=1,
+            id='offer_reminder',
+            replace_existing=True,
+        )
+        scheduler.start()
 
     @app.route('/')
     def index():

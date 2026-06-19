@@ -165,6 +165,8 @@ def _repair_existing_schema(cursor):
                    "winning_restaurant_id INT NULL")
     _ensure_column(cursor, 'meetups', 'winning_venue_name',
                    "winning_venue_name VARCHAR(255) NULL")
+    _ensure_column(cursor, 'user_saved_offers', 'notified',
+                   "notified TINYINT(1) NOT NULL DEFAULT 0")
 
 
 def _ensure_group_features_schema(cursor):
