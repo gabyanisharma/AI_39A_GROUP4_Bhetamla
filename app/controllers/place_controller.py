@@ -363,9 +363,17 @@ def saved_places():
 def _build_filters(args):
     """Helper to build filter dictionary from request args."""
     filters = {}
-    if args.get('cuisine'): filters['cuisine'] = args.get('cuisine')
+    cuisines = args.getlist('cuisine') or args.getlist('cuisine[]')
+    if args.get('cuisine') and not cuisines:
+        cuisines = [args.get('cuisine')]
+    if cuisines:
+        filters['cuisine'] = [c for c in cuisines if c]
     if args.get('price_range'): filters['price_range'] = args.get('price_range')
-    if args.get('ambience'): filters['ambience'] = args.get('ambience')
+    ambiences = args.getlist('ambience') or args.getlist('ambience[]')
+    if args.get('ambience') and not ambiences:
+        ambiences = [args.get('ambience')]
+    if ambiences:
+        filters['ambience'] = [a for a in ambiences if a]
     if args.get('min_rating'): filters['min_rating'] = float(args.get('min_rating'))
     if args.get('max_budget'):
         try:
@@ -424,15 +432,30 @@ def restaurants():
 def api_filter_restaurants():
     """AJAX endpoint to return JSON list of restaurants."""
     filters = _build_filters(request.args)
-    rows = Restaurant.get_all(filters=filters, limit=200)
+    lat = request.args.get('lat', type=float)
+    lng = request.args.get('lng', type=float)
+    radius = request.args.get('radius', default=3.0, type=float)
+    if lat is not None and lng is not None:
+        rows = Restaurant.get_nearby(lat, lng, radius, filters)
+    else:
+        rows = Restaurant.get_all(filters=filters, limit=200)
 
     def serialize(r):
         return {
             'id': int(r.get('id')),
             'name': r.get('name'),
             'description': r.get('description'),
+            'address': r.get('address'),
+            'latitude': float(r['latitude']) if r.get('latitude') is not None else None,
+            'longitude': float(r['longitude']) if r.get('longitude') is not None else None,
+            'category': r.get('category'),
+            'cuisine': r.get('cuisine'),
+            'price_range': r.get('price_range'),
             'avg_cost_per_person': float(r.get('avg_cost_per_person') or 0),
             'rating': float(r.get('rating') or 0),
+            'review_count': int(r.get('review_count') or 0),
+            'ambience': r.get('ambience'),
+            'distance_km': float(r.get('distance_km') or 0),
             'thumbnail_url': r.get('thumbnail_url')
         }
 

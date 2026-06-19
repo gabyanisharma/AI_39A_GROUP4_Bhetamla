@@ -78,7 +78,7 @@ class FriendGroup:
     def get_members(group_id):
         return execute_query(
             """
-            SELECT u.id, u.full_name
+            SELECT u.id, u.full_name, u.profile_pic
             FROM friend_group_members fgm
             JOIN users u ON u.id = fgm.user_id
             WHERE fgm.group_id = %s
@@ -104,7 +104,7 @@ class GroupChat:
     def get_messages(group_id, limit=100):
         return execute_query(
             """
-            SELECT m.*, u.full_name,
+            SELECT m.*, u.full_name, u.profile_pic,
                    (SELECT COUNT(*) FROM group_chat_reads r WHERE r.message_id = m.id) AS read_count
             FROM group_chat_messages m
             JOIN users u ON u.id = m.user_id
@@ -119,7 +119,7 @@ class GroupChat:
     def get_message(message_id):
         rows = execute_query(
             """
-            SELECT m.*, u.full_name
+            SELECT m.*, u.full_name, u.profile_pic
             FROM group_chat_messages m
             JOIN users u ON u.id = m.user_id
             WHERE m.id = %s

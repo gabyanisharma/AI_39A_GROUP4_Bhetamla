@@ -364,6 +364,7 @@ def chat_messages(group_id):
         enriched.append({
             **msg,
             'read_by': GroupChat.get_read_receipts(msg['id']),
+            'profile_pic': msg.get('profile_pic'),
             'created_at': msg['created_at'].isoformat() if msg.get('created_at') else None,
         })
     return jsonify({
