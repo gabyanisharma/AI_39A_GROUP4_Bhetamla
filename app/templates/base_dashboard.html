@@ -17,6 +17,7 @@
     <a class="nav-btn {% if active_page == 'dashboard' %}active{% endif %}" href="{{ url_for('user.dashboard') }}" style="text-decoration:none" {% if active_page == 'dashboard' %}aria-current="page"{% endif %}><span class="nav-icon">&#8861;</span><span>Dashboard</span></a>
     <a class="nav-btn {% if active_page == 'plan' %}active{% endif %}" href="{{ url_for('meetup.plan') }}" style="text-decoration:none" {% if active_page == 'plan' %}aria-current="page"{% endif %}><span class="nav-icon">&#65291;</span><span>Plan Meetup</span></a>
     <a class="nav-btn {% if active_page == 'groups' %}active{% endif %}" href="{{ url_for('meetup.groups') }}" style="text-decoration:none" {% if active_page == 'groups' %}aria-current="page"{% endif %}><span class="nav-icon">&#128101;</span><span>My Groups</span></a>
+    <a class="nav-btn {% if active_page == 'gallery' %}active{% endif %}" href="{{ url_for('meetup.gallery_page_route') }}" style="text-decoration:none" {% if active_page == 'gallery' %}aria-current="page"{% endif %}><span class="nav-icon">&#128248;</span><span>Gallery</span></a>
     <a class="nav-btn {% if active_page == 'saved' %}active{% endif %}" href="{{ url_for('place.saved') }}" style="text-decoration:none" {% if active_page == 'saved' %}aria-current="page"{% endif %}><span class="nav-icon">&#128278;</span><span>Saved Places</span></a>
     <a class="nav-btn {% if active_page == 'restaurants' %}active{% endif %}" href="{{ url_for('place.restaurants_page') }}" style="text-decoration:none" {% if active_page == 'restaurants' %}aria-current="page"{% endif %}><span class="nav-icon">&#127869;</span><span>Browse Restaurants</span></a>
     <a class="nav-btn {% if active_page == 'explore' %}active{% endif %}" href="{{ url_for('explore.feed') }}" style="text-decoration:none" {% if active_page == 'explore' %}aria-current="page"{% endif %}><span class="nav-icon">&#128293;</span><span>Explore Spots</span></a>
@@ -30,7 +31,7 @@
     <a class="nav-btn {% if active_page == 'support' %}active{% endif %}" href="{{ url_for('user.support_page') }}" style="text-decoration:none" {% if active_page == 'support' %}aria-current="page"{% endif %}><span class="nav-icon">&#10067;</span><span>Support</span></a>
     <button class="nav-btn" type="button" onclick="confirmLogout()" style="color:#f08080"><span class="nav-icon">&#10140;</span><span>Logout</span></button>
 
-    <div class="sidebar-user">
+    <a href="{{ url_for('user.settings_page') }}" class="sidebar-user" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:10px;">
       {% set sidebar_pic = session.get('user_pic') %}
       {% if sidebar_pic and sidebar_pic != 'default.png' %}
       <img src="{{ url_for('static', filename='uploads/profiles/' ~ sidebar_pic) }}" alt="{{ session.get('user_name','User') }}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid rgba(20,95,227,.18)">
@@ -41,7 +42,7 @@
         <div style="font-weight:600;font-size:13px;color:#d8e4f0">{{ session.get('user_name','User') }}</div>
         <div style="font-size:10px;color:rgba(180,200,220,.45);letter-spacing:.5px">VERIFIED MEMBER</div>
       </div>
-    </div>
+    </a>
   </nav>
 
   <div class="main" id="main-content">

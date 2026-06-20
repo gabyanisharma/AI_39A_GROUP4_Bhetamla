@@ -100,6 +100,17 @@ def register_socket_events(socketio):
                 'user_id': user_id,
             }, room=f'group_{group_id}')
 
+    @socketio.on('mark_all_read')
+    def on_mark_all_read(data):
+        user_id = session.get('user_id')
+        if not user_id:
+            return
+        group_id = int(data.get('group_id', 0))
+        if not group_id or not FriendGroup.is_member(group_id, user_id):
+            return
+        GroupChat.mark_all_read(group_id, user_id)
+        emit('all_read', {'group_id': group_id, 'user_id': user_id}, room=f'group_{group_id}')
+
     @socketio.on('delete_message')
     def on_delete(data):
         user_id = session.get('user_id')

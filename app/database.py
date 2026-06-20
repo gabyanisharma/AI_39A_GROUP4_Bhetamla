@@ -159,6 +159,8 @@ def _repair_existing_schema(cursor):
     _ensure_index(cursor, 'spot_recommendations', 'idx_spot_recommendations_user', "INDEX idx_spot_recommendations_user (user_id, is_dismissed)")
     _ensure_index(cursor, 'notifications', 'idx_notifications_user_read', "INDEX idx_notifications_user_read (user_id, is_read)")
     _ensure_index(cursor, 'smart_alert_log', 'idx_smart_alert_user', "INDEX idx_smart_alert_user (user_id, alert_key)")
+    _ensure_column(cursor, 'friend_groups', 'is_chat_group',
+                   "is_chat_group BOOLEAN DEFAULT FALSE")
     _ensure_column(cursor, 'meetup_members', 'hidden_from_groups',
                    "hidden_from_groups BOOLEAN DEFAULT FALSE")
     _ensure_column(cursor, 'meetups', 'winning_restaurant_id',
@@ -248,6 +250,7 @@ def _ensure_group_features_schema(cursor):
             id INT AUTO_INCREMENT PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
             owner_id INT NOT NULL,
+            is_chat_group BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
         )

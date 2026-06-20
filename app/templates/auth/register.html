@@ -8,32 +8,42 @@
     <div class="setup-card">
       <div class="setup-card-title">Personalizing Your Profile</div>
       <div class="setup-card-sub">Let's set the foundation for seamless meetups.</div>
-      <form method="POST" action="{{ url_for('auth.register') }}">
+      <form method="POST" action="{{ url_for('auth.register') }}" onsubmit="return handleAuthSubmit(this)">
         <div class="form-stack">
           <div>
             <label class="field-label" for="setup-name">Full Name</label>
-            <input class="field-input" id="setup-name" name="full_name" placeholder="e.g. Aarav Sharma" required />
+            <input class="field-input" id="setup-name" name="full_name" placeholder="e.g. Aarav Sharma" autocomplete="name" required />
           </div>
           <div>
             <label class="field-label" for="setup-email">Email Address</label>
-            <input class="field-input" id="setup-email" name="email" type="email" placeholder="hello@example.com" required />
+            <input class="field-input" id="setup-email" name="email" type="email" placeholder="hello@example.com" autocomplete="email" required />
           </div>
           <div>
             <label class="field-label" for="setup-phone">Phone Number</label>
-            <input class="field-input" id="setup-phone" name="phone" placeholder="98XXXXXXXX" required />
+            <input class="field-input" id="setup-phone" name="phone" type="tel" placeholder="98XXXXXXXX" autocomplete="tel" required />
           </div>
           <div class="form-row">
             <div>
               <label class="field-label" for="setup-password">Password</label>
-              <input class="field-input" id="setup-password" name="password" type="password" placeholder="Min 6 characters" required />
+              <div class="password-wrap">
+                <input class="field-input" id="setup-password" name="password" type="password" placeholder="Min 6 characters" autocomplete="new-password" required minlength="6" />
+                <button type="button" class="pw-toggle" onclick="togglePassword('setup-password', this)" aria-label="Show password">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             </div>
             <div>
               <label class="field-label" for="setup-confirm">Confirm Password</label>
-              <input class="field-input" id="setup-confirm" name="confirm_password" type="password" placeholder="Repeat password" required />
+              <div class="password-wrap">
+                <input class="field-input" id="setup-confirm" name="confirm_password" type="password" placeholder="Repeat password" autocomplete="new-password" required minlength="6" />
+                <button type="button" class="pw-toggle" onclick="togglePassword('setup-confirm', this)" aria-label="Show password">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             </div>
           </div>
           <button class="btn-primary" type="submit">
-            <span>Continue to Dashboard</span>
+            <span>Create Account</span>
           </button>
           <div class="setup-foot">
             <span>Already have an account?</span>

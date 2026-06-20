@@ -49,7 +49,11 @@ class User:
 
     @staticmethod
     def get_by_verification_token(token):
-        query = "SELECT * FROM users WHERE verification_token = %s"
+        query = """
+            SELECT * FROM users
+            WHERE verification_token = %s
+              AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+        """
         results = execute_query(query, (token,), fetch=True)
         return results[0] if results else None
 

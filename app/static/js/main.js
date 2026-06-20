@@ -3,6 +3,32 @@ let currentTheme = 'light';
 let userVote = null;
 const votes = {1:11,2:6,3:3};
 const totalVotes = () => Object.values(votes).reduce((a,b)=>a+b,0);
+
+// ── PASSWORD VISIBILITY TOGGLE ──
+function togglePassword(inputId, btn) {
+  var input = document.getElementById(inputId);
+  if (!input) return;
+  var isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+  btn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+  // Swap icon: eye vs eye-off
+  if (isPassword) {
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  } else {
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  }
+}
+
+// ── AUTH FORM LOADING STATE ──
+function handleAuthSubmit(form) {
+  var btn = form.querySelector('button[type="submit"]');
+  if (!btn) return true;
+  var originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" style="animation:spin .8s linear infinite"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/></svg> Please wait…</span>';
+  // Allow form to submit normally
+  return true;
+}
  
 function goTo(id){
   const current=document.querySelector('.screen.active');
@@ -36,8 +62,29 @@ function setTheme(t){
   currentTheme=t;
   document.documentElement.setAttribute('data-theme',t);
   document.getElementById('theme-label') && (document.getElementById('theme-label').textContent = t==='dark'?'Light':'Dark');
+  try { localStorage.setItem('bhetamla-theme', t); } catch(e) {}
 }
 function toggleTheme(){setTheme(currentTheme==='light'?'dark':'light');}
+
+// Auto-detect system dark/light preference on load
+(function(){
+  var saved = null;
+  try { saved = localStorage.getItem('bhetamla-theme'); } catch(e) {}
+  if (saved) {
+    setTheme(saved);
+  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    setTheme('dark');
+  }
+  // Listen for live system theme changes
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      // Only auto-switch if user hasn't explicitly picked a theme this session
+      if (!localStorage.getItem('bhetamla-theme')) {
+        setTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+  }
+})();
  
 function applyLang(lang){
   currentLang=lang;
@@ -1053,4 +1100,6 @@ function setEPTheme(theme) {
     lightBtn.style.color = 'var(--muted)';
     document.documentElement.setAttribute('data-theme','dark');
   }
+  currentTheme = theme;
+  try { localStorage.setItem('bhetamla-theme', theme); } catch(e) {}
 }
