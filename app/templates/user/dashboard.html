@@ -41,13 +41,13 @@
   {# today_str is passed from backend as YYYY-MM-DD for date comparisons #}
   {% set today_str = today_iso %}
   <!-- ── TWO-COLUMN LAYOUT ─────────────────────────────────────────────────── -->
-  <div class="dash-inner" style="display:grid;grid-template-columns:1fr 320px;gap:24px;padding:24px;align-items:start;">
+  <div class="dash-inner" style="display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:12px;padding:12px;align-items:start;max-width:1180px;margin:0 auto;">
 
     <!-- ── LEFT / MAIN COLUMN ─────────────────────────────────────────────── -->
     <div class="dash-main">
 
       <!-- Hero Banner -->
-      <div style="background:linear-gradient(135deg,#0e2d22 0%,#14322A 35%,#1c3f56 75%,#1A56C4 120%);border-radius:22px;padding:32px 36px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 8px 40px rgba(14,45,34,.35);">
+      <div style="background:linear-gradient(135deg,#0e2d22 0%,#14322A 35%,#1c3f56 75%,#1A56C4 120%);border-radius:22px;padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 6px 30px rgba(14,45,34,.30);">
         <!-- decorative blobs -->
         <div style="position:absolute;top:-40px;right:-20px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(200,153,58,.14) 0%,transparent 70%);pointer-events:none;"></div>
         <div style="position:absolute;bottom:-50px;right:60px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(26,86,196,.18) 0%,transparent 70%);pointer-events:none;"></div>
@@ -96,9 +96,9 @@
       </div>
 
       <!-- ── Stats Strip ──────────────────────────────────────────────────── -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;">
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px;">
 
-        <div style="background:var(--card-bg,#fff);border-radius:14px;padding:16px 18px;border:1px solid var(--border,#ddeee5);box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
+        <div style="background:var(--card-bg,#fff);border-radius:14px;padding:14px 16px;border:1px solid var(--border,#ddeee5);box-shadow:0 2px 10px rgba(20,50,42,.05);display:flex;align-items:center;gap:10px;">
           <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#14322A,#1B6B3A);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📍</div>
           <div>
             <div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,#14322A);line-height:1;">{{ saved_count }}</div>
@@ -141,7 +141,7 @@
         <a href="{{ url_for('meetup.groups') }}" style="font-size:13px;color:var(--blue);font-weight:600;text-decoration:none;">View All →</a>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:32px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-bottom:24px;">
         {% for m in meetups[:4] %}
         {% set members = meetup_member_map.get(m['id'], []) %}
         <article style="background:var(--card-bg,#fff);border-radius:16px;padding:20px;border:1px solid var(--border,#e8f0eb);box-shadow:0 2px 16px rgba(20,50,42,.07);cursor:pointer;transition:transform .15s,box-shadow .15s;"
@@ -282,7 +282,7 @@
     </div><!-- end dash-main -->
 
     <!-- ── RIGHT SIDEBAR ──────────────────────────────────────────────────── -->
-    <aside style="display:flex;flex-direction:column;gap:16px;position:sticky;top:24px;">
+    <aside style="display:flex;flex-direction:column;gap:10px;position:sticky;top:16px;">
 
       <!-- Pending Invites -->
       <div style="background:var(--card-bg,#fff);border-radius:16px;padding:20px;border:1px solid var(--border,#e8f0eb);box-shadow:0 2px 12px rgba(20,50,42,.06);">
