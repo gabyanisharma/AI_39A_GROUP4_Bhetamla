@@ -66,6 +66,7 @@ def groups_page():
     ) or []
 
     chat_groups = FriendGroup.get_for_user(user_id)
+    active_chat_group = chat_groups[0] if chat_groups else None
     achievements = Achievement.get_user_achievements(user_id)
     restaurants = Restaurant.get_all(limit=20) or []
 
@@ -74,6 +75,7 @@ def groups_page():
         meetups=meetups,
         friends=friends,
         chat_groups=chat_groups,
+        active_chat_group=active_chat_group,
         achievements=achievements,
         restaurants=restaurants,
         current_user_id=user_id,
