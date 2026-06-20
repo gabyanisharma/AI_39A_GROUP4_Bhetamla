@@ -115,6 +115,16 @@ class GroupVote:
                 (vote_id,)
             )
             return None
+
+        # Draw / tie detection: if top two options share the same vote count,
+        # mark as 'draw' instead of picking an arbitrary winner.
+        if len(results) >= 2 and results[0]['vote_count'] == results[1]['vote_count']:
+            execute_query(
+                "UPDATE venue_votes SET status = 'draw' WHERE id = %s",
+                (vote_id,)
+            )
+            return {'is_tie': True, 'tied_options': results}
+
         winner = results[0]
         execute_query(
             """

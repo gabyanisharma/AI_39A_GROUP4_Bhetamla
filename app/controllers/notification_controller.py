@@ -106,8 +106,9 @@ def trigger_sos():
                 contact_email = contact_user[0]['email']
 
             if not contact_email:
-                # Phone field may contain an email address; skip if unusable
-                contact_email = contact['phone']
+                # Skip contacts without a resolvable email address
+                print(f"SOS: No email found for contact {contact['name']} (phone: {contact['phone']}). Skipping.")
+                continue
 
             msg = Message(
                 subject=f'🚨 SOS Alert from {user["full_name"]}',

@@ -13,6 +13,12 @@
     document.querySelectorAll('.meetup-row-item').forEach(el => {
       el.style.borderColor = parseInt(el.dataset.meetupId, 10) === id ? 'var(--blue)' : 'var(--border)';
     });
+    // Update chat context label
+    const meetup = selectedMeetup();
+    const chatLabel = document.getElementById('chat-meetup-label');
+    const chatMsg = document.getElementById('chat-context-msg');
+    if (chatLabel && meetup) chatLabel.textContent = meetup.title;
+    if (chatMsg && meetup) chatMsg.textContent = 'Chatting in: ' + meetup.title;
     refreshVotePanel();
   };
 
@@ -135,7 +141,27 @@
 
     loadChatMessages();
 
-    socket.on('new_message', msg => appendChatMessage(msg));
+    socket.on('new_message', msg => {
+      appendChatMessage(msg);
+      if (socket && msg.id && Number(msg.user_id) !== Number(cfg.currentUserId)) {
+        socket.emit('mark_read', { message_id: msg.id, group_id: cfg.chatGroupId });
+      }
+    });
+    socket.on('all_read', data => {
+      if (Number(data.user_id) !== Number(cfg.currentUserId)) return;
+      document.querySelectorAll('#chat-messages .chat-message-row').forEach(el => {
+        const meta = el.querySelector('.chat-message-meta');
+        if (meta && !meta.textContent.includes('seen')) {
+          meta.textContent += ' · seen';
+        }
+      });
+    });
+    socket.on('message_read', data => {
+      const el = document.querySelector(`[data-msg-id="${data.message_id}"] .chat-message-meta`);
+      if (el && !el.textContent.includes('seen')) {
+        el.textContent += ' · seen 1';
+      }
+    });
     socket.on('user_typing', data => {
       const el = document.getElementById('chat-typing');
       if (el) el.textContent = data.full_name + ' is typing…';
@@ -161,6 +187,9 @@
     const data = await res.json();
     box.innerHTML = '';
     (data.messages || []).forEach(appendChatMessage);
+    if (socket && cfg.chatGroupId) {
+      socket.emit('mark_all_read', { group_id: cfg.chatGroupId });
+    }
   }
 
   function escapeChatHtml(value) {
@@ -206,9 +235,6 @@
     if (btn) btn.addEventListener('click', () => translateChatMessage(btn, msg.body || ''));
     box.appendChild(div);
     box.scrollTop = box.scrollHeight;
-    if (socket && msg.id) {
-      socket.emit('mark_read', { message_id: msg.id, group_id: cfg.chatGroupId });
-    }
   }
 
   // US17 — translate a chat message into the user's preferred language.
@@ -260,4 +286,14 @@
     if (selectedMeetupId) selectMeetup(selectedMeetupId);
     initChat();
   });
+
+  // ── Collapsible vote panel ────────────────────────────────────────
+  window.toggleVotePanel = function () {
+    const body = document.getElementById('vote-body');
+    const icon = document.getElementById('vote-collapse-icon');
+    if (!body) return;
+    const isHidden = body.style.display === 'none';
+    body.style.display = isHidden ? 'block' : 'none';
+    if (icon) icon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(-90deg)';
+  };
 })();

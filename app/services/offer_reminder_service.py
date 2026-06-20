@@ -186,3 +186,21 @@ def check_fare_alerts(app):
             logger.info("Fare alert check complete.")
         except Exception as exc:
             logger.error("Error in check_fare_alerts: %s", exc)
+
+
+def check_smart_alerts(app):
+    """Run SmartAlertEngine for all users periodically."""
+    with app.app_context():
+        try:
+            from app.models.notification_preference import SmartAlertEngine
+            users = execute_query("SELECT id FROM users", fetch=True)
+            if not users:
+                return
+            for u in users:
+                try:
+                    SmartAlertEngine.run(u['id'])
+                except Exception as inner:
+                    logger.error("SmartAlertEngine error for user %s: %s", u['id'], inner)
+            logger.info("Smart alerts check complete for %d users.", len(users))
+        except Exception as exc:
+            logger.error("Error in check_smart_alerts: %s", exc)

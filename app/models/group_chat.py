@@ -16,11 +16,16 @@ class FriendGroup:
         )
         if rows:
             group_id = rows[0]['id']
+            # Ensure existing group is marked as a chat group
+            execute_query(
+                "UPDATE friend_groups SET is_chat_group = TRUE WHERE id = %s",
+                (group_id,)
+            )
         else:
             group_id = execute_query(
                 """
-                INSERT INTO friend_groups (name, owner_id)
-                VALUES ('Friends Circle', %s)
+                INSERT INTO friend_groups (name, owner_id, is_chat_group)
+                VALUES ('Friends Circle', %s, TRUE)
                 """,
                 (user_id,)
             )

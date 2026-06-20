@@ -82,6 +82,21 @@ def groups_page():
     )
 
 
+def gallery_page():
+    """Render the standalone meetup gallery page."""
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+
+    user_id = get_current_user_id()
+    meetups = Meetup.get_by_user(user_id, include_hidden=False)
+
+    return render_template(
+        'meetup/gallery.html',
+        meetups=meetups,
+        current_user_id=user_id,
+    )
+
+
 def hide_from_groups(meetup_id):
     if not is_logged_in():
         return jsonify({'success': False}), 401
@@ -199,8 +214,9 @@ def vote_results(meetup_id):
     if vote['status'] == 'open' and vote['deadline']:
         from datetime import datetime
         if vote['deadline'] <= datetime.now():
-            GroupVote._finalize_vote(vote['id'], meetup_id)
+            finalize_result = GroupVote._finalize_vote(vote['id'], meetup_id)
             vote = GroupVote.get_by_id(vote['id'])
+            is_tie = isinstance(finalize_result, dict) and finalize_result.get('is_tie')
             members = execute_query(
                 """
                 SELECT user_id FROM meetup_members
@@ -209,15 +225,30 @@ def vote_results(meetup_id):
                 (meetup_id,), fetch=True
             ) or []
             meetup = Meetup.get_by_id(meetup_id)
-            winner_name = meetup.get('winning_venue_name') or 'the top choice'
-            for m in members:
-                send_notification(
-                    m['user_id'],
-                    'Vote Closed',
-                    f'Venue voting for "{meetup["title"]}" ended. Winner: {winner_name}.',
-                    type='vote',
-                    link=f'/meetup/view/{meetup_id}'
-                )
+            if is_tie:
+                tied_names = ', '.join(o['label'] for o in finalize_result['tied_options'][:3])
+                for m in members:
+                    send_notification(
+                        m['user_id'],
+                        'Vote Tied — Revote Needed',
+                        f'Voting for "{meetup["title"]}" ended in a tie ({tied_names}). A new vote has been started.',
+                        type='vote',
+                        link=f'/meetup/view/{meetup_id}'
+                    )
+                # Auto-start a new vote with the tied options
+                tied_specs = [{'label': o['label'], 'address': o.get('address'), 'restaurant_id': o.get('restaurant_id')}
+                              for o in finalize_result['tied_options'][:3]]
+                GroupVote.create(meetup_id, vote['created_by'], tied_specs, hours=24)
+            else:
+                winner_name = meetup.get('winning_venue_name') or 'the top choice'
+                for m in members:
+                    send_notification(
+                        m['user_id'],
+                        'Vote Closed',
+                        f'Venue voting for "{meetup["title"]}" ended. Winner: {winner_name}.',
+                        type='vote',
+                        link=f'/meetup/view/{meetup_id}'
+                    )
 
     user_id = get_current_user_id()
     return jsonify({
