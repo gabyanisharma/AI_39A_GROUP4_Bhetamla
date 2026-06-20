@@ -68,7 +68,7 @@
           </div>
 
           <div style="margin-bottom:16px;">
-            <label class="field-label" for="pm-title">MEETUP TITLE</label>
+            <label class="field-label" for="pm-title">MEETUP TITLE*</label>
             <input class="field-input" id="pm-title" name="title" placeholder="e.g. Weekend Coffee at Thamel" required />
           </div>
           <div style="margin-bottom:16px;">
@@ -77,12 +77,12 @@
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
             <div>
-              <label class="field-label" for="pm-date">DATE</label>
-              <input class="field-input" id="pm-date" name="meetup_date" type="date" />
+              <label class="field-label" for="pm-date">DATE*</label>
+              <input class="field-input" id="pm-date" name="meetup_date" type="date" required/>
             </div>
             <div>
-              <label class="field-label" for="pm-time">TIME</label>
-              <input class="field-input" id="pm-time" name="meetup_time" type="time" />
+              <label class="field-label" for="pm-time">TIME*</label>
+              <input class="field-input" id="pm-time" name="meetup_time" type="time" required/>
             </div>
           </div>
 
@@ -113,6 +113,24 @@
           </button>
         </form>
 
+        <script>
+        document.getElementById('pm-date').min = new Date().toISOString().split('T')[0];
+
+        document.getElementById('create-meetup-form').addEventListener('submit', function(e) {
+          const lat = document.getElementById('pm-lat').value;
+          const lng = document.getElementById('pm-lng').value;
+          if (!lat || !lng) {
+            e.preventDefault();
+            alert('Please detect your location first.');
+            return;
+          }
+          const checked = document.querySelectorAll('input[name="invite_friends"]:checked');
+          if (checked.length === 0) {
+            e.preventDefault();
+            alert('Please invite at least one friend.');
+          }
+        });
+        </script>
         <!-- Route Planner Step — shown after meetup created -->
         {% if meetup_id %}
         <div style="margin-top:18px;padding:18px;border:1.5px solid var(--border);border-radius:14px;background:var(--input-bg);">

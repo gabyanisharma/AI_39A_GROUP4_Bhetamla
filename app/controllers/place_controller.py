@@ -10,6 +10,7 @@ from app.controllers.notification_controller import send_notification
 from app.models.place import Restaurant, RestaurantReview
 from app.models.meetup_route import MeetupRoute
 import math
+from datetime import datetime
 from flask import render_template, request, redirect, url_for, flash, jsonify
 
 # ── Midpoint calculation ───────────────────────────────────────────
@@ -139,7 +140,31 @@ def create_meetup():
 
         if not title:
             flash('Meetup title is required.', 'error')
-            return redirect(url_for('meetup.plan', meetup_id=meetup_id))
+            return redirect(url_for('meetup.plan'))
+        
+        if not user_lat or not user_lng:
+            flash('Please detect your location before creating a meetup.', 'error')
+            return redirect(url_for('meetup.plan'))
+
+        if not meetup_date or not meetup_time:
+            flash('Date and time are required.', 'error')
+            return redirect(url_for('meetup.plan'))
+        
+        try:
+            meetup_datetime = datetime.strptime(
+                f"{meetup_date} {meetup_time}", "%Y-%m-%d %H:%M"
+            )
+        except ValueError:
+            flash('Invalid date or time format.', 'error')
+            return redirect(url_for('meetup.plan'))
+
+        if meetup_datetime < datetime.now():
+            flash('Meetup date and time cannot be in the past.', 'error')
+            return redirect(url_for('meetup.plan'))
+
+        if not invite_ids:
+            flash('Please invite at least one friend.', 'error')
+            return redirect(url_for('meetup.plan'))
 
         user_id    = get_current_user_id()
         meetup_id  = Meetup.create(title, description, user_id,
@@ -339,6 +364,7 @@ def respond_meetup(meetup_id):
     elif action == 'decline':
         MeetupMember.decline(meetup_id, user_id)
         flash('Meetup declined.', 'info')
+        return redirect(url_for('user.dashboard'))
 
     return redirect(url_for('meetup.view_meetup',
                             meetup_id=meetup_id))
@@ -460,6 +486,37 @@ def api_filter_restaurants():
         }
 
     return jsonify([serialize(r) for r in (rows or [])])
+
+# ── API: restaurants near a given midpoint (500m default) ──────────
+def api_nearby_midpoint():
+    """AJAX endpoint: restaurants within a radius (km) of a lat/lng."""
+    if not is_logged_in():
+        return jsonify({'success': False}), 401
+
+    try:
+        lat = float(request.args.get('lat'))
+        lng = float(request.args.get('lng'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'message': 'Missing or invalid lat/lng.'}), 400
+
+    radius_km = float(request.args.get('radius', 0.5))  # default 500m
+
+    rows = Restaurant.get_near_midpoint(lat, lng, radius_km) or []
+
+    def serialize(r):
+        return {
+            'id': int(r.get('id')),
+            'name': r.get('name'),
+            'rating': float(r.get('rating') or 0),
+            'distance_km': float(r.get('distance_km') or 0),
+            'avg_cost_per_person': float(r.get('avg_cost_per_person') or 0),
+            'cuisine': r.get('cuisine'),
+        }
+
+    return jsonify({
+        'success': True,
+        'restaurants': [serialize(r) for r in rows]
+    })
 
 # ── Restaurant detail page ─────────────────────────────────────────
 def restaurant_detail(restaurant_id):

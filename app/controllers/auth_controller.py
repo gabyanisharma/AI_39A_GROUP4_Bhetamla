@@ -69,6 +69,10 @@ def login():
 
         login_user(user)
         flash(f"Welcome back, {user['full_name']}!", 'success')
+        # Honour a pending meetup invite link opened while logged out.
+        invite_code = session.pop('next_invite', None)
+        if invite_code:
+            return redirect(url_for('meetup.join_via_invite', code=invite_code))
         return redirect(url_for('user.dashboard'))
 
     return render_template('auth/login.html')

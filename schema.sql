@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS users (
 
     is_verified BOOLEAN DEFAULT FALSE,
     verification_token VARCHAR(255),
+    verification_token_expiry DATETIME,
 
     reset_token VARCHAR(255),
     reset_token_expiry DATETIME,
@@ -91,6 +92,7 @@ CREATE TABLE IF NOT EXISTS emergency_contacts (
     name VARCHAR(100) NOT NULL,
     phone VARCHAR(20) NOT NULL,
     relationship VARCHAR(50),
+    email VARCHAR(255),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 

@@ -141,6 +141,23 @@ def deactivate_alert(alert_id: int, user_id: int) -> bool:
         db.close()
 
 
+def get_pending_alert_targets() -> list[dict]:
+    """All active, not-yet-triggered (user, meetup, mode) combos across every
+    user. Used by the background scheduler to auto-check fare drops."""
+    db  = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            SELECT DISTINCT userID, meetupID, mode
+            FROM   fare_alert
+            WHERE  isActive = 1 AND isTriggered = 0
+        """)
+        return cur.fetchall()
+    finally:
+        cur.close()
+        db.close()
+
+
 # ── Meetup queries ────────────────────────────────────────────────────────────
 def get_meetup(meetup_id: int) -> dict | None:
     """Return meetup row with destination address and coordinates."""
