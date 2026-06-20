@@ -590,6 +590,57 @@ function detectPMLocation(){
   }, 800);
 }
 
+var selectedNearbyVenue = null;
+
+function loadNearbyRestaurants(){
+  var list = document.getElementById('nearby-venue-list');
+  if(!list) return;
+  var ctx = window.PLAN_CONTEXT || {};
+  var mid = ctx.midpoint;
+  if(!mid || !Number.isFinite(Number(mid.lat)) || !Number.isFinite(Number(mid.lng))){
+    list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">Calculate the midpoint first.</div>';
+    return;
+  }
+  list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">Loading nearby places...</div>';
+
+  fetch('/place/api/nearby-midpoint?lat=' + mid.lat + '&lng=' + mid.lng + '&radius=0.5')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(!data.success || !data.restaurants.length){
+        list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">No restaurants found within 500m.</div>';
+        return;
+      }
+      selectedNearbyVenue = data.restaurants[0];
+      list.innerHTML = data.restaurants.map(function(r, i){
+        return '<div class="venue-row' + (i === 0 ? ' selected' : '') + '" data-id="' + r.id + '" onclick="selectNearbyVenue(' + r.id + ')">' +
+          '<div class="venue-emoji">🍽️</div>' +
+          '<div style="flex:1"><div class="venue-name">' + escapePlanHtml(r.name) + '</div>' +
+          '<div class="venue-rating">⭐ ' + r.rating.toFixed(1) + ' · ' + r.distance_km.toFixed(2) + ' km · NPR ' + Math.round(r.avg_cost_per_person) + '</div></div>' +
+        '</div>';
+      }).join('');
+    })
+    .catch(function(){
+      list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">Could not load restaurants.</div>';
+    });
+}
+
+function selectNearbyVenue(id){
+  selectedNearbyVenue = { id: id };
+  document.querySelectorAll('#nearby-venue-list .venue-row').forEach(function(row){
+    row.classList.toggle('selected', row.dataset.id === String(id));
+  });
+}
+
+function setNearbyVenue(){
+  if(!selectedNearbyVenue){
+    showToast('Please select a restaurant.');
+    return;
+  }
+  showToast('Venue updated!');
+  completeSerialStep('modal-nearby-restaurants', 'venue selected');
+}
+
+
 function createMeetupAndProceed(){
   var title = document.getElementById('pm-title') ? document.getElementById('pm-title').value.trim() : '';
   if(!title){
@@ -694,11 +745,11 @@ document.addEventListener('click', function(e){
 // ═══════════════════════════════════════
 var STEPS = [
   { id:'modal-midpoint',           label:'Midpoint Meeting Calculator'     },
+  { id:'modal-nearby-restaurants', label:'Nearby Restaurant Recommendations'},
   { id:'modal-restaurant-offers',  label:'Restaurant Offers Check'          },
   { id:'modal-cuisine-preference', label:'Cuisine Preference Selection'     },
   { id:'modal-budget-filter',      label:'Budget-Based Restaurant Filter'   },
   { id:'modal-ambience-filter',    label:'Ambience-Based Restaurant Filter' },
-  { id:'modal-nearby-restaurants', label:'Nearby Restaurant Recommendations'},
   { id:'modal-budget-split',       label:'Dynamic Budget Split'             },
   { id:'modal-ride-cost',          label:'Ride Cost Estimation'             },
   { id:'modal-walking-distance',   label:'Walking Distance Calculator'      },
@@ -710,6 +761,9 @@ var stepIdx = -1; // -1 = not started
 function _rawOpen(id){
   var el = document.getElementById(id);
   if(el) el.classList.add('open');
+  if(id === 'modal-nearby-restaurants' && typeof window.loadNearbyRestaurants === 'function'){
+    window.loadNearbyRestaurants();
+  }
 }
 function _rawClose(id){
   var el = document.getElementById(id);

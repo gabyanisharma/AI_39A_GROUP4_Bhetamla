@@ -117,17 +117,12 @@
     <button class="feat-modal-close" onclick="closeFeatModal('modal-nearby-restaurants')" aria-label="Close">&#10005;</button>
     <div class="feat-modal-icon">🍽️</div>
     <div class="feat-modal-title">Nearby Restaurants</div>
-    <div class="feat-modal-sub">Top picks near Patan Durbar Square.</div>
-    <div class="venue-row selected" id="venue1" onclick="selectVenue(1)">
-      <div class="venue-emoji">☕</div>
-      <div style="flex:1"><div class="venue-name">Café de Patan</div><div class="venue-rating">⭐ 4.9 · 5 min walk · NPR 800–1500</div></div>
-    </div>
-    <div class="venue-row" id="venue2" onclick="selectVenue(2)">
-      <div class="venue-emoji">🌿</div>
-      <div style="flex:1"><div class="venue-name">Museum Garden Café</div><div class="venue-rating">⭐ 4.8 · 3 min walk · NPR 600–1200</div></div>
+    <div class="feat-modal-sub">Top picks within 500m of your midpoint.</div>
+    <div id="nearby-venue-list" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">Loading nearby places...</div>
     </div>
     <div class="feat-btn-row">
-      <button class="btn-primary" type="button" onclick="savePlanPreferences({selected_venue: readVenueSelection()});showToast('Venue updated!');completeSerialStep('modal-nearby-restaurants','venue selected')">Set Venue</button>
+      <button class="btn-primary" type="button" onclick="setNearbyVenue();">Set Venue</button>
       <button class="btn-sec" type="button" onclick="completeSerialStep('modal-nearby-restaurants','venue skipped')">Skip →</button>
     </div>
   </div>

@@ -43,6 +43,12 @@ def api_restaurants():
     from app.controllers.place_controller import api_filter_restaurants
     return api_filter_restaurants()
 
+@place_bp.route('/api/nearby-midpoint')
+@login_required
+def api_nearby_midpoint_route():
+    from app.controllers.place_controller import api_nearby_midpoint
+    return api_nearby_midpoint()
+
 @place_bp.route('/offer/<int:offer_id>/save', methods=['POST'])
 @login_required
 def save_offer_route(offer_id):
