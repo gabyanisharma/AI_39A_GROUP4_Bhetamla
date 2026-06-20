@@ -69,6 +69,10 @@ def login():
 
         login_user(user)
         flash(f"Welcome back, {user['full_name']}!", 'success')
+        # Honour a pending meetup invite link opened while logged out.
+        invite_code = session.pop('next_invite', None)
+        if invite_code:
+            return redirect(url_for('meetup.join_via_invite', code=invite_code))
         return redirect(url_for('user.dashboard'))
 
     return render_template('auth/login.html')
@@ -130,6 +134,52 @@ def reset_password(token):
         return redirect(url_for('auth.login'))
 
     return render_template('auth/reset_password.html', token=token)
+
+
+# ─── Google OAuth (Story 1.4) ──────────────────────────────────────────────
+
+def google_login():
+    """Kick off the Google OAuth flow (the 'Continue with Google' button)."""
+    from app import oauth
+    if oauth is None:
+        flash('Google login is not configured.', 'error')
+        return redirect(url_for('auth.login'))
+    redirect_uri = url_for('auth.google_callback', _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
+
+
+def google_callback():
+    """Handle Google's redirect: resolve the user and log them in."""
+    from app import oauth
+    if oauth is None:
+        flash('Google login is not configured.', 'error')
+        return redirect(url_for('auth.login'))
+
+    try:
+        token = oauth.google.authorize_access_token()
+        info = token.get('userinfo') or oauth.google.userinfo()
+    except Exception as e:
+        print(f"Google OAuth error: {e}")
+        flash('Google sign-in failed. Please try again.', 'error')
+        return redirect(url_for('auth.login'))
+
+    email = (info or {}).get('email')
+    if not email:
+        flash('Google did not return an email address.', 'error')
+        return redirect(url_for('auth.login'))
+
+    name = (info or {}).get('name') or email.split('@')[0]
+    user = User.get_or_create_oauth(email, name)
+    if not user:
+        flash('Could not sign you in with Google.', 'error')
+        return redirect(url_for('auth.login'))
+
+    login_user(user)
+    flash(f"Welcome, {user['full_name']}!", 'success')
+    invite_code = session.pop('next_invite', None)
+    if invite_code:
+        return redirect(url_for('meetup.join_via_invite', code=invite_code))
+    return redirect(url_for('user.dashboard'))
 
 
 # ─── Private email helpers ─────────────────────────────────────────────────

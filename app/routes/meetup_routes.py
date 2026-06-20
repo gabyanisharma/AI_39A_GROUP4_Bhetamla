@@ -1,7 +1,7 @@
 from flask import Blueprint, request, render_template, session, redirect, url_for
 from app.routes.user_routes import login_required
 from app.controllers.meetup_controller import (
-    scheduler, add_availability, delete_availability,
+    scheduler, add_availability, delete_availability, import_calendar,
     search_users, send_friend_request, respond_friend_request,
     create_schedule, respond_invite, get_common_availability,
     get_restaurants_data
@@ -16,10 +16,11 @@ from app.controllers.meetup_route_controller import (
     get_meetup_route, save_meetup_route, delete_meetup_route
 )
 from app.controllers.group_features_controller import (
-    groups_page, hide_from_groups, start_vote, cast_vote, vote_results,
+    groups_page, gallery_page, hide_from_groups, start_vote, cast_vote, vote_results,
     upload_gallery, gallery_list, delete_gallery_photo, toggle_gallery_like,
-    gallery_comment, gallery_privacy, chat_messages, record_budget_split,
-    translate_message,
+    gallery_comment, gallery_comments_list, gallery_privacy, chat_messages,
+    meetup_chat_group, chat_invite_link, join_via_invite as join_via_invite_ctrl,
+    leave_meetup_chat, record_budget_split, translate_message,
 )
 
 meetup_bp = Blueprint('meetup', __name__, url_prefix='/meetup')
@@ -100,6 +101,13 @@ def groups():
     return groups_page()
 
 
+@meetup_bp.route('/gallery', endpoint='gallery_page')
+@login_required
+def gallery_page_view():
+    return gallery_page()
+
+
+
 @meetup_bp.route('/groups/hide/<int:meetup_id>', methods=['POST'])
 @login_required
 def remove_from_groups(meetup_id):
@@ -148,6 +156,13 @@ def gallery_like(photo_id):
     return toggle_gallery_like(photo_id)
 
 
+@meetup_bp.route('/gallery/<int:photo_id>/comments')
+@login_required
+def gallery_comments_route(photo_id):
+    return gallery_comments_list(photo_id)
+
+
+
 @meetup_bp.route('/gallery/<int:photo_id>/comment', methods=['POST'])
 @login_required
 def gallery_comment_route(photo_id):
@@ -158,6 +173,31 @@ def gallery_comment_route(photo_id):
 @login_required
 def gallery_privacy_route(photo_id):
     return gallery_privacy(photo_id)
+
+
+@meetup_bp.route('/<int:meetup_id>/chat/group')
+@login_required
+def meetup_chat_group_route(meetup_id):
+    return meetup_chat_group(meetup_id)
+
+
+@meetup_bp.route('/<int:meetup_id>/chat/invite-link')
+@login_required
+def chat_invite_link_route(meetup_id):
+    return chat_invite_link(meetup_id)
+
+
+@meetup_bp.route('/<int:meetup_id>/chat/leave', methods=['POST'])
+@login_required
+def leave_meetup_chat_route(meetup_id):
+    return leave_meetup_chat(meetup_id)
+
+
+@meetup_bp.route('/join/<code>')
+@login_required
+def join_via_invite(code):
+    return join_via_invite_ctrl(code)
+
 
 
 @meetup_bp.route('/chat/<int:group_id>/messages')
@@ -191,6 +231,11 @@ def add_availability_route():
 @login_required
 def delete_availability_route(slot_id):
     return delete_availability(slot_id)
+
+@meetup_bp.route('/calendar/import', methods=['POST'])
+@login_required
+def import_calendar_route():
+    return import_calendar()
 
 @meetup_bp.route('/search-users')
 @login_required

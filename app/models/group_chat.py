@@ -50,6 +50,90 @@ class FriendGroup:
         return group_id
 
     @staticmethod
+    def ensure_for_meetup(meetup_id):
+        """Get or create the single shared chat group for a meetup and sync
+        its membership to all accepted meetup members. Returns the group_id,
+        or None if the meetup has no accepted members."""
+        meetup = execute_query(
+            "SELECT id, title, created_by FROM meetups WHERE id = %s",
+            (meetup_id,), fetch=True
+        )
+        if not meetup:
+            return None
+        owner_id = meetup[0]['created_by']
+        title = meetup[0]['title'] or 'Meetup'
+
+        rows = execute_query(
+            "SELECT id FROM friend_groups WHERE meetup_id = %s LIMIT 1",
+            (meetup_id,), fetch=True
+        )
+        if rows:
+            group_id = rows[0]['id']
+        else:
+            group_id = execute_query(
+                """
+                INSERT INTO friend_groups (name, owner_id, meetup_id)
+                VALUES (%s, %s, %s)
+                """,
+                (title[:255], owner_id, meetup_id)
+            )
+
+        members = execute_query(
+            """
+            SELECT user_id FROM meetup_members
+            WHERE meetup_id = %s AND status = 'accepted'
+            """,
+            (meetup_id,), fetch=True
+        ) or []
+        for m in members:
+            # Respect users who explicitly left the chat.
+            opted_out = execute_query(
+                "SELECT 1 FROM group_chat_optout WHERE group_id = %s AND user_id = %s",
+                (group_id, m['user_id']), fetch=True
+            )
+            if opted_out:
+                continue
+            execute_query(
+                """
+                INSERT IGNORE INTO friend_group_members (group_id, user_id)
+                VALUES (%s, %s)
+                """,
+                (group_id, m['user_id'])
+            )
+        return group_id
+
+    @staticmethod
+    def leave_chat(group_id, user_id):
+        """Remove a user from a meetup chat and remember the opt-out so the
+        member sync does not re-add them."""
+        execute_query(
+            "INSERT IGNORE INTO group_chat_optout (group_id, user_id) VALUES (%s, %s)",
+            (group_id, user_id)
+        )
+        execute_query(
+            "DELETE FROM friend_group_members WHERE group_id = %s AND user_id = %s",
+            (group_id, user_id)
+        )
+
+    @staticmethod
+    def rejoin_chat(group_id, user_id):
+        execute_query(
+            "DELETE FROM group_chat_optout WHERE group_id = %s AND user_id = %s",
+            (group_id, user_id)
+        )
+        execute_query(
+            "INSERT IGNORE INTO friend_group_members (group_id, user_id) VALUES (%s, %s)",
+            (group_id, user_id)
+        )
+
+    @staticmethod
+    def has_left(group_id, user_id):
+        return bool(execute_query(
+            "SELECT 1 FROM group_chat_optout WHERE group_id = %s AND user_id = %s",
+            (group_id, user_id), fetch=True
+        ))
+
+    @staticmethod
     def get_for_user(user_id):
         FriendGroup.ensure_for_user(user_id)
         return execute_query(

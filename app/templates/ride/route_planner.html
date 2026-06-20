@@ -79,15 +79,15 @@
   }
   .rp-stat {
     flex: 1; text-align: center;
-    background: var(--white);
+    background: var(--input-bg);
     border-radius: 10px; padding: 12px 6px;
-    border: 1px solid var(--border);
   }
   .rp-stat-val {
-    font-size: 1.5rem; font-weight: 800;
+    font-size: 24px; font-weight: 800;
     color: var(--primary); font-family: 'Playfair Display', serif;
+    line-height: 1.1;
   }
-  .rp-stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .rp-stat-lbl { font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .5px; }
 
   /* ── Optimize toggle ── */
   .opt-tab {
@@ -227,13 +227,34 @@
     <div id="rp-panel">
       <div id="rp-panel-inner">
 
+        <!-- Step-by-step guide -->
+        <div style="display:flex;align-items:center;gap:6px;background:var(--blue-light);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:11.5px;font-weight:600;color:var(--blue);flex-wrap:wrap;justify-content:center">
+          <span>1. Add stops</span><span style="opacity:.5">→</span>
+          <span>2. Choose mode</span><span style="opacity:.5">→</span>
+          <span>3. Calculate</span><span style="opacity:.5">→</span>
+          <span>4. Save</span>
+        </div>
+
+        <!-- How to use (collapsible) -->
+        <details style="margin-bottom:14px;border:1.5px solid var(--border);border-radius:12px;padding:10px 12px">
+          <summary style="cursor:pointer;font-size:12.5px;font-weight:700;color:var(--primary)">❓ How to use the Route Planner</summary>
+          <ul style="margin:10px 0 2px;padding-left:18px;font-size:12px;color:var(--muted);line-height:1.8">
+            <li><strong>Add stops</strong> by searching, using your current location, or clicking on the map.</li>
+            <li><strong>Reorder</strong> stops by dragging them; remove with the ✕.</li>
+            <li>Pick <strong>Fastest</strong> or <strong>Shortest</strong>, then <strong>Calculate Route</strong>.</li>
+            <li><strong>Optimise Stop Order</strong> finds the most efficient sequence.</li>
+            <li><strong>Save</strong> a route to reuse it, or <strong>Share</strong> to open in Google Maps.</li>
+          </ul>
+        </details>
+
         <!-- Add Stop -->
         <div class="rp-section-head">Add a Stop</div>
         <div style="display:flex;gap:8px;margin-bottom:6px;">
-          <input id="rp-stop-input" class="field-input" placeholder="Search location or paste coords…"
+          <input id="rp-stop-input" class="field-input" placeholder="Search for a place or click on map…"
+                 title="Type a place name or paste lat,lng coordinates, then press Enter"
                  style="flex:1;padding:10px 14px;font-size:13px"
                  onkeydown="if(event.key==='Enter'){addStopBySearch()}" />
-          <button onclick="addStopBySearch()" class="btn-primary" style="width:auto;padding:10px 14px;font-size:13px">＋ Add</button>
+          <button onclick="addStopBySearch()" class="btn-primary" title="Add this location as a stop" style="width:auto;padding:10px 14px;font-size:13px">＋ Add</button>
         </div>
         <button onclick="addCurrentLocation()" class="btn-sec" style="width:100%;justify-content:center;font-size:12px;padding:9px;margin-bottom:4px">
           📍 Use My Current Location
@@ -243,8 +264,10 @@
         <!-- Stop list -->
         <div class="rp-section-head">Stops <span id="rp-stop-count" style="color:var(--blue)">(0)</span></div>
         <div id="rp-stop-list"></div>
-        <div id="rp-empty-msg" style="text-align:center;padding:20px 0;color:var(--muted);font-size:13px">
-          No stops yet.<br>Add at least 2 to calculate a route.
+        <div id="rp-empty-msg" style="text-align:center;padding:22px 10px;color:var(--muted);font-size:13px;border:1.5px dashed var(--border);border-radius:12px">
+          <div style="font-size:34px;margin-bottom:6px">📍</div>
+          <div style="font-weight:600;color:var(--text);margin-bottom:2px">No stops yet</div>
+          Search above, use your location, or click the map.<br>Add at least 2 stops to calculate a route.
         </div>
 
         <!-- Optimization mode -->
@@ -255,19 +278,19 @@
         </div>
 
         <!-- Action buttons -->
-        <button onclick="calculateRoute()" class="btn-primary" style="width:100%;padding:13px;font-size:14px;margin-bottom:10px;border-radius:12px">
+        <button onclick="calculateRoute()" class="btn-primary" title="Draw the route through all stops and show distance & ETA" style="width:100%;padding:13px;font-size:14px;margin-bottom:10px;border-radius:12px">
           🧭 Calculate Route
         </button>
-        <button onclick="optimiseRoute()" class="btn-sec" style="width:100%;justify-content:center;padding:13px;font-size:14px;margin-bottom:10px">
+        <button onclick="optimiseRoute()" class="btn-sec" title="Reorder stops into the most efficient sequence" style="width:100%;justify-content:center;padding:13px;font-size:14px;margin-bottom:10px">
           ⚡ Optimise Stop Order
         </button>
-        <button onclick="openSaveModal()" class="btn-sec" style="width:100%;justify-content:center;padding:11px;font-size:13px;margin-bottom:8px">
+        <button onclick="openSaveModal()" class="btn-sec" title="Save this route to reuse it later" style="width:100%;justify-content:center;padding:11px;font-size:13px;margin-bottom:8px">
           💾 Save Route
         </button>
-        <button onclick="shareRoute()" class="btn-sec" style="width:100%;justify-content:center;padding:11px;font-size:13px;margin-bottom:8px">
+        <button onclick="shareRoute()" class="btn-sec" title="Open this route in Google Maps for turn-by-turn navigation" style="width:100%;justify-content:center;padding:11px;font-size:13px;margin-bottom:8px">
           🔗 Share / Open in Google Maps
         </button>
-        <button onclick="clearRoute()" style="width:100%;padding:9px;font-size:12px;background:none;border:1.5px solid var(--border);border-radius:10px;color:var(--muted);cursor:pointer;margin-bottom:14px">
+        <button onclick="clearRoute()" title="Remove all stops and start over" style="width:100%;padding:9px;font-size:12px;background:none;border:1.5px solid var(--border);border-radius:10px;color:var(--muted);cursor:pointer;margin-bottom:14px">
           ✕ Clear All Stops
         </button>
 

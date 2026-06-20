@@ -31,13 +31,49 @@ document.querySelectorAll('.nav-btn[data-page]').forEach(btn=>{
   btn.addEventListener('click',()=>navTo(btn.dataset.page));
 });
  
-function setTheme(t){
+var THEME_KEY = 'bhetamla_theme';
+function applyTheme(t){
   currentTheme=t;
   document.documentElement.setAttribute('data-theme',t);
   document.getElementById('theme-label') && (document.getElementById('theme-label').textContent = t==='dark'?'Light':'Dark');
 }
+// setTheme = an explicit user choice → persisted across sessions.
+function setTheme(t){
+  applyTheme(t);
+  try { localStorage.setItem(THEME_KEY, t); } catch(e) {}
+}
 function toggleTheme(){setTheme(currentTheme==='light'?'dark':'light');}
 
+// On load: use the saved choice, else follow the OS (auto mode). Auto mode is
+// not persisted, so it keeps tracking the system until the user picks one.
+(function initTheme(){
+  var saved=null; try { saved=localStorage.getItem(THEME_KEY); } catch(e) {}
+  if(saved==='light'||saved==='dark'){ applyTheme(saved); return; }
+  var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+  applyTheme(mq && mq.matches ? 'dark' : 'light');
+  if(mq && mq.addEventListener){
+    mq.addEventListener('change', function(e){
+      var s=null; try { s=localStorage.getItem(THEME_KEY); } catch(_){}
+      if(s!=='light'&&s!=='dark') applyTheme(e.matches?'dark':'light');
+    });
+  }
+})();
+ 
+function applyLang(lang){
+  currentLang=lang;
+  document.documentElement.lang=lang==='ne'?'ne':'en';
+  document.querySelectorAll('[data-en],[data-ne]').forEach(el=>{
+    const val=el.getAttribute('data-'+lang);
+    if(val!==null){
+      if(el.tagName==='INPUT'||el.tagName==='TEXTAREA')el.value=val;
+      else el.textContent=val;
+    }
+  });
+  const lbl=document.getElementById('lang-setting');
+  if(lbl)lbl.textContent=lang==='ne'?'नेपाली':'English';
+  showToast(lang==='ne'?'नेपाली भाषामा परिवर्तन गरियो':'Switched to English');
+}
+function toggleLang(){applyLang(currentLang==='en'?'ne':'en');}
  
 function selectVenue(n){
   var all = document.querySelectorAll('#nearby-dynamic-list .venue-row, #modal-nearby-restaurants .venue-row');

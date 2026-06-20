@@ -9,12 +9,35 @@ from app.database import initialize_db
 mail = Mail()
 socketio = SocketIO(cors_allowed_origins='*', async_mode='threading')
 
+# Authlib OAuth registry. Providers are registered lazily in create_app() only
+# when their credentials are configured, so the app runs fine without them.
+oauth = None
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     app.secret_key = getattr(Config, 'SECRET_KEY', 'bhetamla_secret_key_123')
 
     mail.init_app(app)
+
+    # ─── Google OAuth (Story 1.4) ──────────────────────────────────────────
+    # Register the Google provider only when credentials are present so the
+    # rest of the app is unaffected when OAuth is not configured.
+    if Config.google_oauth_enabled():
+        global oauth
+        from authlib.integrations.flask_client import OAuth
+        oauth = OAuth(app)
+        oauth.register(
+            name='google',
+            client_id=Config.GOOGLE_CLIENT_ID,
+            client_secret=Config.GOOGLE_CLIENT_SECRET,
+            server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+            client_kwargs={'scope': 'openid email profile'},
+        )
+
+    @app.context_processor
+    def inject_oauth_flags():
+        return dict(google_oauth_enabled=Config.google_oauth_enabled())
 
     @app.context_processor
     def inject_translations():
@@ -62,8 +85,18 @@ def create_app():
     from app.socket_events import register_socket_events
     register_socket_events(socketio)
 
-    # Start the background scheduler (only in the main process, not in the
-    # Werkzeug reloader child, and never during testing).
+    # Proactive notification scheduler (meeting reminders, smart alerts, fare
+    # drops). Disable with BHETAMLA_SCHEDULER=0 (e.g. during tests).
+    import os as _os
+    if _os.environ.get('BHETAMLA_SCHEDULER', '1') != '0':
+        try:
+            from app.services.background_scheduler import start as _start_scheduler
+            _start_scheduler(app)
+        except Exception as _e:
+            print(f'Scheduler not started: {_e}')
+
+    # Start the offer-expiry reminder scheduler (only in the main process, not
+    # in the Werkzeug reloader child, and never during testing).
     if not app.config.get('TESTING') and os.environ.get('WERKZEUG_RUN_MAIN') != 'false':
         from apscheduler.schedulers.background import BackgroundScheduler
         from app.services.offer_reminder_service import check_expiring_offers
@@ -88,3 +121,6 @@ def create_app():
         return settings()
 
     return app
+
+def get_socketio():
+    return socketio

@@ -66,7 +66,6 @@ def groups_page():
     ) or []
 
     chat_groups = FriendGroup.get_for_user(user_id)
-    active_chat_group = chat_groups[0] if chat_groups else None
     achievements = Achievement.get_user_achievements(user_id)
     restaurants = Restaurant.get_all(limit=20) or []
 
@@ -75,9 +74,22 @@ def groups_page():
         meetups=meetups,
         friends=friends,
         chat_groups=chat_groups,
-        active_chat_group=active_chat_group,
         achievements=achievements,
         restaurants=restaurants,
+        current_user_id=user_id,
+    )
+
+
+def gallery_page():
+    """Standalone Meetup Gallery page with a meetup selector (US18)."""
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+
+    user_id = get_current_user_id()
+    meetups = Meetup.get_by_user(user_id, include_hidden=False)
+    return render_template(
+        'meetup/gallery.html',
+        meetups=meetups,
         current_user_id=user_id,
     )
 
@@ -199,7 +211,7 @@ def vote_results(meetup_id):
     if vote['status'] == 'open' and vote['deadline']:
         from datetime import datetime
         if vote['deadline'] <= datetime.now():
-            GroupVote._finalize_vote(vote['id'], meetup_id)
+            outcome = GroupVote._finalize_vote(vote['id'], meetup_id)
             vote = GroupVote.get_by_id(vote['id'])
             members = execute_query(
                 """
@@ -209,15 +221,28 @@ def vote_results(meetup_id):
                 (meetup_id,), fetch=True
             ) or []
             meetup = Meetup.get_by_id(meetup_id)
-            winner_name = meetup.get('winning_venue_name') or 'the top choice'
-            for m in members:
-                send_notification(
-                    m['user_id'],
-                    'Vote Closed',
-                    f'Venue voting for "{meetup["title"]}" ended. Winner: {winner_name}.',
-                    type='vote',
-                    link=f'/meetup/view/{meetup_id}'
-                )
+            if isinstance(outcome, dict) and outcome.get('restarted'):
+                # Tie — the poll was re-opened for a runoff.
+                tied = ' & '.join(outcome.get('tied') or []) or 'the top options'
+                for m in members:
+                    send_notification(
+                        m['user_id'],
+                        'Vote Tied — Runoff Started',
+                        f'"{meetup["title"]}" ended in a tie between {tied}. '
+                        f'Voting has reopened for 24 hours — cast your vote again!',
+                        type='vote',
+                        link=f'/meetup/groups?meetup={meetup_id}'
+                    )
+            else:
+                winner_name = meetup.get('winning_venue_name') or 'the top choice'
+                for m in members:
+                    send_notification(
+                        m['user_id'],
+                        'Vote Closed',
+                        f'Venue voting for "{meetup["title"]}" ended. Winner: {winner_name}.',
+                        type='vote',
+                        link=f'/meetup/view/{meetup_id}'
+                    )
 
     user_id = get_current_user_id()
     return jsonify({
@@ -311,7 +336,9 @@ def gallery_list(meetup_id):
             'is_public': bool(p.get('is_public')),
             'like_count': p.get('like_count', 0),
             'comment_count': p.get('comment_count', 0),
+            'liked_by_me': bool(p.get('liked_by_me')),
             'full_name': p.get('full_name'),
+            'created_at': p['created_at'].isoformat() if p.get('created_at') else None,
         })
     return jsonify({'success': True, 'photos': serialized})
 
@@ -330,6 +357,19 @@ def toggle_gallery_like(photo_id):
     return jsonify({'success': True, 'liked': liked})
 
 
+def _serialize_comments(comments):
+    out = []
+    for c in comments or []:
+        out.append({
+            'id': c['id'],
+            'user_id': c['user_id'],
+            'full_name': c.get('full_name'),
+            'comment': c.get('comment'),
+            'created_at': c['created_at'].isoformat() if c.get('created_at') else None,
+        })
+    return out
+
+
 def gallery_comment(photo_id):
     if not is_logged_in():
         return jsonify({'success': False}), 401
@@ -339,7 +379,14 @@ def gallery_comment(photo_id):
         return jsonify({'success': False, 'message': 'Comment required.'}), 400
     MeetupGallery.add_comment(photo_id, get_current_user_id(), comment)
     comments = MeetupGallery.get_comments(photo_id)
-    return jsonify({'success': True, 'comments': comments})
+    return jsonify({'success': True, 'comments': _serialize_comments(comments)})
+
+
+def gallery_comments_list(photo_id):
+    if not is_logged_in():
+        return jsonify({'success': False}), 401
+    comments = MeetupGallery.get_comments(photo_id)
+    return jsonify({'success': True, 'comments': _serialize_comments(comments)})
 
 
 def gallery_privacy(photo_id):
@@ -349,6 +396,66 @@ def gallery_privacy(photo_id):
     is_public = bool(data.get('is_public', True))
     MeetupGallery.set_privacy(photo_id, get_current_user_id(), is_public)
     return jsonify({'success': True, 'is_public': is_public})
+
+
+def chat_invite_link(meetup_id):
+    """Return a shareable link that lets a friend join this meetup's chat (F12)."""
+    if not is_logged_in():
+        return jsonify({'success': False}), 401
+    user_id = get_current_user_id()
+    if not _accepted_member(meetup_id, user_id) and not _organiser(meetup_id, user_id):
+        return jsonify({'success': False, 'message': 'Not a member.'}), 403
+    code = Meetup.get_or_create_invite_code(meetup_id)
+    if not code:
+        return jsonify({'success': False, 'message': 'Meetup not found.'}), 404
+    link = url_for('meetup.join_via_invite', code=code, _external=True)
+    return jsonify({'success': True, 'link': link, 'code': code})
+
+
+def join_via_invite(code):
+    """Open an invite link: add the current user as an accepted member so they
+    join the meetup and its chat."""
+    if not is_logged_in():
+        session['next_invite'] = code
+        return redirect(url_for('auth.login'))
+    meetup = Meetup.get_by_invite_code(code)
+    if not meetup:
+        flash('That invite link is invalid or has expired.', 'error')
+        return redirect(url_for('meetup.groups'))
+    user_id = get_current_user_id()
+    MeetupMember.add(meetup['id'], user_id, status='accepted')
+    group_id = FriendGroup.ensure_for_meetup(meetup['id'])
+    if group_id:
+        # Clear any prior opt-out so an invited returnee rejoins the chat.
+        FriendGroup.rejoin_chat(group_id, user_id)
+    flash(f'You joined "{meetup["title"]}". Say hi in the group chat!', 'success')
+    return redirect(url_for('meetup.groups'))
+
+
+def leave_meetup_chat(meetup_id):
+    """Leave a meetup's chat (opt out of the member re-sync)."""
+    if not is_logged_in():
+        return jsonify({'success': False}), 401
+    user_id = get_current_user_id()
+    group_id = FriendGroup.ensure_for_meetup(meetup_id)
+    if not group_id:
+        return jsonify({'success': False, 'message': 'No chat group.'}), 404
+    FriendGroup.leave_chat(group_id, user_id)
+    return jsonify({'success': True})
+
+
+def meetup_chat_group(meetup_id):
+    """Resolve (and lazily create) the shared chat group for a meetup so the
+    selected meetup drives the chat panel."""
+    if not is_logged_in():
+        return jsonify({'success': False}), 401
+    user_id = get_current_user_id()
+    if not _accepted_member(meetup_id, user_id) and not _organiser(meetup_id, user_id):
+        return jsonify({'success': False, 'message': 'Not a member.'}), 403
+    group_id = FriendGroup.ensure_for_meetup(meetup_id)
+    if not group_id:
+        return jsonify({'success': False, 'message': 'No chat group available.'}), 404
+    return jsonify({'success': True, 'group_id': group_id})
 
 
 def chat_messages(group_id):

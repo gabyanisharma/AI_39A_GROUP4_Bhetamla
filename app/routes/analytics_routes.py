@@ -1,6 +1,8 @@
 from flask import Blueprint
 from app.routes.user_routes import login_required
-from app.controllers.analytics_controller import meeting_history, analytics_data
+from app.controllers.analytics_controller import (
+    meeting_history, analytics_data, export_history
+)
 
 analytics_bp = Blueprint('analytics', __name__, url_prefix='/analytics')
 
@@ -9,6 +11,12 @@ analytics_bp = Blueprint('analytics', __name__, url_prefix='/analytics')
 @login_required
 def history():
     return meeting_history()
+
+
+@analytics_bp.route('/export')
+@login_required
+def export():
+    return export_history()
 
 
 @analytics_bp.route('/data')

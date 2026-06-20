@@ -57,6 +57,58 @@ def add_availability():
     return redirect(url_for('meetup.scheduler_page'))
 
 
+def import_calendar():
+    """Import an uploaded .ics file as availability, detecting conflicts (F29)."""
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+
+    user_id = get_current_user_id()
+    file = request.files.get('ics_file')
+    if not file or not file.filename:
+        flash('Please choose an .ics file to import.', 'error')
+        return redirect(url_for('meetup.scheduler_page'))
+    if not file.filename.lower().endswith('.ics'):
+        flash('Only .ics calendar files are supported.', 'error')
+        return redirect(url_for('meetup.scheduler_page'))
+
+    from app.services.calendar_service import parse_ics, find_conflicts
+    try:
+        text = file.read().decode('utf-8', errors='ignore')
+    except Exception:
+        flash('Could not read that file.', 'error')
+        return redirect(url_for('meetup.scheduler_page'))
+
+    events = parse_ics(text)
+    if not events:
+        flash('No calendar events found in that file.', 'info')
+        return redirect(url_for('meetup.scheduler_page'))
+
+    imported, conflicts = 0, []
+    for ev in events:
+        clashes = find_conflicts(user_id, ev)
+        if clashes:
+            conflicts.append(
+                f"{ev['summary']} on {ev['date']} — clashes with " + '; '.join(clashes)
+            )
+            continue  # don't import conflicting events
+        AvailabilitySlot.create(
+            user_id, ev['date'],
+            ev['start_time'].strftime('%H:%M:%S'),
+            ev['end_time'].strftime('%H:%M:%S'),
+            (ev['summary'] or 'Imported')[:100],
+        )
+        imported += 1
+
+    if imported:
+        flash(f'Imported {imported} event(s) as availability.', 'success')
+    if conflicts:
+        flash('Skipped ' + str(len(conflicts)) + ' conflicting event(s): '
+              + ' | '.join(conflicts[:5]), 'error')
+    if not imported and not conflicts:
+        flash('Nothing to import.', 'info')
+    return redirect(url_for('meetup.scheduler_page'))
+
+
 def delete_availability(slot_id):
     if not is_logged_in():
         return redirect(url_for('auth.login'))

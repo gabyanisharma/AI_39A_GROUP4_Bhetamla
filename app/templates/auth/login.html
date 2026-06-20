@@ -23,6 +23,16 @@
           <span>Continue with Email</span>
         </button>
       </form>
+      {% if google_oauth_enabled %}
+      <div style="display:flex;align-items:center;gap:10px;margin:16px 0;color:#999;font-size:13px;">
+        <span style="flex:1;height:1px;background:#ddd;"></span><span>or</span><span style="flex:1;height:1px;background:#ddd;"></span>
+      </div>
+      <a class="btn-sec" href="{{ url_for('auth.google_login') }}"
+         style="display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;width:100%;box-sizing:border-box;">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="" style="height:18px;width:18px;" />
+        <span>Continue with Google</span>
+      </a>
+      {% endif %}
       <div class="login-foot">
         <span>Don't have an account?</span>
         <a href="{{ url_for('auth.register') }}"> Sign up for free</a>

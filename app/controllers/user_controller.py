@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, session
 from app.models.user import User
 from app.models.feedback import Feedback
-from app.auth import is_logged_in, get_current_user_id
+from app.auth import is_logged_in, get_current_user_id, logout_user
 import os
 from werkzeug.utils import secure_filename
 from app.models.notification import SOSAlert
@@ -78,7 +78,11 @@ def settings():
                 flash('Password must be at least 6 characters.', 'error')
             else:
                 User.reset_password(get_current_user_id(), new_password)
-                flash('Password changed successfully!', 'success')
+                # AC 1.6: clear the logged-in session and send the user back to
+                # the login page so they re-authenticate with the new password.
+                logout_user()
+                flash('Password changed successfully! Please log in with your new password.', 'success')
+                return redirect(url_for('auth.login'))
 
         return redirect(url_for('user.settings_page'))
 

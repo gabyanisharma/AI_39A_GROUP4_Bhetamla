@@ -25,11 +25,15 @@ class User:
     def create(full_name, email, phone, password):
         password_hash = generate_password_hash(password)
         verification_token = secrets.token_urlsafe(32)
+        token_expiry = datetime.now() + timedelta(hours=24)
         query = """
-            INSERT INTO users (full_name, email, phone, password_hash, verification_token)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO users
+                (full_name, email, phone, password_hash,
+                 verification_token, verification_token_expiry)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """
-        return execute_query(query, (full_name, email, phone, password_hash, verification_token))
+        return execute_query(query, (full_name, email, phone, password_hash,
+                                     verification_token, token_expiry))
 
     @classmethod
     def get_by_id(cls, user_id):
@@ -49,8 +53,16 @@ class User:
 
     @staticmethod
     def get_by_verification_token(token):
-        query = "SELECT * FROM users WHERE verification_token = %s"
-        results = execute_query(query, (token,), fetch=True)
+        # Enforce the 24h expiry promised in the verification email. Rows
+        # predating the expiry column (NULL) are treated as still valid so
+        # existing unverified users are not locked out.
+        query = """
+            SELECT * FROM users
+            WHERE verification_token = %s
+              AND (verification_token_expiry IS NULL
+                   OR verification_token_expiry > %s)
+        """
+        results = execute_query(query, (token, datetime.now()), fetch=True)
         return results[0] if results else None
 
     @staticmethod
@@ -122,6 +134,34 @@ class User:
             WHERE id = %s
         """
         return execute_query(query, (password_hash, user_id))
+
+    @classmethod
+    def get_or_create_oauth(cls, email, full_name):
+        """Story 1.4: resolve a user for an OAuth (e.g. Google) login.
+
+        If a user with this email already exists they are returned and logged
+        in. Otherwise a new, already-verified account is created with a random
+        unusable password (the user authenticates via the provider, not a
+        local password). Returns the user row.
+        """
+        existing = cls.get_by_email(email)
+        if existing:
+            # Ensure OAuth-verified emails can log in even if they had never
+            # completed local email verification.
+            if not existing['is_verified']:
+                cls.verify_email(existing['id'])
+                existing = cls.get_by_id(existing['id'])
+            return existing
+
+        random_password = secrets.token_urlsafe(32)
+        password_hash = generate_password_hash(random_password)
+        query = """
+            INSERT INTO users (full_name, email, phone, password_hash, is_verified)
+            VALUES (%s, %s, %s, %s, TRUE)
+        """
+        user_id = execute_query(query, (full_name or email.split('@')[0],
+                                        email, '', password_hash))
+        return cls.get_by_id(user_id) if user_id else None
 
     @staticmethod
     def check_password(stored_hash, password):

@@ -1,6 +1,31 @@
+import secrets
+
 from app.database import execute_query
 
 class Meetup:
+
+    @staticmethod
+    def get_or_create_invite_code(meetup_id):
+        """Return the meetup's shareable invite code, generating one if needed."""
+        row = execute_query(
+            "SELECT invite_code FROM meetups WHERE id = %s", (meetup_id,), fetch=True
+        )
+        if not row:
+            return None
+        code = row[0].get('invite_code')
+        if not code:
+            code = secrets.token_urlsafe(9)
+            execute_query(
+                "UPDATE meetups SET invite_code = %s WHERE id = %s", (code, meetup_id)
+            )
+        return code
+
+    @staticmethod
+    def get_by_invite_code(code):
+        rows = execute_query(
+            "SELECT * FROM meetups WHERE invite_code = %s", (code,), fetch=True
+        )
+        return rows[0] if rows else None
 
     @staticmethod
     def create(title, description, created_by, meetup_date=None, meetup_time=None):

@@ -3,12 +3,12 @@ from app.database import execute_query
 class EmergencyContact:
 
     @staticmethod
-    def create(user_id, name, phone, relationship):
+    def create(user_id, name, phone, relationship, email=None):
         query = """
-            INSERT INTO emergency_contacts (user_id, name, phone, relationship)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO emergency_contacts (user_id, name, phone, relationship, email)
+            VALUES (%s, %s, %s, %s, %s)
         """
-        return execute_query(query, (user_id, name, phone, relationship))
+        return execute_query(query, (user_id, name, phone, relationship, email or None))
 
     @staticmethod
     def get_by_user(user_id):
