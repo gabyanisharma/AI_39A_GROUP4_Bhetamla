@@ -36,8 +36,9 @@ class Friend:
             )
             WHERE (f.user_id = %s OR f.friend_id = %s)
             AND f.status = 'accepted'
+            AND u.id != %s
         """
-        return execute_query(query, (user_id, user_id, user_id), fetch=True)
+        return execute_query(query, (user_id, user_id, user_id, user_id), fetch=True)
 
     @staticmethod
     def get_pending_requests(user_id):

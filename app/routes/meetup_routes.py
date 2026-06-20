@@ -10,7 +10,7 @@ from app.controllers.place_controller import (
     plan_meetup, create_meetup, view_meetup as view_meetup_ctrl,
     update_location, get_midpoint, add_suggestion,
     respond_meetup, confirm_meetup_plan, delete_meetup_plan,
-    save_plan_preferences, get_plan_preferences, meetup_calendar
+    save_plan_preferences, get_plan_preferences, meetup_calendar, get_members_status
 )
 from app.controllers.meetup_route_controller import (
     get_meetup_route, save_meetup_route, delete_meetup_route
@@ -44,6 +44,11 @@ def view_meetup(meetup_id):
 @login_required
 def update_location_route(meetup_id):
     return update_location(meetup_id)
+
+@meetup_bp.route('/<int:meetup_id>/members-status')
+@login_required
+def members_status_route(meetup_id):
+    return get_members_status(meetup_id)
 
 @meetup_bp.route('/midpoint/<int:meetup_id>')
 @login_required

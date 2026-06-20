@@ -162,11 +162,12 @@ def create_meetup():
             flash('Meetup date and time cannot be in the past.', 'error')
             return redirect(url_for('meetup.plan'))
 
+        user_id    = get_current_user_id()
+        invite_ids = [fid for fid in invite_ids if str(fid) != str(user_id)]
+
         if not invite_ids:
             flash('Please invite at least one friend.', 'error')
             return redirect(url_for('meetup.plan'))
-
-        user_id    = get_current_user_id()
         meetup_id  = Meetup.create(title, description, user_id,
                                    meetup_date, meetup_time)
 
@@ -284,6 +285,21 @@ def update_location(meetup_id):
         'member_count': len(locations)
     })
 
+# ── Member location-sharing status (for Midpoint Calculator) ───────
+def get_members_status(meetup_id):
+    if not is_logged_in():
+        return jsonify({'success': False}), 401
+
+    members = MeetupMember.get_by_meetup(meetup_id)
+    data = [{
+        'user_id': m['user_id'],
+        'full_name': m.get('full_name'),
+        'status': m.get('status'),
+        'latitude': float(m['latitude']) if m.get('latitude') is not None else None,
+        'longitude': float(m['longitude']) if m.get('longitude') is not None else None,
+    } for m in (members or [])]
+
+    return jsonify({'success': True, 'members': data})
 
 # ── Get midpoint API ───────────────────────────────────────────────
 def get_midpoint(meetup_id):

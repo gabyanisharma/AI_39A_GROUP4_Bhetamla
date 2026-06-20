@@ -37,7 +37,7 @@
   <div class="topbar">
     <div class="topbar-search" style="padding:0 14px"><label for="search-plan" style="display:flex;align-items:center;gap:10px;cursor:text;flex:1"><span aria-hidden="true" style="font-size:14px">&#128269;</span><input id="search-plan" type="search" placeholder="Search venues or friends..." aria-label="Search venues or friends" style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
     <div class="topbar-controls">
-      <button class="ctrl-btn" type="button" onclick="toggleTheme()">&#127769;</button>
+    <button class="ctrl-btn" type="button" onclick="openModal('modal-budget-split')" title="Split the bill">&#128176; Split Bill</button>      <button class="ctrl-btn" type="button" onclick="toggleTheme()">&#127769;</button>
     </div>
     <button class="sos-btn" type="button" onclick="openModal('modal-sos')">&#10033; SOS</button>
     <button aria-label="Notifications" type="button" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px">&#128276;</button>
@@ -150,6 +150,7 @@
         </div>
         {% for m in meetups[:5] %}
         <div style="display:flex;align-items:center;gap:8px;padding:10px;border-radius:12px;border:1.5px solid var(--border);margin-bottom:10px;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+          {% if m.created_by == current_user_id %}
           <a href="{{ url_for('meetup.plan', meetup_id=m.id) }}" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;">
             <div style="width:42px;height:42px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📅</div>
             <div style="flex:1;min-width:0;">
@@ -158,6 +159,16 @@
               <div style="font-size:11px;color:var(--blue);font-weight:700;margin-top:3px;">Open planner</div>
             </div>
           </a>
+          {% else %}
+          <a href="javascript:void(0)" onclick="showToast('Only the organiser can make changes to this meetup.')" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;cursor:pointer;">
+            <div style="width:42px;height:42px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📅</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ m.title }}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">By {{ m.creator_name }} — {{ m.meetup_date or 'Date not set' }}</div>
+              <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:3px;">View only</div>
+            </div>
+          </a>
+          {% endif %}
           <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;">
             <span style="background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">{{ m.status|title }}</span>
             {% if m.created_by == current_user_id %}
@@ -657,7 +668,7 @@ function fetchMidpointRestaurants(midpoint){
   var params = new URLSearchParams();
   params.set('lat', midpoint.lat);
   params.set('lng', midpoint.lng);
-  params.set('radius', '4');
+  params.set('radius', '2');
   if(planRestaurantFilters.maxBudget) params.set('max_budget', planRestaurantFilters.maxBudget);
   if(planRestaurantFilters.minRating) params.set('min_rating', planRestaurantFilters.minRating);
   planRestaurantFilters.cuisines.forEach(function(c){ params.append('cuisine', c); });
@@ -708,7 +719,29 @@ function selectVenueRow(row){
 function renderFeaturedRestaurantOffers(){
   var holder = document.getElementById('featured-restaurant-offers');
   if(!holder) return;
-  holder.innerHTML = FEATURED_OFFER_RESTAURANTS.map(function(r){
+
+  // If the user already picked a specific venue (in Nearby Restaurants),
+  // only show that venue's offer here — not every offer in the system.
+  var selectedName = readVenueSelection() || planSelectedVenueName;
+  var pool = FEATURED_OFFER_RESTAURANTS;
+  if(selectedName){
+    var matches = FEATURED_OFFER_RESTAURANTS.filter(function(r){
+      return normalizePlanName(r.name) === normalizePlanName(selectedName);
+    });
+    if(matches.length){
+      pool = matches;
+    } else {
+      holder.innerHTML = '<div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px;text-align:center;">No current offer for '+escapePlanHtml(selectedName)+'. Showing all offers instead:</div>';
+      pool = FEATURED_OFFER_RESTAURANTS;
+      renderOfferCards(pool, holder, true);
+      return;
+    }
+  }
+  renderOfferCards(pool, holder, false);
+}
+
+function renderOfferCards(pool, holder, append){
+  var html = pool.map(function(r){
     var selected = normalizePlanName(r.name) === normalizePlanName(planSelectedVenueName) ? ' selected' : '';
     return '<div class="restaurant-card'+selected+'" data-offer-restaurant="'+escapePlanHtml(r.name)+'" onclick="selectOfferRestaurant(this)">' +
       '<div class="rest-emoji">'+escapePlanHtml(r.emoji)+'</div>' +
@@ -716,7 +749,13 @@ function renderFeaturedRestaurantOffers(){
       '<span style="background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px">'+escapePlanHtml(r.badge)+'</span>' +
       '</div>';
   }).join('');
+  if(append){
+    holder.innerHTML += html;
+  } else {
+    holder.innerHTML = html;
+  }
 }
+
 
 function syncOfferRestaurantHighlight(name){
   document.querySelectorAll('#modal-restaurant-offers .restaurant-card').forEach(function(card){
@@ -951,150 +990,143 @@ function estimateTravelMinutes(points, midpoint){
   return Math.max(4, Math.round((avgKm / 18) * 60));
 }
 
-function addMidpointInput(value, point){
+function renderMemberLocationList(members){
   var list = document.getElementById('midpoint-location-list');
-  if(!list) return null;
-  var inputs = list.querySelectorAll('.mp-location-input');
-  if(inputs.length >= 6){
-    showToast('You can compare up to 6 locations.');
-    return inputs[inputs.length - 1];
+  if(!list) return;
+  if(!members.length){
+    list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:10px 0;">No invited members yet.</div>';
+    return;
   }
-  var input = document.createElement('input');
-  input.className = 'field-input mp-location-input';
-  input.placeholder = 'Another location';
-  input.value = value || '';
-  input.addEventListener('input', function(){ midpointDirty = true; });
-  if(point){
-    input.dataset.lat = point.lat;
-    input.dataset.lng = point.lng;
-    input.dataset.name = point.name || '';
-    input.dataset.address = point.address || value || '';
-    input.dataset.sourceValue = value || point.address || '';
-  }
-  list.appendChild(input);
-  return input;
+  list.innerHTML = members.map(function(m){
+    var hasLoc = m.latitude != null && m.longitude != null;
+    var statusHtml = hasLoc
+      ? '<span style="color:var(--green);font-weight:700;font-size:12px;">✓ Shared</span>'
+      : '<span style="color:var(--muted);font-weight:600;font-size:12px;">⏳ Pending</span>';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--input-bg);border-radius:10px;border:1.5px solid var(--border);">' +
+      '<div style="font-size:13px;font-weight:600;color:var(--text);">' + escapePlanHtml(m.full_name || 'Member') + '</div>' +
+      statusHtml +
+    '</div>';
+  }).join('');
 }
 
-function ensureMidpointInputCount(count){
+async function calcMidpoint(){
+  var ctx = window.PLAN_CONTEXT || {};
+  var meetupId = ctx.meetupId;
+  var resultBox = document.getElementById('midpoint-result');
   var list = document.getElementById('midpoint-location-list');
-  if(!list) return [];
-  while(list.querySelectorAll('.mp-location-input').length < count){
-    addMidpointInput('');
+
+  if(!meetupId){
+    showToast('Create the meetup first.');
+    return false;
   }
-  return Array.prototype.slice.call(list.querySelectorAll('.mp-location-input'));
-}
 
-function seedMidpointInputsFromPlan(){
-  var points = getPlanMapPoints();
-  var inputs = ensureMidpointInputCount(Math.max(2, Math.min(points.length, 6)));
-  points.slice(0, inputs.length).forEach(function(point, index){
-    var input = inputs[index];
-    if(!input) return;
-    var value = point.address || point.name || (point.lat.toFixed(5) + ', ' + point.lng.toFixed(5));
-    input.value = value;
-    input.dataset.lat = point.lat;
-    input.dataset.lng = point.lng;
-    input.dataset.name = point.name || '';
-    input.dataset.address = point.address || value;
-    input.dataset.sourceValue = value;
-  });
-  inputs.forEach(function(input){
-    input.addEventListener('input', function(){ midpointDirty = true; });
-  });
-  midpointDirty = false;
-}
+  if(list) list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:10px 0;">Loading members...</div>';
+  if(resultBox) resultBox.style.display = 'none';
 
-function collectMidpointEntries(){
-  return Array.prototype.slice.call(document.querySelectorAll('.mp-location-input'))
-    .map(function(input){
-      return {
-        query: input.value.trim(),
-        lat: input.dataset.lat,
-        lng: input.dataset.lng,
-        name: input.dataset.name,
-        address: input.dataset.address,
-        sourceValue: input.dataset.sourceValue
-      };
-    })
-    .filter(function(entry){ return entry.query; });
-}
+  // Pull the full member list (for the "who has shared" display)
+  var membersResp = await fetch('/meetup/' + meetupId + '/members-status').then(function(r){ return r.json(); }).catch(function(){ return null; });
+  if(membersResp && membersResp.success){
+    renderMemberLocationList(membersResp.members);
+  }
 
-function applyMidpointResult(midpoint, points){
-  if(!midpoint || !points || points.length < 2) return;
-  window.PLAN_CONTEXT = window.PLAN_CONTEXT || {};
-  PLAN_CONTEXT.mapPoints = points.map(function(point){
-    return {name:point.name, lat:point.lat, lng:point.lng, address:point.address};
-  });
-  PLAN_CONTEXT.midpoint = {
-    lat: midpoint.lat,
-    lng: midpoint.lng,
-    address: midpoint.address
+  // Calculate midpoint from real shared locations
+  var data = await fetch('/meetup/midpoint/' + meetupId).then(function(r){ return r.json(); }).catch(function(){ return null; });
+
+  if(!data || !data.success){
+    if(resultBox){
+      resultBox.style.display = 'block';
+      resultBox.querySelector('h3').textContent = 'Not enough locations yet';
+      resultBox.querySelector('p').textContent = (data && data.message) || 'Need at least 2 members to share their location.';
+    }
+    showToast((data && data.message) || 'Need at least 2 shared locations.');
+    return false;
+  }
+
+  var midpoint = {
+    lat: data.midpoint_lat,
+    lng: data.midpoint_lng,
+    address: 'Calculated geographic midpoint'
   };
-  var minutes = estimateTravelMinutes(points, midpoint);
-  var result = document.getElementById('midpoint-result');
-  if(result){
-    var heading = result.querySelector('h3');
-    var meta = result.querySelector('p');
-    if(heading) heading.textContent = midpoint.address || 'Calculated midpoint';
-    if(meta) meta.textContent = '~' + minutes + ' min avg travel · ' + points.length + ' locations balanced';
+  midpoint.address = await reverseGeocodePlan(midpoint.lat, midpoint.lng);
+
+  var points = data.members.map(function(m){
+    return { name: m.name, lat: m.lat, lng: m.lng, address: '' };
+  });
+
+  if(resultBox){
+    resultBox.style.display = 'block';
+    resultBox.querySelector('h3').textContent = midpoint.address || 'Calculated midpoint';
+    resultBox.querySelector('p').textContent = points.length + ' member(s) balanced';
   }
+
+  window.PLAN_CONTEXT = window.PLAN_CONTEXT || {};
+  PLAN_CONTEXT.mapPoints = points;
+  PLAN_CONTEXT.midpoint = midpoint;
+  renderPlanMap(points, midpoint);
+
   var sumMid = document.getElementById('sum-mid');
   if(sumMid) sumMid.textContent = midpoint.address || 'Calculated midpoint';
   var finalMid = document.getElementById('fsum-mid');
   if(finalMid) finalMid.textContent = midpoint.address || 'Calculated midpoint';
-  renderPlanMap(points, midpoint);
+
   midpointDirty = false;
-}
-
-async function calcMidpoint(){
-  var entries = collectMidpointEntries();
-  if(entries.length < 2){
-    showToast('Please enter at least two locations.');
-    var first = document.querySelector('.mp-location-input');
-    if(first) first.focus();
-    return false;
-  }
-
-  showToast('Calculating midpoint...');
-  var points = [];
-  var missing = [];
-  for(var i = 0; i < entries.length; i++){
-    var point = await geocodePlanLocation(entries[i]);
-    if(point && Number.isFinite(point.lat) && Number.isFinite(point.lng)){
-      points.push(point);
-    } else {
-      missing.push(entries[i].query);
-    }
-  }
-
-  if(points.length < 2){
-    showToast('Please use clearer place names or coordinates.');
-    return false;
-  }
-
-  var midpoint = geographicMidpoint(points);
-  if(!midpoint){
-    showToast('Could not calculate a midpoint.');
-    return false;
-  }
-  midpoint.address = await reverseGeocodePlan(midpoint.lat, midpoint.lng);
-  applyMidpointResult(midpoint, points);
-  if(missing.length){
-    showToast('Midpoint updated using ' + points.length + ' locations. Check: ' + missing[0]);
-  } else {
-    showToast('Midpoint updated accurately.');
-  }
   return true;
 }
 
 async function acceptMidpointStep(){
-  if(midpointDirty || !window.PLAN_CONTEXT || !PLAN_CONTEXT.midpoint){
+  if(!window.PLAN_CONTEXT || !PLAN_CONTEXT.midpoint || midpointDirty){
     var ok = await calcMidpoint();
     if(!ok) return false;
   }
   showToast('Midpoint set!');
   completeSerialStep('modal-midpoint', 'midpoint accepted');
   return true;
+}
+
+function loadMultiStopRoute(){
+  var ctx = window.PLAN_CONTEXT || {};
+  var startEl = document.getElementById('ms-start');
+  var stop1El = document.getElementById('ms-stop1');
+  var stop2El = document.getElementById('ms-stop2');
+  var summaryEl = document.getElementById('multistop-route-summary');
+  if(!startEl || !stop1El || !stop2El || !summaryEl) return;
+
+  // Start: meetup date/time, or "Now" if not set
+  var when = formatPlanDate(ctx.date, ctx.time) || 'Time not set';
+  startEl.textContent = 'Your Location · ' + when;
+
+  // Stop 1: the calculated midpoint
+  var midpoint = ctx.midpoint;
+  var midLabel = midpoint && midpoint.address ? midpoint.address : 'Midpoint not calculated yet';
+  stop1El.textContent = midLabel;
+
+  // Stop 2: whichever venue was selected in Nearby Restaurants / Offers
+  var venue = readVenueSelection() || planSelectedVenueName || 'Venue not selected yet';
+  stop2El.textContent = venue;
+
+  // Pull the saved ride cost estimate for a real transport total
+  var meetupId = planPrefMeetupId();
+  if(meetupId && window.fetch){
+    fetch('/ride/split/' + meetupId, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        var stops = 2;
+        if(data && data.success && data.data && data.data.members && data.data.members.length){
+          var m = data.data.members[0];
+          var mins = (m.bike_mins || 15) + 30; // travel + time at first stop, rough
+          var hrs = (mins / 60).toFixed(1);
+          var transport = Math.round((m.bike_cost || 0) * (ctx.people || 1));
+          summaryEl.textContent = 'Route summary: ' + stops + ' stops · ~' + hrs + ' hrs · NPR ' + transport + ' estimated transport';
+        } else {
+          summaryEl.textContent = 'Route summary: ' + stops + ' stops · transport cost not yet calculated';
+        }
+      })
+      .catch(function(){
+        summaryEl.textContent = 'Route summary: 2 stops · transport cost not yet calculated';
+      });
+  } else {
+    summaryEl.textContent = 'Route summary: 2 stops · transport cost not yet calculated';
+  }
 }
 
 function applyBrowserLocationToPlanner(point){
@@ -1274,8 +1306,10 @@ function readVenueSelectionPayload(){
 }
 
 function readRideSelection(){
-  var card = document.querySelector('#modal-ride-cost .restaurant-card .rest-name');
-  return card ? card.textContent.trim() : '';
+  var selected = document.querySelector('#modal-ride-cost .restaurant-card.selected');
+  var card = selected || document.querySelector('#modal-ride-cost .restaurant-card');
+  if(!card) return '';
+  return card.dataset.rideOption || (card.querySelector('.rest-name') ? card.querySelector('.rest-name').textContent.trim() : '');
 }
 
 function confirmAdvancedPlan(){
@@ -1363,19 +1397,22 @@ function completeSerialStep(id, value){
   };
 
   window.closeFeatModal = function(id){
-    if(id && id === currentSerialStepId()){
-      return requireSerialResponse(id);
+    // ✕ always exits the step flow and goes back to the map —
+    // it should never be blocked by an unanswered step.
+    if(id && id === currentSerialStepId() && window.exitSerialToMap){
+      window.exitSerialToMap();
     }
     if(baseCloseFeatModal) return baseCloseFeatModal(id);
   };
 
   window.closeModal = function(id){
-    if(id && id === currentSerialStepId()){
-      return requireSerialResponse(id);
+    if(id && id === currentSerialStepId() && window.exitSerialToMap){
+      window.exitSerialToMap();
     }
     if(baseCloseModal) return baseCloseModal(id);
   };
 
+  
   document.addEventListener('click', function(e){
     var currentId = currentSerialStepId();
     if(!currentId || e.target.id !== currentId) return;
@@ -1408,16 +1445,25 @@ function completeSerialStep(id, value){
     if(dt) dt.textContent = formatPlanDate(ctx.date, ctx.time);
     if(people) people.textContent = (ctx.people || 1) + ' people';
   };
-
+// If we arrived here via the Dashboard's "Split Bill" shortcut, open that modal directly.
+  if(new URLSearchParams(window.location.search).get('open') === 'split'){
+    var openSplitModal = function(){
+      if(window.openModal) window.openModal('modal-budget-split');
+    };
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', openSplitModal);
+    } else {
+      openSplitModal();
+    }
+  }
   if(window.PLAN_CONTEXT && PLAN_CONTEXT.hasMeetup){
     var hydratePlanner = function(){
       var titleEl = document.getElementById('pm-title');
       if(titleEl && PLAN_CONTEXT.title) titleEl.value = PLAN_CONTEXT.title;
       if(window.buildSteps) window.buildSteps();
-	      seedMidpointInputsFromPlan();
-	      initPlanLeafletMap();
-	      renderFeaturedRestaurantOffers();
-	      ensureNearbyRestaurantControls();
+      initPlanLeafletMap();
+      renderFeaturedRestaurantOffers();
+      ensureNearbyRestaurantControls();
       var venueBtn = document.querySelector('#modal-nearby-restaurants .feat-btn-row .btn-primary');
       if(venueBtn){
         venueBtn.onclick = function(){
@@ -1433,18 +1479,20 @@ function completeSerialStep(id, value){
     } else {
       hydratePlanner();
     }
-	  } else {
-	    var autoDetectLocation = function(){
-	      renderFeaturedRestaurantOffers();
-	      var lat = document.getElementById('pm-lat');
-	      if(lat && !lat.value) detectPMLocation({silent:true});
-	    };
+  } else {
+    var autoDetectLocation = function(){
+      renderFeaturedRestaurantOffers();
+      initPlanLeafletMap();
+      var lat = document.getElementById('pm-lat');
+      if(lat && !lat.value) detectPMLocation({silent:true});
+    };
     if(document.readyState === 'loading'){
       document.addEventListener('DOMContentLoaded', autoDetectLocation);
     } else {
       autoDetectLocation();
     }
   }
+  
 })();
 </script>
 {% endblock %}

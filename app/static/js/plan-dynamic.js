@@ -214,8 +214,8 @@
 
     if (!data || !data.success || !data.data || !data.data.members || !data.data.members.length) {
       container.innerHTML = `
-        <div class="restaurant-card"><div class="rest-emoji">🛵</div><div style="flex:1"><div class="rest-name">Pathao Bike</div><div class="rest-meta">Share your location to calculate</div></div></div>
-        <div class="restaurant-card"><div class="rest-emoji">🚕</div><div style="flex:1"><div class="rest-name">Taxi</div><div class="rest-meta">Share your location to calculate</div></div></div>
+        <div class="restaurant-card selected" data-ride-option="Pathao Bike" onclick="selectRideOption(this)"><div class="rest-emoji">🛵</div><div style="flex:1"><div class="rest-name">Pathao Bike</div><div class="rest-meta">Share your location to calculate</div></div></div>
+        <div class="restaurant-card" data-ride-option="Taxi" onclick="selectRideOption(this)"><div class="rest-emoji">🚕</div><div style="flex:1"><div class="rest-name">Taxi</div><div class="rest-meta">Share your location to calculate</div></div></div>
       `;
       return;
     }
@@ -223,22 +223,38 @@
     const myId = (window.PLAN_CONTEXT && window.PLAN_CONTEXT.currentUserId) || (window.GROUPS_CONFIG && window.GROUPS_CONFIG.currentUserId) || 0;
     const myEst = data.data.members.find(m => m.user_id === myId) || data.data.members[0];
 
+    const bikeMins = myEst.bike_mins != null ? myEst.bike_mins : Math.round(myEst.distance / 22 * 60) || 12;
+    const carMins  = myEst.car_mins  != null ? myEst.car_mins  : Math.round(myEst.distance / 16 * 60) || 18;
+
     container.innerHTML = `
-      <div class="restaurant-card">
+      <div class="restaurant-card selected" data-ride-option="Pathao Bike" onclick="selectRideOption(this)">
         <div class="rest-emoji">🛵</div>
-        <div style="flex:1"><div class="rest-name">Pathao Bike</div><div class="rest-meta">~${Math.round(myEst.distance / 18 * 60) || 12} mins · NPR ${Math.round(myEst.bike_cost || 85)}${myEst.is_peak ? ' · Peak surge' : ''}</div></div>
+        <div style="flex:1"><div class="rest-name">Pathao Bike</div><div class="rest-meta">~${bikeMins} mins · NPR ${Math.round(myEst.bike_cost || 85)}${myEst.is_peak ? ' · Peak surge' : ''}</div></div>
       </div>
-      <div class="restaurant-card">
+      <div class="restaurant-card" data-ride-option="Pathao Car" onclick="selectRideOption(this)">
         <div class="rest-emoji">🚗</div>
-        <div style="flex:1"><div class="rest-name">Pathao Car</div><div class="rest-meta">~${Math.round(myEst.distance / 25 * 60) || 18} mins · NPR ${Math.round(myEst.car_cost || 200)}${myEst.is_peak ? ' · Peak surge' : ''}</div></div>
+        <div style="flex:1"><div class="rest-name">Pathao Car</div><div class="rest-meta">~${carMins} mins · NPR ${Math.round(myEst.car_cost || 200)}${myEst.is_peak ? ' · Peak surge' : ''}</div></div>
       </div>
-      <div class="restaurant-card">
+      <div class="restaurant-card" data-ride-option="Taxi" onclick="selectRideOption(this)">
         <div class="rest-emoji">🚕</div>
         <div style="flex:1"><div class="rest-name">Taxi</div><div class="rest-meta">Meter fare · NPR ${Math.round(myEst.taxi_cost || 220)}${myEst.is_peak ? ' · Peak surge' : ''}</div></div>
       </div>
     `;
   }
 
+  // ── Ride option selection ──────────────────────────────────────────
+  window.selectRideOption = function(card){
+    if(!card) return;
+    var container = card.closest('#ride-dynamic-list');
+    if(container){
+      container.querySelectorAll('.restaurant-card').forEach(function(c){
+        c.classList.remove('selected');
+      });
+    }
+    card.classList.add('selected');
+  };
+
+  
   // ── Modal 9: Walking Distance ────────────────────────────────────
   async function loadWalkingDistance() {
     const container = document.getElementById('walking-dynamic-list');

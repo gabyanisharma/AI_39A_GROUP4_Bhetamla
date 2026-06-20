@@ -84,7 +84,10 @@ class MeetupMember:
             INSERT INTO meetup_members (meetup_id, user_id, latitude, longitude, address, status)
             VALUES (%s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
-            status = VALUES(status)
+            status = VALUES(status),
+            latitude = COALESCE(VALUES(latitude), latitude),
+            longitude = COALESCE(VALUES(longitude), longitude),
+            address = COALESCE(VALUES(address), address)
         """
         if not latitude:
             latitude = None

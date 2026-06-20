@@ -19,12 +19,14 @@ PATHAO_CAR_PER_KM  = 35    # NPR/km
 
 TAXI_BASE          = 50    # NPR (flag fall)
 TAXI_PER_KM        = 45    # NPR/km
-
 WALK_SPEED_KMH     = 4.5   # average walking speed
+BIKE_SPEED_KMH     = 22    # motorbikes weave through Kathmandu traffic
+CAR_SPEED_KMH      = 16    # cars/taxis are slower in city congestion
 
 # Peak hours: 8-10 AM and 5-8 PM on weekdays
 PEAK_HOUR_RANGES   = [(8, 10), (17, 20)]
 PEAK_MULTIPLIER    = 1.3   # 30% surge
+PEAK_SPEED_PENALTY = 0.7   # traffic slows everyone ~30% more during peak
 
 
 # ── Helper: distance ──────────────────────────────────────────────
@@ -50,13 +52,18 @@ def _is_peak_hour(dt=None):
 
 def _calculate_costs(distance_km, peak=False):
     mult = PEAK_MULTIPLIER if peak else 1.0
+    speed_mult = PEAK_SPEED_PENALTY if peak else 1.0
 
     bike = round((PATHAO_BIKE_BASE + PATHAO_BIKE_PER_KM * distance_km) * mult)
     car  = round((PATHAO_CAR_BASE  + PATHAO_CAR_PER_KM  * distance_km) * mult)
     taxi = round((TAXI_BASE        + TAXI_PER_KM         * distance_km) * mult)
     walk = int((distance_km / WALK_SPEED_KMH) * 60)   # minutes
 
-    return bike, car, taxi, walk
+    # Real travel time estimates — slower during peak traffic.
+    bike_mins = max(2, round((distance_km / (BIKE_SPEED_KMH * speed_mult)) * 60))
+    car_mins  = max(2, round((distance_km / (CAR_SPEED_KMH  * speed_mult)) * 60))
+
+    return bike, car, taxi, walk, bike_mins, car_mins
 
 
 # ── Main page ──────────────────────────────────────────────────────
@@ -126,7 +133,7 @@ def calculate_estimate(meetup_id):
     )
 
     is_peak = _is_peak_hour()
-    bike, car, taxi, walk = _calculate_costs(distance_km, is_peak)
+    bike, car, taxi, walk, bike_mins, car_mins = _calculate_costs(distance_km, is_peak)
 
     # Upsert estimate
     execute_query(
@@ -135,8 +142,8 @@ def calculate_estimate(meetup_id):
             (meetup_id, user_id, from_lat, from_lng, from_address,
              to_lat, to_lng, to_address, distance_km,
              pathao_bike_cost, pathao_car_cost, taxi_cost,
-             walk_minutes, is_peak_hour)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+             walk_minutes, bike_minutes, car_minutes, is_peak_hour)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         ON DUPLICATE KEY UPDATE
             from_lat          = VALUES(from_lat),
             from_lng          = VALUES(from_lng),
@@ -149,13 +156,15 @@ def calculate_estimate(meetup_id):
             pathao_car_cost   = VALUES(pathao_car_cost),
             taxi_cost         = VALUES(taxi_cost),
             walk_minutes      = VALUES(walk_minutes),
+            bike_minutes      = VALUES(bike_minutes),
+            car_minutes       = VALUES(car_minutes),
             is_peak_hour      = VALUES(is_peak_hour),
             calculated_at     = CURRENT_TIMESTAMP
         """,
         (meetup_id, user_id,
          from_lat, from_lng, from_addr,
          to_lat, to_lng, to_addr,
-         distance_km, bike, car, taxi, walk, is_peak)
+         distance_km, bike, car, taxi, walk, bike_mins, car_mins, is_peak)
     )
 
     return jsonify({
@@ -166,7 +175,9 @@ def calculate_estimate(meetup_id):
             'pathao_bike': bike,
             'pathao_car':  car,
             'taxi':        taxi,
-            'walk_minutes': walk
+            'walk_minutes': walk,
+            'bike_minutes': bike_mins,
+            'car_minutes': car_mins
         }
     })
 
@@ -211,6 +222,8 @@ def budget_split(meetup_id):
             'car_cost':   float(e['pathao_car_cost']  or 0),
             'taxi_cost':  float(e['taxi_cost']        or 0),
             'walk_mins':  e['walk_minutes'],
+            'bike_mins':  e.get('bike_minutes'),
+            'car_mins':   e.get('car_minutes'),
             'is_peak':    bool(e['is_peak_hour'])
         } for e in estimates]
     }
