@@ -33,6 +33,7 @@ def add_contact():
         name         = request.form.get('name', '').strip()
         phone        = request.form.get('phone', '').strip()
         relationship = request.form.get('relationship', '').strip()
+        email        = request.form.get('email', '').strip()
 
         if not name or not phone:
             flash('Name and phone are required.', 'error')
@@ -92,6 +93,7 @@ def trigger_sos():
             'message':    'SOS alert saved successfully!'
         })
 
+    sent_to = []
     for contact in contacts:
         try:
             # Look up emergency contact's email — they may be a registered user
@@ -118,11 +120,13 @@ def trigger_sos():
                 <p><strong>Contact Phone:</strong> {contact['phone']}</p>
                 <p><strong>Message:</strong> {message}</p>
                 <p><strong>Location:</strong> <a href="{maps_link}">{maps_link}</a></p>
+                <p><strong>Reach them:</strong> {user.get('phone') or 'phone unavailable'}</p>
                 <p><strong>Time:</strong> Just now</p>
                 <hr>
                 <p style="color:red;">Please check on {user['full_name']} immediately!</p>
             """
             mail.send(msg)
+            sent_to.append(recipient)
         except Exception as e:
             print(f"SOS email error for contact {contact['name']}: {e}")
 
@@ -130,7 +134,9 @@ def trigger_sos():
         'success':    True,
         'alert_id':   alert_id,
         'cancel_pin': cancel_pin,
-        'message':    'SOS alert sent successfully!'
+        'recipients': len(sent_to),
+        'message':    f'SOS alert sent to {len(sent_to)} contact(s)!' if sent_to
+                      else 'SOS alert saved.'
     })
 
 
