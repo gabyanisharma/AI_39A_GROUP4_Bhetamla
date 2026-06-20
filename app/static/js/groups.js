@@ -14,9 +14,6 @@
       el.style.borderColor = parseInt(el.dataset.meetupId, 10) === id ? 'var(--blue)' : 'var(--border)';
     });
     refreshVotePanel();
-    refreshGallery();
-    const form = document.getElementById('gallery-upload-form');
-    if (form) form.style.display = id ? 'block' : 'none';
   };
 
   async function refreshVotePanel() {
@@ -28,6 +25,11 @@
     const optionsEl = document.getElementById('vote-options');
     const resultsEl = document.getElementById('vote-results');
     const badge = document.getElementById('vote-status-badge');
+    const noActive = document.getElementById('vote-no-active');
+    const voteActive = data.vote && data.vote.status === 'open';
+
+    if (noActive) noActive.style.display = voteActive ? 'none' : 'block';
+    if (resultsEl) resultsEl.style.display = voteActive ? 'block' : 'none';
 
     if (organiserActions) {
       const showStart = meetup && meetup.isOrganiser && (!data.vote || data.vote.status === 'closed');
@@ -58,8 +60,9 @@
       const total = data.results.reduce((s, o) => s + (o.vote_count || 0), 0) || 1;
       resultsEl.innerHTML = data.results.map(opt => {
         const pct = Math.round((opt.vote_count || 0) / total * 100);
+        const safeLabel = escapeChatHtml(opt.label || '');
         return `<div style="margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600"><span>${opt.label}</span><span>${opt.vote_count || 0} (${pct}%)</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600"><span>${safeLabel}</span><span>${opt.vote_count || 0} (${pct}%)</span></div>
           <div style="height:6px;background:var(--border);border-radius:3px;margin-top:4px;overflow:hidden">
             <div style="height:100%;width:${pct}%;background:var(--blue);border-radius:3px"></div>
           </div>
@@ -98,84 +101,6 @@
     const data = await res.json();
     if (data.success) refreshVotePanel();
   }
-
-  async function refreshGallery() {
-    if (!selectedMeetupId) return;
-    const grid = document.getElementById('gallery-grid');
-    if (!grid) return;
-    const res = await fetch(`/meetup/${selectedMeetupId}/gallery/list`);
-    if (!res.ok) {
-      grid.innerHTML = '<div class="gallery-placeholder" style="grid-column:span 3;text-align:center;padding:30px;color:var(--muted)">Select a meetup to view gallery</div>';
-      return;
-    }
-    const data = await res.json();
-    const photos = data.photos || [];
-    if (!photos.length) {
-      grid.innerHTML = '';
-      for (let i = 0; i < 3; i++) {
-        grid.innerHTML += '<div class="gallery-placeholder" style="height:120px;border-radius:10px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted)">📷</div>';
-      }
-      return;
-    }
-    grid.innerHTML = photos.map(p => `
-      <div style="position:relative;border-radius:10px;overflow:hidden;height:120px;background:var(--input-bg)">
-        <img src="${p.url}" alt="" style="width:100%;height:100%;object-fit:cover">
-        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;font-size:9px;padding:4px 6px">
-          ❤️ ${p.like_count} · 💬 ${p.comment_count} · ${p.is_public ? '🌐' : '🔒'}
-        </div>
-        ${p.user_id === cfg.currentUserId ? `<button onclick="deletePhoto(${p.id})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:10px;padding:2px 6px">✕</button>` : ''}
-        ${p.user_id === cfg.currentUserId ? `<button onclick="togglePhotoPrivacy(${p.id}, ${p.is_public})" style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:9px;padding:2px 5px">${p.is_public ? 'Public' : 'Private'}</button>` : ''}
-        <button onclick="likePhoto(${p.id})" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:10px;padding:2px 6px">♥</button>
-        <button onclick="commentPhoto(${p.id})" style="position:absolute;top:4px;left:28px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:10px;padding:2px 6px">💬</button>
-      </div>
-    `).join('');
-  }
-
-  window.uploadGallery = async function (e) {
-    e.preventDefault();
-    const form = e.target;
-    const fd = new FormData(form);
-    if (!fd.get('is_public')) fd.append('is_public', '0');
-    const res = await fetch(`/meetup/${selectedMeetupId}/gallery/upload`, { method: 'POST', body: fd });
-    const data = await res.json();
-    if (data.success) {
-      form.reset();
-      refreshGallery();
-      if (typeof showToast === 'function') showToast('📸 Photo uploaded');
-    } else if (typeof showToast === 'function') showToast(data.message || 'Upload failed');
-    return false;
-  };
-
-  window.deletePhoto = async function (id) {
-    if (!confirm('Delete your photo?')) return;
-    await fetch(`/meetup/gallery/${id}/delete`, { method: 'POST' });
-    refreshGallery();
-  };
-
-  window.likePhoto = async function (id) {
-    await fetch(`/meetup/gallery/${id}/like`, { method: 'POST' });
-    refreshGallery();
-  };
-
-  window.commentPhoto = async function (id) {
-    const text = prompt('Add a comment:');
-    if (!text || !text.trim()) return;
-    await fetch(`/meetup/gallery/${id}/comment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ comment: text.trim() })
-    });
-    refreshGallery();
-  };
-
-  window.togglePhotoPrivacy = async function (id, isPublic) {
-    await fetch(`/meetup/gallery/${id}/privacy`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_public: !isPublic })
-    });
-    refreshGallery();
-  };
 
   window.recordBudgetSplit = async function () {
     if (!selectedMeetupId) {
@@ -244,19 +169,39 @@
     });
   }
 
+  function profileSnippet(msg) {
+    const name = msg.full_name || 'User';
+    if (msg.profile_pic && msg.profile_pic !== 'default.png') {
+      return `<img class="direct-chat-avatar" src="${cfg.profileUploadBase}${escapeChatHtml(msg.profile_pic)}" alt="${escapeChatHtml(name)}" style="width:28px;height:28px;font-size:10px">`;
+    }
+    return `<div class="direct-chat-avatar" style="width:28px;height:28px;font-size:10px">${escapeChatHtml(name.slice(0, 2).toUpperCase())}</div>`;
+  }
+
+  function chatTime(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
   function appendChatMessage(msg) {
     const box = document.getElementById('chat-messages');
     if (!box) return;
+    const existing = msg.id ? box.querySelector(`[data-msg-id="${msg.id}"]`) : null;
+    if (existing) return;
     const div = document.createElement('div');
     div.dataset.msgId = msg.id;
-    div.style.marginBottom = '8px';
+    const mine = Number(msg.user_id) === Number(cfg.currentUserId);
+    div.className = `chat-message-row${mine ? ' mine' : ''}`;
     const readCount = (msg.read_by && msg.read_by.length) ? ` · seen ${msg.read_by.length}` : '';
     div.innerHTML =
-      `<strong>${escapeChatHtml(msg.full_name || 'User')}</strong>: ` +
-      `<span class="chat-body">${escapeChatHtml(msg.body)}</span>` +
-      `<span style="color:var(--muted);font-size:10px">${readCount}</span> ` +
-      `<button type="button" class="chat-translate-btn" style="background:none;border:none;color:var(--blue);font-size:10px;cursor:pointer;padding:0">Translate</button>` +
-      `<div class="chat-translation" data-loaded="0" style="display:none;font-size:12px;color:var(--muted);margin-top:2px;padding-left:8px;border-left:2px solid var(--border)"></div>`;
+      profileSnippet(msg) +
+      `<div class="chat-message-stack">` +
+        `<div class="chat-message-meta">${escapeChatHtml(mine ? 'You' : (msg.full_name || cfg.chatTitle || 'User'))}${chatTime(msg.created_at) ? ' - ' + escapeChatHtml(chatTime(msg.created_at)) : ''}${readCount}</div>` +
+        `<div class="chat-bubble">${escapeChatHtml(msg.body)}</div>` +
+        `<button type="button" class="chat-translate-btn">Translate</button>` +
+        `<div class="chat-translation" data-loaded="0" style="display:none;font-size:12px;color:var(--muted);margin-top:2px;padding-left:8px;border-left:2px solid var(--border)"></div>` +
+      `</div>`;
     const btn = div.querySelector('.chat-translate-btn');
     if (btn) btn.addEventListener('click', () => translateChatMessage(btn, msg.body || ''));
     box.appendChild(div);

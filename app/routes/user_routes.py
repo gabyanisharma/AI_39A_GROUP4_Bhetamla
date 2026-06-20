@@ -115,6 +115,7 @@ def profile_page():
 def settings_page():
     return settings()
 
+
 @user_bp.route('/safety')
 @login_required
 def safety_page():

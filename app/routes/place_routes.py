@@ -2,7 +2,9 @@ from flask import Blueprint
 from app.routes.user_routes import login_required
 from app.controllers.place_controller import (
     saved_places, restaurants, restaurant_detail,
-    add_review, save_place, remove_saved_place
+    add_review, save_place, remove_saved_place,
+    api_filter_restaurants, api_cuisines, api_budget_range,
+    api_ambiences, api_offers, api_nearby_restaurants
 )
 
 place_bp = Blueprint('place', __name__, url_prefix='/place')

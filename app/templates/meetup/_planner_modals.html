@@ -30,17 +30,18 @@
     <div class="feat-modal-icon">🏷️</div>
     <div class="feat-modal-title">Restaurant Offers</div>
     <div class="feat-modal-sub">Latest deals near your meetup midpoint.</div>
-    <div class="restaurant-card" style="border-color:var(--green);background:var(--green-light)">
+    <div id="featured-restaurant-offers"></div>
+    <div class="restaurant-card" data-offer-restaurant="Café de Patan" onclick="selectOfferRestaurant(this)">
       <div class="rest-emoji">☕</div>
       <div style="flex:1"><div class="rest-name">Café de Patan</div><div class="rest-meta">20% off on groups of 3+ · Valid today</div></div>
       <span style="background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px">20% OFF</span>
     </div>
-    <div class="restaurant-card">
+    <div class="restaurant-card" data-offer-restaurant="Museum Garden Café" onclick="selectOfferRestaurant(this)">
       <div class="rest-emoji">🌿</div>
       <div style="flex:1"><div class="rest-name">Museum Garden Café</div><div class="rest-meta">Free dessert with any set meal</div></div>
     </div>
     <div class="feat-btn-row">
-      <button class="btn-primary" type="button" onclick="showToast('Offer saved!');completeSerialStep('modal-restaurant-offers','offer saved')">Save Offer</button>
+      <button class="btn-primary" type="button" onclick="saveSelectedOfferRestaurant()">Save Offer</button>
       <button class="btn-sec" type="button" onclick="completeSerialStep('modal-restaurant-offers','offer skipped')">Skip →</button>
     </div>
   </div>
@@ -52,13 +53,15 @@
     <div class="feat-modal-icon">🍜</div>
     <div class="feat-modal-title">Cuisine Preference</div>
     <div class="feat-modal-sub">Pick the food mood for the group.</div>
-    <div class="filter-chips">
+    <div class="filter-chips" id="cuisine-dynamic-chips">
       <div class="filter-chip active" onclick="toggleChip(this)">🍛 Nepali</div>
       <div class="filter-chip" onclick="toggleChip(this)">☕ Café</div>
       <div class="filter-chip" onclick="toggleChip(this)">🍕 Italian</div>
       <div class="filter-chip" onclick="toggleChip(this)">🥗 Continental</div>
       <div class="filter-chip" onclick="toggleChip(this)">🌱 Vegetarian</div>
     </div>
+      <div class="filter-chip" data-filter="Indian" onclick="toggleChip(this)">Indian</div>
+      <div class="filter-chip" data-filter="Burgers" onclick="toggleChip(this)">Burgers</div>
     <div class="feat-btn-row">
       <button class="btn-primary" type="button" onclick="savePlanPreferences({cuisine: readCuisineSelection()});showToast('Preferences saved!');completeSerialStep('modal-cuisine-preference','preferences applied')">Apply</button>
       <button class="btn-sec" type="button" onclick="completeSerialStep('modal-cuisine-preference','preferences skipped')">Skip →</button>
@@ -99,7 +102,7 @@
     <div class="feat-modal-icon">✨</div>
     <div class="feat-modal-title">Ambience Filter</div>
     <div class="feat-modal-sub">Choose the vibe you want.</div>
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px" id="ambience-dynamic-pills">
       <div class="ambience-pill active" onclick="toggleAmbience(this)"><div class="ambience-pill-icon">☕</div><div class="ambience-pill-label">Cozy Café</div></div>
       <div class="ambience-pill" onclick="toggleAmbience(this)"><div class="ambience-pill-icon">🌇</div><div class="ambience-pill-label">Rooftop</div></div>
       <div class="ambience-pill" onclick="toggleAmbience(this)"><div class="ambience-pill-icon">🌿</div><div class="ambience-pill-label">Garden</div></div>
@@ -117,9 +120,25 @@
     <button class="feat-modal-close" onclick="closeFeatModal('modal-nearby-restaurants')" aria-label="Close">&#10005;</button>
     <div class="feat-modal-icon">🍽️</div>
     <div class="feat-modal-title">Nearby Restaurants</div>
-    <div class="feat-modal-sub">Top picks within 500m of your midpoint.</div>
-    <div id="nearby-venue-list" style="display:flex;flex-direction:column;gap:10px;">
-      <div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">Loading nearby places...</div>
+    <div class="feat-modal-sub">Top picks near Patan Durbar Square.</div>
+    <div class="venue-row selected" id="venue1" onclick="selectVenueRow(this)">
+      <div class="venue-emoji">☕</div>
+      <div style="flex:1"><div class="venue-name">Café de Patan</div><div class="venue-rating">⭐ 4.9 · 5 min walk · NPR 800–1500</div></div>
+    </div>
+    <div class="venue-row" id="venue2" onclick="selectVenueRow(this)">
+      <div class="venue-emoji">🌿</div>
+      <div style="flex:1"><div class="venue-name">Museum Garden Café</div><div class="venue-rating">⭐ 4.8 · 3 min walk · NPR 600–1200</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:10px">
+      <label for="restaurant-min-rating" style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap">Minimum Rating</label>
+      <select id="restaurant-min-rating" class="field-input" onchange="refreshMidpointRestaurants()" style="padding:8px 10px;font-size:12px">
+        <option value="0">Any rating</option>
+        <option value="4">4.0+ stars</option>
+        <option value="4.5">4.5+ stars</option>
+      </select>
+    </div>
+    <div id="nearby-restaurant-results" style="margin-bottom:12px">
+      <div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px">Recommendations load around the calculated midpoint.</div>
     </div>
     <div class="feat-btn-row">
       <button class="btn-primary" type="button" onclick="setNearbyVenue();">Set Venue</button>
@@ -135,8 +154,8 @@
     <div class="modal-title" style="text-align:center;">Dynamic Budget Split</div>
     <div class="modal-sub" style="text-align:center;">Split the bill fairly among group members.</div>
     <label class="field-label">Total Bill (NPR)</label>
-    <input class="field-input" id="budget-total" type="number" oninput="calcSplit()" value="3500" style="margin-bottom:14px"/>
-    <div id="split-members" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+    <input class="field-input" id="budget-total" type="number" oninput="calcSplit(); loadBudgetSplit();" value="3500" style="margin-bottom:14px"/>
+    <div id="split-dynamic-members" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
       <div class="split-member-row" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--input-bg);border-radius:10px;">
         <div class="avatar" style="width:32px;height:32px;background:var(--primary);font-size:11px;flex-shrink:0;">Y</div>
         <div style="flex:1;font-weight:600;font-size:13px;">You</div>
@@ -155,7 +174,7 @@
     </div>
     <div style="background:var(--green-light);border:1px solid rgba(27,107,58,.2);border-radius:10px;padding:11px 14px;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
       <span style="font-size:16px;">✅</span>
-      <div id="split-summary" style="font-size:12.5px;color:var(--green);font-weight:600;">Equal split: NPR 1,167 / person</div>
+      <div id="split-dynamic-summary" style="font-size:12.5px;color:var(--green);font-weight:600;">Equal split: NPR 1,167 / person</div>
     </div>
     <button class="btn-primary" type="button" style="width:100%;padding:13px;" onclick="showToast('💰 Budget split sent to group chat!');completeSerialStep('modal-budget-split','split sent')">Send Split & Continue →</button>
   </div>
@@ -167,8 +186,10 @@
     <div class="feat-modal-icon">🚗</div>
     <div class="feat-modal-title">Ride Cost Estimation</div>
     <div class="feat-modal-sub">Compare ride options to the meetup point.</div>
-    <div class="restaurant-card"><div class="rest-emoji">🛵</div><div style="flex:1"><div class="rest-name">Pathao Bike</div><div class="rest-meta">~12 mins · NPR 85–110 · Fastest option</div></div></div>
-    <div class="restaurant-card"><div class="rest-emoji">🚕</div><div style="flex:1"><div class="rest-name">Tootle Car</div><div class="rest-meta">~18 mins · NPR 200–260 · Comfortable</div></div></div>
+    <div id="ride-dynamic-list">
+      <div class="restaurant-card"><div class="rest-emoji">🛵</div><div style="flex:1"><div class="rest-name">Pathao Bike</div><div class="rest-meta">~12 mins · NPR 85–110 · Fastest option</div></div></div>
+      <div class="restaurant-card"><div class="rest-emoji">🚕</div><div style="flex:1"><div class="rest-name">Tootle Car</div><div class="rest-meta">~18 mins · NPR 200–260 · Comfortable</div></div></div>
+    </div>
     <div class="feat-btn-row">
       <button class="btn-primary" type="button" onclick="savePlanPreferences({ride_option: readRideSelection()});showToast('Ride option saved!');completeSerialStep('modal-ride-cost','ride saved')">Save Ride</button>
       <button class="btn-sec" type="button" onclick="completeSerialStep('modal-ride-cost','ride skipped')">Skip →</button>
@@ -182,7 +203,7 @@
     <div class="feat-modal-icon">🚶</div>
     <div class="feat-modal-title">Walking Distance</div>
     <div class="feat-modal-sub">Check what is walkable near the venue.</div>
-    <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="display:flex;flex-direction:column;gap:8px;" id="walking-dynamic-list">
       <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--green-light);border-radius:10px;border:1.5px solid rgba(46,125,50,.25)"><span style="font-size:20px">☕</span><div style="flex:1"><div style="font-weight:700;font-size:13px">Café de Patan</div><div style="font-size:12px;color:var(--muted)">320m · ~4 min walk</div></div><span style="font-size:11px;font-weight:700;color:var(--green)">WALKABLE</span></div>
       <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--input-bg);border-radius:10px;border:1.5px solid var(--border)"><span style="font-size:20px">🏔️</span><div style="flex:1"><div style="font-weight:700;font-size:13px">Himalayan Java Coffee</div><div style="font-size:12px;color:var(--muted)">2.4km · ride recommended</div></div><span style="font-size:11px;font-weight:700;color:var(--amber)">RIDE</span></div>
     </div>
