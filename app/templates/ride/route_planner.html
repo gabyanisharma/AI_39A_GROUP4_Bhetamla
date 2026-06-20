@@ -70,11 +70,11 @@
     margin-left: 46px;
   }
 
-  /* ── Stats bar ── */
+  /* ── Stats bar (enhanced) ── */
   #rp-stats {
     display: flex; gap: 14px;
     padding: 14px 22px;
-    background: var(--white);
+    background: var(--input-bg);
     border-top: 1.5px solid var(--border);
   }
   .rp-stat {
@@ -132,6 +132,71 @@
     text-transform: uppercase;
     letter-spacing: .8px;
     margin: 18px 0 10px;
+  }
+
+  /* ── Step-by-step guide ── */
+  .rp-stepper {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 4px; margin-bottom: 16px;
+  }
+  .rp-step {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10px; color: var(--muted); font-weight: 500;
+  }
+  .rp-step-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--border); color: var(--muted);
+    font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .rp-step-line {
+    flex: 1; height: 1.5px; background: var(--border);
+    margin: 0 4px; min-width: 12px;
+  }
+
+  /* ── Empty state ── */
+  .rp-empty-state {
+    text-align: center; padding: 28px 16px;
+  }
+  .rp-empty-icon {
+    font-size: 40px; margin-bottom: 10px; display: block;
+  }
+  .rp-empty-title {
+    font-size: 15px; font-weight: 700; color: var(--text);
+    margin-bottom: 6px;
+  }
+  .rp-empty-desc {
+    font-size: 12px; color: var(--muted); line-height: 1.5;
+  }
+
+  /* ── Collapsible how-to ── */
+  .rp-howto-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; background: var(--input-bg);
+    border: 1.5px solid var(--border); border-radius: 10px;
+    cursor: pointer; font-size: 13px; font-weight: 600;
+    color: var(--text); margin-top: 16px;
+    transition: background .15s;
+    user-select: none;
+  }
+  .rp-howto-header:hover { background: var(--border); }
+  .rp-howto-arrow {
+    transition: transform .2s; font-size: 12px;
+  }
+  .rp-howto-arrow.open { transform: rotate(180deg); }
+  .rp-howto-body {
+    max-height: 0; overflow: hidden;
+    transition: max-height .25s ease, padding .25s ease;
+    padding: 0 12px;
+  }
+  .rp-howto-body.open {
+    max-height: 300px;
+    padding: 12px;
+  }
+  .rp-howto-body ul {
+    margin: 0; padding-left: 18px;
+    font-size: 12px; color: var(--muted); line-height: 1.8;
   }
 </style>
 {% endblock %}

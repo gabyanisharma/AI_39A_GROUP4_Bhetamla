@@ -77,14 +77,16 @@ function applyLang(lang){
 function toggleLang(){applyLang(currentLang==='en'?'ne':'en');}
  
 function selectVenue(n){
-  [1,2].forEach(i=>{
-    const v=document.getElementById('venue'+i);
-    const nm=v.querySelector('.venue-name');
-    const sel=i===n;
-    v.classList.toggle('selected',sel);
-    nm.style.color=sel?'var(--blue)':'';
+  var all = document.querySelectorAll('#nearby-dynamic-list .venue-row, #modal-nearby-restaurants .venue-row');
+  all.forEach(function(v, i){
+    var sel = (i + 1) === n;
+    v.classList.toggle('selected', sel);
+    var nm = v.querySelector('.venue-name');
+    if (nm) nm.style.color = sel ? 'var(--blue)' : '';
   });
-  showToast(n===1?'Himalayan Java selected!':'Cafe de Patan selected!');
+  var selected = document.querySelector('#modal-nearby-restaurants .venue-row.selected .venue-name, #modal-nearby-restaurants .venue-row:nth-child(1) .venue-name');
+  var name = selected ? selected.textContent : 'Venue';
+  showToast('Selected: ' + name);
 }
  
 // ── VOTE NAMES MAP ──
@@ -492,17 +494,8 @@ function pickSlot(el){
 }
 
 // ── MIDPOINT CALCULATOR ──
-const MIDPOINT_SPOTS=['Patan Durbar Square','Garden of Dreams, Thamel','Sankhamul Park','Naxal Central Park','Boudha Stupa Area'];
-let mpIdx=0;
-function calcMidpoint(){
-  mpIdx=(mpIdx+1)%MIDPOINT_SPOTS.length;
-  const box=document.getElementById('midpoint-result');
-  const spot=MIDPOINT_SPOTS[mpIdx];
-  box.querySelector('h3').textContent=spot;
-  const mins=[14,20,18,12,22][mpIdx];
-  box.querySelector('p').textContent='~'+mins+' min avg travel · Ideal central point';
-  showToast('Midpoint recalculated: '+spot);
-}
+// NOTE: Real calcMidpoint is defined in plan.html extra_js (async with geocoding).
+// This stub is removed so the real implementation is used on the plan page.
 
 // ── BUDGET FILTER ──
 function updateBudget(val){
@@ -601,15 +594,59 @@ function filterGallery(cat,btn){
 // ═══════════════════════════════════════
 //  PLAN MEETUP — Phase 1 → Phase 2
 // ═══════════════════════════════════════
-function detectPMLocation(){
-  var label = document.getElementById('pm-loc-label');
-  if(!label) return;
-  label.textContent = 'Detecting…';
-  setTimeout(function(){
-    label.textContent = 'Thamel, Kathmandu (detected)';
-    showToast('📍 Location detected: Thamel');
-  }, 800);
+// NOTE: Real calcMidpoint and detectPMLocation are defined in plan.html extra_js.
+// The main.js versions have been removed to avoid overriding the real implementations.
+
+var selectedNearbyVenue = null;
+
+function loadNearbyRestaurants(){
+  var list = document.getElementById('nearby-venue-list');
+  if(!list) return;
+  var ctx = window.PLAN_CONTEXT || {};
+  var mid = ctx.midpoint;
+  if(!mid || !Number.isFinite(Number(mid.lat)) || !Number.isFinite(Number(mid.lng))){
+    list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">Calculate the midpoint first.</div>';
+    return;
+  }
+  list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">Loading nearby places...</div>';
+
+  fetch('/place/api/nearby-midpoint?lat=' + mid.lat + '&lng=' + mid.lng + '&radius=0.5')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(!data.success || !data.restaurants.length){
+        list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">No restaurants found within 500m.</div>';
+        return;
+      }
+      selectedNearbyVenue = data.restaurants[0];
+      list.innerHTML = data.restaurants.map(function(r, i){
+        return '<div class="venue-row' + (i === 0 ? ' selected' : '') + '" data-id="' + r.id + '" onclick="selectNearbyVenue(' + r.id + ')">' +
+          '<div class="venue-emoji">🍽️</div>' +
+          '<div style="flex:1"><div class="venue-name">' + escapePlanHtml(r.name) + '</div>' +
+          '<div class="venue-rating">⭐ ' + r.rating.toFixed(1) + ' · ' + r.distance_km.toFixed(2) + ' km · NPR ' + Math.round(r.avg_cost_per_person) + '</div></div>' +
+        '</div>';
+      }).join('');
+    })
+    .catch(function(){
+      list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">Could not load restaurants.</div>';
+    });
 }
+
+function selectNearbyVenue(id){
+  selectedNearbyVenue = { id: id };
+  document.querySelectorAll('#nearby-venue-list .venue-row').forEach(function(row){
+    row.classList.toggle('selected', row.dataset.id === String(id));
+  });
+}
+
+function setNearbyVenue(){
+  if(!selectedNearbyVenue){
+    showToast('Please select a restaurant.');
+    return;
+  }
+  showToast('Venue updated!');
+  completeSerialStep('modal-nearby-restaurants', 'venue selected');
+}
+
 
 function createMeetupAndProceed(){
   var title = document.getElementById('pm-title') ? document.getElementById('pm-title').value.trim() : '';
@@ -715,11 +752,11 @@ document.addEventListener('click', function(e){
 // ═══════════════════════════════════════
 var STEPS = [
   { id:'modal-midpoint',           label:'Midpoint Meeting Calculator'     },
+  { id:'modal-nearby-restaurants', label:'Nearby Restaurant Recommendations'},
   { id:'modal-restaurant-offers',  label:'Restaurant Offers Check'          },
   { id:'modal-cuisine-preference', label:'Cuisine Preference Selection'     },
   { id:'modal-budget-filter',      label:'Budget-Based Restaurant Filter'   },
   { id:'modal-ambience-filter',    label:'Ambience-Based Restaurant Filter' },
-  { id:'modal-nearby-restaurants', label:'Nearby Restaurant Recommendations'},
   { id:'modal-budget-split',       label:'Dynamic Budget Split'             },
   { id:'modal-ride-cost',          label:'Ride Cost Estimation'             },
   { id:'modal-walking-distance',   label:'Walking Distance Calculator'      },
@@ -731,6 +768,9 @@ var stepIdx = -1; // -1 = not started
 function _rawOpen(id){
   var el = document.getElementById(id);
   if(el) el.classList.add('open');
+  if(id === 'modal-nearby-restaurants' && typeof window.loadNearbyRestaurants === 'function'){
+    window.loadNearbyRestaurants();
+  }
 }
 function _rawClose(id){
   var el = document.getElementById(id);
@@ -895,7 +935,7 @@ function setSplitMode(mode, btn) {
 }
 function calcSplit() {
   const total = parseFloat(document.getElementById('budget-total').value) || 0;
-  const members = document.querySelectorAll('#split-members .split-member-row');
+  const members = document.querySelectorAll('#split-dynamic-members .split-member-row, #split-members .split-member-row');
   const n = members.length;
   const perPerson = Math.floor(total / n);
   const remainder = total - perPerson * (n - 1);
@@ -903,7 +943,7 @@ function calcSplit() {
     const amt = row.querySelector('.split-amount');
     if (amt) amt.textContent = 'NPR ' + (i === n-1 ? remainder : perPerson).toLocaleString();
   });
-  const summary = document.getElementById('split-summary');
+  const summary = document.getElementById('split-dynamic-summary') || document.getElementById('split-summary');
   if (summary) summary.textContent = 'Equal split: NPR ' + perPerson.toLocaleString() + ' / person';
 }
 

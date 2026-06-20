@@ -6,11 +6,12 @@ load_dotenv()
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'bhetamla-secret-2024')
 
-    MYSQL_HOST     = os.getenv('MYSQL_HOST', 'localhost')
-    MYSQL_USER     = os.getenv('MYSQL_USER', 'root')
+    # Accept either MYSQL_* (primary) or DB_* (legacy) environment names.
+    MYSQL_HOST     = os.getenv('MYSQL_HOST', os.getenv('DB_HOST', 'localhost'))
+    MYSQL_USER     = os.getenv('MYSQL_USER', os.getenv('DB_USER', 'root'))
     # Load MySQL password from environment; do NOT keep plaintext passwords in source.
-    MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD')
-    MYSQL_DB       = os.getenv('MYSQL_DB', 'bhetamla_db')
+    MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD', os.getenv('DB_PASSWORD'))
+    MYSQL_DB       = os.getenv('MYSQL_DB', os.getenv('DB_NAME', 'bhetamla_db'))
     MYSQL_DATABASE = os.getenv('MYSQL_DATABASE', MYSQL_DB)
 
     MAIL_SERVER  = os.getenv('MAIL_SERVER', 'smtp.gmail.com')

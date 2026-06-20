@@ -3,6 +3,7 @@ from app.models.notification import EmergencyContact, SOSAlert, Notification
 from app.models.user import User
 from app.auth import get_current_user_id, is_logged_in
 from app import mail
+from app.database import execute_query
 from flask_mail import Message
 from config import Config
 import secrets
@@ -98,6 +99,19 @@ def trigger_sos():
         # fall back to the user's own inbox so the alert is never lost.
         recipient = (contact.get('email') or '').strip() or user['email']
         try:
+            # Look up emergency contact's email — they may be a registered user
+            contact_email = None
+            contact_user = execute_query(
+                "SELECT email FROM users WHERE phone = %s LIMIT 1",
+                (contact['phone'],), fetch=True
+            )
+            if contact_user:
+                contact_email = contact_user[0]['email']
+
+            if not contact_email:
+                # Phone field may contain an email address; skip if unusable
+                contact_email = contact['phone']
+
             msg = Message(
                 subject=f'🚨 SOS Alert from {user["full_name"]}',
                 recipients=[recipient]
@@ -112,12 +126,12 @@ def trigger_sos():
                 <p><strong>Reach them:</strong> {user.get('phone') or 'phone unavailable'}</p>
                 <p><strong>Time:</strong> Just now</p>
                 <hr>
-                <p style="color:red;">Please check on them immediately!</p>
+                <p style="color:red;">Please check on {user['full_name']} immediately!</p>
             """
             mail.send(msg)
             sent_to.append(recipient)
         except Exception as e:
-            print(f"SOS email error: {e}")
+            print(f"SOS email error for contact {contact['name']}: {e}")
 
     return jsonify({
         'success':    True,

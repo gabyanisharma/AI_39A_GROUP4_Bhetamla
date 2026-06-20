@@ -170,6 +170,13 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+@media (max-width: 767px) {
+  .safety-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
 <script>
 function sendSOS(){
   if(!confirm('Send an emergency SOS alert to your contacts now?')) return;

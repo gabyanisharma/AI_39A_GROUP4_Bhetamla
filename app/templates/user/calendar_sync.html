@@ -1,0 +1,175 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'calendar_sync' %}
+{% block title %}Calendar Sync - Bhetamla{% endblock %}
+
+{% block page_content %}
+<div id="page-calendar-sync" class="page active" style="flex-direction:column" role="main">
+  <div class="topbar">
+    <div>
+      <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--primary);margin-bottom:6px">Calendar Sync</h1>
+      <div style="font-size:13px;color:var(--muted)">Connect calendars, import events, export meetups, and catch schedule conflicts.</div>
+    </div>
+    <div class="topbar-controls">
+      <a class="ctrl-btn" href="{{ url_for('calendar.export_ics') }}" style="text-decoration:none">Export .ics</a>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:minmax(280px,360px) 1fr;gap:20px;align-items:start">
+    <section class="card">
+      <div style="font-weight:800;font-size:16px;margin-bottom:6px;color:var(--primary)">Connect Account</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:18px">Bhetamla stores only the account label and imported event times. No external password or API token is saved.</div>
+      <form method="POST" action="{{ url_for('calendar.connect') }}">
+        <div style="margin-bottom:14px">
+          <label class="field-label" for="calendar-provider">Provider</label>
+          <select class="field-input" id="calendar-provider" name="provider">
+            <option value="google">Google Calendar</option>
+            <option value="outlook">Outlook / Microsoft</option>
+            <option value="apple">Apple Calendar</option>
+            <option value="other">Other .ics Calendar</option>
+          </select>
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="field-label" for="calendar-email">Account Email</label>
+          <input class="field-input" id="calendar-email" name="account_email" type="email" placeholder="name@example.com" required>
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="field-label" for="calendar-name">Display Name</label>
+          <input class="field-input" id="calendar-name" name="display_name" placeholder="College calendar">
+        </div>
+        <div style="margin-bottom:16px">
+          <label class="field-label" for="calendar-scope">Permission</label>
+          <select class="field-input" id="calendar-scope" name="permission_scope">
+            <option value="read_write">Import and export</option>
+            <option value="read">Import only</option>
+            <option value="write">Export only</option>
+          </select>
+        </div>
+        <label style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:18px">
+          <input type="checkbox" name="permission_consent" value="1" required style="margin-top:3px">
+          <span>I give Bhetamla permission to use this calendar account for in-app sync.</span>
+        </label>
+        <button class="btn-primary" type="submit">Connect Calendar</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px">
+        <div>
+          <div style="font-weight:800;font-size:16px;color:var(--primary)">Connected Accounts</div>
+          <div style="font-size:12px;color:var(--muted)">Multiple accounts can be active at the same time.</div>
+        </div>
+        <span class="badge" style="background:rgba(37,99,235,.1);color:var(--blue)">{{ accounts|length }} total</span>
+      </div>
+
+      {% if accounts %}
+      <div style="display:grid;gap:10px">
+        {% for account in accounts %}
+        <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--input-bg)">
+          <div>
+            <div style="font-weight:700;font-size:14px">{{ account.display_name or account.account_email }}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px">{{ account.provider|title }} &middot; {{ account.account_email }}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">
+              {% if account.last_sync_at %}Last sync: {{ account.last_sync_at }}{% else %}Not synced yet{% endif %}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            {% if account.is_active %}
+            <form method="POST" action="{{ url_for('calendar.sync', account_id=account.id) }}">
+              <button class="btn-sec" type="submit" style="font-size:12px;padding:8px 12px">Sync</button>
+            </form>
+            <form method="POST" action="{{ url_for('calendar.disconnect', account_id=account.id) }}">
+              <button class="btn-sec" type="submit" style="font-size:12px;padding:8px 12px;color:var(--red)">Disconnect</button>
+            </form>
+            {% else %}
+            <span class="badge" style="background:rgba(100,116,139,.12);color:var(--muted)">Disconnected</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--border);border-radius:8px">No calendar accounts connected yet.</div>
+      {% endif %}
+    </section>
+  </div>
+
+  <div style="display:grid;grid-template-columns:minmax(280px,360px) 1fr;gap:20px;align-items:start;margin-top:20px">
+    <section class="card">
+      <div style="font-weight:800;font-size:16px;margin-bottom:6px;color:var(--primary)">Import Calendar Events</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:18px">Upload or paste an `.ics` export from Google, Outlook, Apple, or a school calendar.</div>
+      <form method="POST" action="{{ url_for('calendar.import_ics') }}" enctype="multipart/form-data">
+        <div style="margin-bottom:14px">
+          <label class="field-label" for="import-account">Calendar Account</label>
+          <select class="field-input" id="import-account" name="account_id" required>
+            {% for account in accounts if account.is_active %}
+            <option value="{{ account.id }}">{{ account.display_name or account.account_email }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="field-label" for="ics-file">ICS File</label>
+          <input class="field-input" id="ics-file" name="ics_file" type="file" accept=".ics,text/calendar">
+        </div>
+        <div style="margin-bottom:16px">
+          <label class="field-label" for="ics-text">Paste ICS Text</label>
+          <textarea class="field-input" id="ics-text" name="ics_text" rows="6" placeholder="BEGIN:VCALENDAR..." style="resize:vertical;font-family:monospace;font-size:12px"></textarea>
+        </div>
+        <button class="btn-primary" type="submit">Import Events</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px">
+        <div>
+          <div style="font-weight:800;font-size:16px;color:var(--primary)">Conflict Review</div>
+          <div style="font-size:12px;color:var(--muted)">Imported events are compared with dated meetups.</div>
+        </div>
+        <span class="badge" style="background:{% if conflicts %}rgba(220,38,38,.1){% else %}rgba(5,150,105,.12){% endif %};color:{% if conflicts %}var(--red){% else %}var(--green){% endif %}">{{ conflicts|length }} conflict{{ '' if conflicts|length == 1 else 's' }}</span>
+      </div>
+
+      {% if conflicts %}
+      <div style="display:grid;gap:10px">
+        {% for conflict in conflicts %}
+        <div style="border-left:4px solid var(--red);background:rgba(220,38,38,.06);padding:12px;border-radius:8px">
+          <div style="font-weight:700;font-size:14px">{{ conflict.meetup_title }} overlaps {{ conflict.event_title }}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">{{ conflict.event_start }} - {{ conflict.event_end }}{% if conflict.account_email %} &middot; {{ conflict.account_email }}{% endif %}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--border);border-radius:8px">No imported calendar conflicts detected.</div>
+      {% endif %}
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px">
+      <div>
+        <div style="font-weight:800;font-size:16px;color:var(--primary)">Imported Events</div>
+        <div style="font-size:12px;color:var(--muted)">Imported events stay local to your Bhetamla account.</div>
+      </div>
+      <a class="btn-sec" href="{{ url_for('calendar.export_ics') }}" style="text-decoration:none;font-size:12px;padding:8px 14px">Download Meetup Calendar</a>
+    </div>
+
+    {% if imported_events %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+      {% for event in imported_events %}
+      <div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--input-bg)">
+        <div style="font-weight:700;font-size:14px;margin-bottom:4px">{{ event.title }}</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.5">{{ event.starts_at }} - {{ event.ends_at }}</div>
+        {% if event.location %}<div style="font-size:12px;color:var(--muted);margin-top:4px">{{ event.location }}</div>{% endif %}
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px">
+          <span class="badge" style="background:rgba(37,99,235,.1);color:var(--blue)">{{ event.account_email }}</span>
+          <form method="POST" action="{{ url_for('calendar.remove_event', event_id=event.id) }}">
+            <button class="btn-sec" type="submit" style="font-size:12px;padding:7px 10px;color:var(--red)">Remove</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--border);border-radius:8px">No events imported yet.</div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

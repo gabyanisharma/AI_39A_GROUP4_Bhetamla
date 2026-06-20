@@ -102,6 +102,7 @@ def gallery_page_view():
     return gallery_page()
 
 
+
 @meetup_bp.route('/groups/hide/<int:meetup_id>', methods=['POST'])
 @login_required
 def remove_from_groups(meetup_id):
@@ -156,6 +157,7 @@ def gallery_comments_route(photo_id):
     return gallery_comments_list(photo_id)
 
 
+
 @meetup_bp.route('/gallery/<int:photo_id>/comment', methods=['POST'])
 @login_required
 def gallery_comment_route(photo_id):
@@ -190,6 +192,7 @@ def leave_meetup_chat_route(meetup_id):
 @login_required
 def join_via_invite(code):
     return join_via_invite_ctrl(code)
+
 
 
 @meetup_bp.route('/chat/<int:group_id>/messages')
