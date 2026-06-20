@@ -1,7 +1,8 @@
 from flask import Blueprint
 from app.controllers.auth_controller import (
     register, login, logout,
-    verify_email, forgot_password, reset_password
+    verify_email, forgot_password, reset_password,
+    google_login, google_callback
 )
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -12,3 +13,5 @@ auth_bp.add_url_rule('/logout',          'logout',          logout)
 auth_bp.add_url_rule('/verify/<token>',  'verify_email',    verify_email)
 auth_bp.add_url_rule('/forgot-password', 'forgot_password', forgot_password, methods=['GET', 'POST'])
 auth_bp.add_url_rule('/reset/<token>',   'reset_password',  reset_password,  methods=['GET', 'POST'])
+auth_bp.add_url_rule('/login/google',    'google_login',    google_login)
+auth_bp.add_url_rule('/callback/google', 'google_callback', google_callback)

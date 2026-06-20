@@ -135,6 +135,34 @@ class User:
         """
         return execute_query(query, (password_hash, user_id))
 
+    @classmethod
+    def get_or_create_oauth(cls, email, full_name):
+        """Story 1.4: resolve a user for an OAuth (e.g. Google) login.
+
+        If a user with this email already exists they are returned and logged
+        in. Otherwise a new, already-verified account is created with a random
+        unusable password (the user authenticates via the provider, not a
+        local password). Returns the user row.
+        """
+        existing = cls.get_by_email(email)
+        if existing:
+            # Ensure OAuth-verified emails can log in even if they had never
+            # completed local email verification.
+            if not existing['is_verified']:
+                cls.verify_email(existing['id'])
+                existing = cls.get_by_id(existing['id'])
+            return existing
+
+        random_password = secrets.token_urlsafe(32)
+        password_hash = generate_password_hash(random_password)
+        query = """
+            INSERT INTO users (full_name, email, phone, password_hash, is_verified)
+            VALUES (%s, %s, %s, %s, TRUE)
+        """
+        user_id = execute_query(query, (full_name or email.split('@')[0],
+                                        email, '', password_hash))
+        return cls.get_by_id(user_id) if user_id else None
+
     @staticmethod
     def check_password(stored_hash, password):
         return check_password_hash(stored_hash, password)

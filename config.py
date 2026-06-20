@@ -20,3 +20,14 @@ class Config:
     MAIL_USERNAME       = os.getenv('MAIL_USERNAME')
     MAIL_PASSWORD       = os.getenv('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_USERNAME')
+
+    # ─── Google OAuth (Story 1.4) ──────────────────────────────────────────
+    # Create credentials at https://console.cloud.google.com/apis/credentials
+    # and set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET in your .env. The
+    # "Continue with Google" button only appears when both are configured.
+    GOOGLE_CLIENT_ID     = os.getenv('GOOGLE_CLIENT_ID')
+    GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+
+    @classmethod
+    def google_oauth_enabled(cls):
+        return bool(cls.GOOGLE_CLIENT_ID and cls.GOOGLE_CLIENT_SECRET)

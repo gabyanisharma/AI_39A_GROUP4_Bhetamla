@@ -9,12 +9,35 @@ from app.database import initialize_db
 mail = Mail()
 socketio = SocketIO(cors_allowed_origins='*', async_mode='threading')
 
+# Authlib OAuth registry. Providers are registered lazily in create_app() only
+# when their credentials are configured, so the app runs fine without them.
+oauth = None
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     app.secret_key = getattr(Config, 'SECRET_KEY', 'bhetamla_secret_key_123')
 
     mail.init_app(app)
+
+    # ─── Google OAuth (Story 1.4) ──────────────────────────────────────────
+    # Register the Google provider only when credentials are present so the
+    # rest of the app is unaffected when OAuth is not configured.
+    if Config.google_oauth_enabled():
+        global oauth
+        from authlib.integrations.flask_client import OAuth
+        oauth = OAuth(app)
+        oauth.register(
+            name='google',
+            client_id=Config.GOOGLE_CLIENT_ID,
+            client_secret=Config.GOOGLE_CLIENT_SECRET,
+            server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+            client_kwargs={'scope': 'openid email profile'},
+        )
+
+    @app.context_processor
+    def inject_oauth_flags():
+        return dict(google_oauth_enabled=Config.google_oauth_enabled())
 
     @app.context_processor
     def inject_translations():
