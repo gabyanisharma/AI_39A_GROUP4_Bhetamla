@@ -62,3 +62,28 @@ def save_offer_route(offer_id):
 def toggle_reminder_route(offer_id):
     from app.controllers.place_controller import toggle_offer_reminder
     return toggle_offer_reminder(offer_id)
+
+@place_bp.route('/api/cuisines')
+@login_required
+def api_cuisines_route():
+    return api_cuisines()
+
+@place_bp.route('/api/budget-range')
+@login_required
+def api_budget_range_route():
+    return api_budget_range()
+
+@place_bp.route('/api/ambiences')
+@login_required
+def api_ambiences_route():
+    return api_ambiences()
+
+@place_bp.route('/api/offers')
+@login_required
+def api_offers_route():
+    return api_offers()
+
+@place_bp.route('/api/nearby')
+@login_required
+def api_nearby_route():
+    return api_nearby_restaurants()

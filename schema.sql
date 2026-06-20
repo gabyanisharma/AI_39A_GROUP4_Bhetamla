@@ -558,6 +558,8 @@ CREATE TABLE IF NOT EXISTS ride_estimates (
     pathao_car_cost  DECIMAL(10,2),
     taxi_cost        DECIMAL(10,2),
     walk_minutes     INT,
+    bike_minutes     INT,
+    car_minutes      INT,
 
     is_peak_hour BOOLEAN DEFAULT FALSE,
 

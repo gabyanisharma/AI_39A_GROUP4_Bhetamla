@@ -105,7 +105,13 @@
       body: JSON.stringify({ option_id: optionId })
     });
     const data = await res.json();
-    if (data.success) refreshVotePanel();
+    if (data.success) {
+      refreshVotePanel();
+    } else if (typeof showToast === 'function') {
+      showToast(data.message || 'Could not cast vote.');
+    } else {
+      alert(data.message || 'Could not cast vote.');
+    }
   }
 
   window.recordBudgetSplit = async function () {

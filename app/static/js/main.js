@@ -1,4 +1,3 @@
-let currentLang = 'en';
 let currentTheme = 'light';
 let userVote = null;
 const votes = {1:11,2:6,3:3};
@@ -71,7 +70,6 @@ function setTheme(t){
   try { localStorage.setItem(THEME_KEY, t); } catch(e) {}
 }
 function toggleTheme(){setTheme(currentTheme==='light'?'dark':'light');}
-
 // On load: use the saved choice, else follow the OS (auto mode). Auto mode is
 // not persisted, so it keeps tracking the system until the user picks one.
 (function initTheme(){
@@ -101,8 +99,7 @@ function applyLang(lang){
   if(lbl)lbl.textContent=lang==='ne'?'नेपाली':'English';
   showToast(lang==='ne'?'नेपाली भाषामा परिवर्तन गरियो':'Switched to English');
 }
-function toggleLang(){applyLang(currentLang==='en'?'ne':'en');}
- 
+function toggleLang(){applyLang(currentLang==='en'?'ne':'en');}\r\n 
 function selectVenue(n){
   var all = document.querySelectorAll('#nearby-dynamic-list .venue-row, #modal-nearby-restaurants .venue-row');
   all.forEach(function(v, i){
@@ -778,15 +775,15 @@ document.addEventListener('click', function(e){
 //  SERIAL PLANNER — clean rewrite
 // ═══════════════════════════════════════
 var STEPS = [
+
   { id:'modal-midpoint',           label:'Midpoint Meeting Calculator'     },
-  { id:'modal-nearby-restaurants', label:'Nearby Restaurant Recommendations'},
-  { id:'modal-restaurant-offers',  label:'Restaurant Offers Check'          },
   { id:'modal-cuisine-preference', label:'Cuisine Preference Selection'     },
+  { id:'modal-nearby-restaurants', label:'Nearby Restaurant Recommendations'},
   { id:'modal-budget-filter',      label:'Budget-Based Restaurant Filter'   },
-  { id:'modal-ambience-filter',    label:'Ambience-Based Restaurant Filter' },
+  { id:'modal-restaurant-offers',  label:'Restaurant Offers Check'          }, 
+  { id:'modal-walking-distance',   label:'Walking Distance Calculator'      }, 
+  { id:'modal-ride-cost',          label:'Ride Cost Estimation'             }, 
   { id:'modal-budget-split',       label:'Dynamic Budget Split'             },
-  { id:'modal-ride-cost',          label:'Ride Cost Estimation'             },
-  { id:'modal-walking-distance',   label:'Walking Distance Calculator'      },
   { id:'modal-multistop-route',    label:'Multi-Stop Route Planning'        }
 ];
 var stepIdx = -1; // -1 = not started
@@ -795,10 +792,21 @@ var stepIdx = -1; // -1 = not started
 function _rawOpen(id){
   var el = document.getElementById(id);
   if(el) el.classList.add('open');
-  if(id === 'modal-nearby-restaurants' && typeof window.loadNearbyRestaurants === 'function'){
-    window.loadNearbyRestaurants();
+  if(id === 'modal-nearby-restaurants' && typeof window.refreshMidpointRestaurants === 'function'){
+    window.refreshMidpointRestaurants();
+  }
+  if(id === 'modal-restaurant-offers' && typeof window.renderFeaturedRestaurantOffers === 'function'){
+    window.renderFeaturedRestaurantOffers();
+  }
+  if(id === 'modal-budget-split' && typeof window.loadBudgetSplit === 'function'){
+    window.loadBudgetSplit();
+  }
+  if(id === 'modal-multistop-route' && typeof window.loadMultiStopRoute === 'function'){
+    window.loadMultiStopRoute();
   }
 }
+
+
 function _rawClose(id){
   var el = document.getElementById(id);
   if(el) el.classList.remove('open');
@@ -919,26 +927,37 @@ function resetSerialPlan(){
   if(titleEl) titleEl.value = '';
   if(descEl) descEl.value = '';
 }
-
-/* ── override closeFeatModal so the × button also advances serial ── */
+/* ── EXIT TO MAP ── closes any open popup and returns to the map view,
+   without sending the user back to the create-meetup form ── */
+function exitSerialToMap(){
+  stepIdx = -1;
+  // Close all serial modals
+  document.querySelectorAll('.feat-modal-overlay.open,.modal-overlay.open').forEach(function(m){ m.classList.remove('open'); });
+  // Reset sidebar cards back to the "start" card (so re-opening starts fresh)
+  var startCard = document.getElementById('plan-start-card');
+  var activeCard = document.getElementById('plan-active-card');
+  var doneCard = document.getElementById('plan-done-card');
+  if(startCard) startCard.style.display = 'flex';
+  if(activeCard) activeCard.style.display = 'none';
+  if(doneCard) doneCard.style.display = 'none';
+  // Stay on the map — do NOT touch plan-phase-create / plan-phase-advanced
+}
+/* ── × button always closes and exits back to the map; it never advances the serial flow ── */
 var _baseFeatClose = closeFeatModal;
 closeFeatModal = function(id){
-  // if serial is running and this is the current step's modal → advance
+  // If a serial flow is running, exit it entirely so the user lands back on the map.
   if(stepIdx >= 0 && stepIdx < STEPS.length && STEPS[stepIdx].id === id){
-    serialNext(id);
-  } else {
-    _baseFeatClose(id);
+    exitSerialToMap();
   }
+  _baseFeatClose(id);
 };
-/* ── also override closeModal for regular modals in serial ── */
+/* ── × button always closes and exits the serial flow if one is active ── */
 var _baseModalClose = closeModal;
 closeModal = function(id){
   if(stepIdx >= 0 && stepIdx < STEPS.length && STEPS[stepIdx].id === id){
-    // serial advances via the primary button; just close here
-    _baseModalClose(id);
-  } else {
-    _baseModalClose(id);
+    exitSerialToMap();
   }
+  _baseModalClose(id);
 };
 
 /* ── init step list on load ── */

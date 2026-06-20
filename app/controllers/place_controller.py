@@ -89,6 +89,7 @@ def plan_meetup(created_meetup_id=None):
                     if member.get('latitude') is None or member.get('longitude') is None:
                         continue
                     created_map_points.append({
+                        'user_id': member.get('user_id'),
                         'name': member.get('full_name') or 'Member',
                         'lat': float(member['latitude']),
                         'lng': float(member['longitude']),
@@ -170,9 +171,9 @@ def create_meetup():
         meetup_id  = Meetup.create(title, description, user_id,
                                    meetup_date, meetup_time)
 
-        # Add creator as member with their location
+        # Add creator as member with their location — creator is auto-accepted
         MeetupMember.add(meetup_id, user_id,
-                         user_lat, user_lng, user_address)
+                         user_lat, user_lng, user_address, status='accepted')
 
         # Invite friends
         for friend_id in invite_ids:
@@ -184,7 +185,7 @@ def create_meetup():
                 'Meetup Invitation',
                 f'{current_user["full_name"]} invited you to "{title}"!',
                 type='meetup',
-                link=f'/meetup/plan?meetup_id={meetup_id}'
+                link=f'/meetup/view/{meetup_id}'
             )
 
         flash('Meetup created successfully!', 'success')
@@ -221,6 +222,11 @@ def view_meetup(meetup_id):
 
     # Get member locations for midpoint display
     locations = MeetupMember.get_locations(meetup_id)
+    for loc in locations:
+        if loc.get('latitude') is not None:
+            loc['latitude'] = float(loc['latitude'])
+        if loc.get('longitude') is not None:
+            loc['longitude'] = float(loc['longitude'])
 
     # Recalculate midpoint if locations available
     midpoint_lat = midpoint_lng = None
@@ -243,6 +249,12 @@ def view_meetup(meetup_id):
                            members=members,
                            suggestions=suggestions,
                            locations=locations,
+                           map_points=[{
+                               'full_name': loc.get('full_name'),
+                               'latitude': loc.get('latitude'),
+                               'longitude': loc.get('longitude'),
+                               'distance_to_mid': loc.get('distance_to_mid'),
+                           } for loc in locations],
                            midpoint_lat=midpoint_lat,
                            midpoint_lng=midpoint_lng,
                            route_waypoints=saved_route['waypoints'] if saved_route else [],
@@ -1012,7 +1024,7 @@ def api_offers():
     rows = execute_query(
         """
         SELECT o.*, r.name as restaurant_name, r.address as restaurant_address,
-               r.latitude, r.longitude, r.cuisine, r.rating
+               r.latitude, r.longitude, r.cuisine, r.rating, r.avg_cost_per_person
         FROM restaurant_offers o
         JOIN restaurants r ON o.restaurant_id = r.id
         WHERE o.is_active = TRUE AND o.valid_until >= CURDATE()
@@ -1033,6 +1045,9 @@ def api_offers():
             'valid_until': str(r['valid_until']) if r['valid_until'] else None,
             'cuisine': r['cuisine'] or '',
             'rating': float(r['rating'] or 0),
+            'latitude': float(r['latitude']) if r.get('latitude') else None,
+            'longitude': float(r['longitude']) if r.get('longitude') else None,
+            'avg_cost_per_person': float(r['avg_cost_per_person'] or 0) if r.get('avg_cost_per_person') else 0,
         })
     return jsonify({'success': True, 'offers': offers})
 

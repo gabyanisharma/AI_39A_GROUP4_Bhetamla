@@ -168,9 +168,9 @@
 <script>
 window.GROUPS_CONFIG = {
   currentUserId: {{ current_user_id }},
-  chatGroupId: {{ chat_groups[0].id if chat_groups else 'null' }},
-  chatTitle: {{ (chat_groups[0].name if chat_groups else 'Group Chat')|tojson }},
-  profileUploadBase: {{ url_for('static', filename='uploads/profiles/')|tojson }},
+  chatGroupId: {{ active_chat_group.id if active_chat_group is defined and active_chat_group else 'null' }},
+  chatTitle: {{ (active_chat_group.name if active_chat_group else 'Group Chat')|tojson }},
+  profileUploadBase: "{{ url_for('static', filename='uploads/profiles/') }}",
   meetups: [
     {% for m in meetups %}
     { id: {{ m.id }}, title: {{ m.title|tojson }}, isOrganiser: {{ 'true' if m.created_by == current_user_id else 'false' }} }{% if not loop.last %},{% endif %}
