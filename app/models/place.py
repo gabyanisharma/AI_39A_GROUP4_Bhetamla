@@ -33,16 +33,37 @@ class Restaurant:
         filters = filters or {}
 
         if filters.get('cuisine'):
-            query += " AND cuisine = %s"
-            params.append(filters['cuisine'])
+            cuisines = filters['cuisine']
+            if not isinstance(cuisines, (list, tuple, set)):
+                cuisines = [cuisines]
+            cuisine_clauses = []
+            for cuisine in cuisines:
+                cuisine = str(cuisine).strip()
+                if not cuisine:
+                    continue
+                cuisine_clauses.append("(LOWER(cuisine) LIKE %s OR LOWER(category) LIKE %s)")
+                like = f"%{cuisine.lower()}%"
+                params.extend([like, like])
+            if cuisine_clauses:
+                query += " AND (" + " OR ".join(cuisine_clauses) + ")"
 
         if filters.get('price_range'):
             query += " AND price_range = %s"
             params.append(filters['price_range'])
 
         if filters.get('ambience'):
-            query += " AND ambience = %s"
-            params.append(filters['ambience'])
+            ambiences = filters['ambience']
+            if not isinstance(ambiences, (list, tuple, set)):
+                ambiences = [ambiences]
+            ambience_clauses = []
+            for ambience in ambiences:
+                ambience = str(ambience).strip()
+                if not ambience:
+                    continue
+                ambience_clauses.append("LOWER(ambience) LIKE %s")
+                params.append(f"%{ambience.lower()}%")
+            if ambience_clauses:
+                query += " AND (" + " OR ".join(ambience_clauses) + ")"
 
         if filters.get('min_rating'):
             query += " AND rating >= %s"

@@ -61,6 +61,7 @@ def register_socket_events(socketio):
             'group_id': group_id,
             'user_id': user_id,
             'full_name': msg['full_name'],
+            'profile_pic': msg.get('profile_pic'),
             'body': body,
             'created_at': msg['created_at'].isoformat() if msg.get('created_at') else None,
             'read_by': [],

@@ -184,6 +184,8 @@ def _repair_existing_schema(cursor):
                    "winning_restaurant_id INT NULL")
     _ensure_column(cursor, 'meetups', 'winning_venue_name',
                    "winning_venue_name VARCHAR(255) NULL")
+    _ensure_column(cursor, 'user_saved_offers', 'notified',
+                   "notified TINYINT(1) NOT NULL DEFAULT 0")
 
 
 def _ensure_group_features_schema(cursor):
@@ -354,20 +356,6 @@ def _ensure_group_features_schema(cursor):
     except Exception:
         pass
 
-    # Link a friend_group to a meetup so every accepted member shares one
-    # chat room (fixes per-user-group message split). Nullable keeps the
-    # legacy friends-circle groups working.
-    try:
-        cursor.execute("ALTER TABLE friend_groups ADD COLUMN meetup_id INT NULL")
-    except Exception:
-        pass
-    try:
-        cursor.execute(
-            "ALTER TABLE friend_groups ADD UNIQUE KEY unique_meetup_group (meetup_id)"
-        )
-    except Exception:
-        pass
-
 
 ACHIEVEMENTS_SEED = [
     ('first_contact', 'First Contact',
@@ -486,35 +474,41 @@ def _seed_demo_data(cursor):
 
 def _seed_trending_spots(cursor):
     """Seed curated spots for the Explore feed of trending meetup spots."""
-    # name, description, address, lat, lng, category, cuisine, ambience,
-    # price_range, avg_cost, rating, review_count, trend_score, is_featured
+    # Updated structure: added thumbnail_url and image_url at the end of each tuple
     spots = [
         ('The Old House', 'Riverside lounge with live music and a relaxed deck — a weekend favourite.',
          'Jhamsikhel, Lalitpur', 27.6745, 85.3120, 'Lounge', 'Continental', 'lively',
-         'expensive', 1800, 4.7, 240, 92.5, True),
+         'expensive', 1800, 4.7, 240, 92.5, True, 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAHu8fHIhqb55609GUE-BsrQRfd638DKWpWU_0VIqrcN2858XtfzdwI56HaIbxEKIt3XzqBBw99xZNUW10vjFl85FvrTCbpmC8r2aQbJzLxPRLJa8uSJxglnulONZg21p1bb8mijYKpXthXi=w408-h612-k-no', 'https://link-to-your-large-image.jpg'),
+         
         ('Cafe Soma', 'Garden cafe tucked in Patan, great for long catch-ups over coffee.',
          'Pulchowk, Lalitpur', 27.6790, 85.3170, 'Cafe', 'Cafe', 'cozy',
-         'mid', 700, 4.6, 188, 81.0, True),
+         'mid', 700, 4.6, 188, 81.0, True, 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAFWul88CltKO0LNQvjeEUkIRWS2HQIFXXxETQ6VyCD2lRrxPDX9qZFdG_PcXuxVAPQ1I4duFiDPZyPrAj_GsmI3NajSFt6YYEzFeJQuMA8B4ohvhSeAuruGuOimg2suPOmsStPT=w408-h306-k-no', 'https://link-to-your-large-image.jpg'),
+         
         ('Trisara', 'Open-air Newari courtyard restaurant buzzing on weekend evenings.',
          'Lazimpat, Kathmandu', 27.7220, 85.3210, 'Restaurant', 'Nepali', 'lively',
-         'mid', 1300, 4.5, 165, 76.0, True),
+         'mid', 1300, 4.5, 165, 76.0, True, 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAFODU5YtglcmcKqdMdWGbHXUdgu83A0bAVO5dVnZLfmjHoLu45aAOMECHLe4sRQSF6V4D3xn0fMiXtuhorZoAcyOGe6LO3q8M1hzA0A4Nf2BQjvhmEx6pEA0PWcYjhxUZGdQT_0Dp2vuOY=w408-h306-k-no', 'https://link-to-your-large-image.jpg'),
+         
         ('Places Restaurant & Bar', 'Rooftop spot with skyline views popular for group hangouts.',
          'Thamel, Kathmandu', 27.7160, 85.3110, 'Restaurant', 'Continental', 'lively',
-         'mid', 1100, 4.4, 142, 70.0, False),
+         'mid', 1100, 4.4, 142, 70.0, False, 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAFaWzhjNqvysUQBiT7y0A7KvnMT_l9IJfawTWECjbchj6P7JuCk0I-7G_Ka_-sQEKY55Ua4AcVlqS0hP06-mzfzH8CH5ZVOwp72VYGQswVwubuRv_x4Xaohx7tTCKdMrYD4UZDZ=w408-h306-k-no', 'https://link-to-your-large-image.jpg'),
+         
         ('Karma Coffee', 'Specialty coffee roaster — quiet, laptop-friendly mornings.',
          'Jhamsikhel, Lalitpur', 27.6758, 85.3142, 'Cafe', 'Cafe', 'quiet',
-         'budget', 450, 4.5, 121, 64.0, False),
+         'budget', 450, 4.5, 121, 64.0, False, 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGU3HxUyIZS4O7PjbbyMVGEiW9ezmc7_JWyuROgPhSqTXKnkCt195gaxnY3hJrhN866VzclDONeoTCeVdbwke0Od_ItkKrcv9bbhFWyV8ETaF5k3VtTSev2MGZ8qRxyGFcXi8D3QA=w408-h305-k-no', 'https://link-to-your-large-image.jpg'),
+         
         ('Or2K Rooftop', 'Cushioned rooftop seating, vegetarian mezze, and a chill crowd.',
          'Mandala Street, Thamel', 27.7152, 85.3119, 'Restaurant', 'Mediterranean', 'cozy',
-         'mid', 950, 4.3, 207, 58.0, False),
+         'mid', 950, 4.3, 207, 58.0, False, 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEtE8_2E175kqPs8uLDtt11pblxc8OLiygAwJYtrQmv6EGEu_hfhBnIriZXAu9Q3WLqQ4lLcMxvfuMkByGW8XcRBuzQAaEW3XgXrSsPLnVDz5E47KXaLJsB6DaR8styUNY5-A4sVg=w408-h544-k-no', 'https://link-to-your-large-image.jpg'),
+         
         ('Le Sherpa', 'Farm-to-table garden venue, weekend farmers market draws crowds.',
          'Maharajgunj, Kathmandu', 27.7380, 85.3290, 'Restaurant', 'Continental', 'cozy',
-         'expensive', 2000, 4.6, 134, 55.0, False),
+         'expensive', 2000, 4.6, 134, 55.0, False, 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEdxpg--l_2M9g76nR03Swhc-TV5dDbhDkhJan74I0d7qNyw48s4aVuG8RnLnjxO12ypPY5l8QJ0expnpRfBmv2Vf_vd9kvmMzy4ciHKnrekgxph6ojW9LhSVxnr9GlwkU_j2T9=w408-h272-k-no', 'https://link-to-your-large-image.jpg'),
+         
         ('Himalayan Java Durbar Marg', 'Flagship cafe, central meeting point in the heart of the city.',
          'Durbar Marg, Kathmandu', 27.7110, 85.3180, 'Cafe', 'Coffee', 'lively',
-         'mid', 650, 4.4, 312, 51.0, False),
+         'mid', 650, 4.4, 312, 51.0, False, 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSHMQnicvuyj8xjtnebiJnGnVq-bBsP2WvAeFJ_EfeP1Mb92GLfReSMXLo&s=10', 'https://link-to-your-large-image.jpg'),
     ]
-
+ 
     for row in spots:
         cursor.execute("SELECT id FROM trending_spots WHERE name = %s LIMIT 1", (row[0],))
         existing = cursor.fetchone()
@@ -525,7 +519,7 @@ def _seed_trending_spots(cursor):
                 SET description = %s, address = %s, latitude = %s, longitude = %s,
                     category = %s, cuisine = %s, ambience = %s, price_range = %s,
                     avg_cost_per_person = %s, rating = %s, review_count = %s,
-                    trend_score = %s, is_featured = %s, is_active = TRUE
+                    trend_score = %s, is_featured = %s, thumbnail_url = %s, image_url = %s, is_active = TRUE
                 WHERE id = %s
                 """,
                 (*row[1:], existing['id'])
@@ -536,8 +530,8 @@ def _seed_trending_spots(cursor):
                 INSERT INTO trending_spots
                     (name, description, address, latitude, longitude, category,
                      cuisine, ambience, price_range, avg_cost_per_person, rating,
-                     review_count, trend_score, is_featured, is_active)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
+                     review_count, trend_score, is_featured, thumbnail_url, image_url, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
                 """,
                 row
             )
