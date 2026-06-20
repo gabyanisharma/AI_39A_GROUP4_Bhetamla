@@ -159,7 +159,41 @@ class Restaurant:
             ORDER BY cuisine
         """
         results = execute_query(query, fetch=True)
-        return [row['cuisine'] for row in results] if results else []
+        raw = [row['cuisine'] for row in results] if results else []
+        return Restaurant._normalize_cuisine_groups(raw)
+
+    # Maps the messy, free-text "cuisine" values in the restaurants table
+    # down to a short list of broad categories suitable for a quick-pick UI.
+    _CUISINE_GROUP_RULES = [
+        ('Nepali',             ['nepali', 'newari', 'thakali']),
+        ('Indian',             ['indian']),
+        ('Asian',              ['asian', 'chinese', 'japanese', 'thai', 'sushi', 'korean']),
+        ('Coffee & Cafe',      ['coffee', 'cafe', 'craft coffee']),
+        ('Bakery & Desserts',  ['bakery', 'dessert', 'pastry']),
+        ('Continental',        ['continental', 'french', 'italian', 'mediterranean']),
+        ('Fast Food',          ['fast food', 'burger', 'fried chicken', 'grilled chicken', 'bbq']),
+        ('Vegetarian & Vegan', ['vegetarian', 'vegan']),
+        ('Bar & Cocktails',    ['bar', 'cocktail', 'tapas']),
+        ('Comfort Food',       ['comfort food', 'breakfast', 'brunch']),
+    ]
+
+    @staticmethod
+    def _normalize_cuisine_groups(raw_values):
+        seen = []
+        for value in raw_values:
+            lower = (value or '').lower()
+            matched = None
+            for group_name, keywords in Restaurant._CUISINE_GROUP_RULES:
+                if any(kw in lower for kw in keywords):
+                    matched = group_name
+                    break
+            if not matched:
+                # Anything that doesn't match a known group keeps its
+                # original label rather than being silently dropped.
+                matched = value
+            if matched not in seen:
+                seen.append(matched)
+        return sorted(seen)
 
     @staticmethod
     def update_rating(restaurant_id):

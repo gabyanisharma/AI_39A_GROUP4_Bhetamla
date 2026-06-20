@@ -1,34 +1,66 @@
 // plan-dynamic.js — Dynamic data loading for the serial planner modals
-// This makes the planner modals fetch real data from the backend instead of showing static content.
+// Fixed: correct container IDs, auto-calculate ride estimates, real cuisine/nearby data.
 
 (function () {
   'use strict';
 
   const API = {
-    cuisines: '/place/api/cuisines',
-    budgetRange: '/place/api/budget-range',
-    ambiences: '/place/api/ambiences',
-    offers: '/place/api/offers',
-    nearby: '/place/api/nearby',
-    split: (meetupId) => `/ride/split/${meetupId}`,
-    calculate: (meetupId) => `/ride/calculate/${meetupId}`,
-    members: (meetupId) => `/meetup/${meetupId}/route`, // reusing route endpoint for member data
+    cuisines:   '/place/api/cuisines',
+    budgetRange:'/place/api/budget-range',
+    ambiences:  '/place/api/ambiences',
+    offers:     '/place/api/offers',
+    nearby:     '/place/api/nearby',
+    split:      (id) => `/ride/split/${id}`,
+    calculate:  (id) => `/ride/calculate/${id}`,
   };
 
   function getMeetupId() {
-    const ctx = window.PLAN_CONTEXT || {};
-    return ctx.meetupId || null;
+    return (window.PLAN_CONTEXT || {}).meetupId || null;
   }
 
   function getMidpoint() {
+    // Try PLAN_CONTEXT first, then read the live midpoint from the map
     const ctx = window.PLAN_CONTEXT || {};
-    return ctx.midpoint || null;
+    if (ctx.midpoint && ctx.midpoint.lat) return ctx.midpoint;
+    // Fall back to what calcMidpoint() stored on the context object
+    if (window._planMidpointCache) return window._planMidpointCache;
+    return null;
+  }
+
+  function getUserLocation() {
+    const ctx = window.PLAN_CONTEXT || {};
+    const myId = ctx.currentUserId;
+    const points = ctx.mapPoints || [];
+
+    // Find the point that belongs to the current logged-in user.
+    // mapPoints[0] is NOT reliably "me" — it's just whichever member's
+    // DB row came back first (usually the meetup creator), so every
+    // other member would otherwise see the creator's location.
+    if (myId != null) {
+      const mine = points.find(p => p.user_id === myId);
+      if (mine) return { lat: mine.lat, lng: mine.lng, address: mine.address || '' };
+    }
+
+    // Fallback: pm-lat/pm-lng inputs (set if the user shared their browser location this session)
+    const pmLat = document.getElementById('pm-lat');
+    const pmLng = document.getElementById('pm-lng');
+    if (pmLat && pmLng && pmLat.value && pmLng.value) {
+      const addrEl = document.getElementById('pm-addr');
+      return { lat: Number(pmLat.value), lng: Number(pmLng.value), address: addrEl ? addrEl.value : '' };
+    }
+
+    // Last resort: first available point (old behavior), only if nothing else matched
+    if (points.length > 0) {
+      const p = points[0];
+      return { lat: p.lat, lng: p.lng, address: p.address || '' };
+    }
+    return null;
   }
 
   // ── Generic fetch helper ───────────────────────────────────────────
-  async function fetchJSON(url) {
+  async function fetchJSON(url, opts) {
     try {
-      const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+      const res = await fetch(url, Object.assign({ headers: { 'X-Requested-With': 'XMLHttpRequest' } }, opts || {}));
       if (!res.ok) return null;
       return await res.json();
     } catch (e) {
@@ -37,98 +69,137 @@
     }
   }
 
+  // ── Auto-calculate ride estimate for current user ─────────────────
+  // Called before Walking Distance and Ride Cost modals open.
+  // Uses the user's stored location → meetup midpoint as the route.
+  async function ensureRideEstimate() {
+    const meetupId = getMeetupId();
+    if (!meetupId) return false;
+
+    // Check if estimate already exists
+    const existing = await fetchJSON(API.split(meetupId));
+    const myId = (window.PLAN_CONTEXT || {}).currentUserId || 0;
+    if (existing && existing.success && existing.data && existing.data.members) {
+      const alreadyHas = existing.data.members.some(m => m.user_id === myId);
+      if (alreadyHas) return true;
+    }
+
+    // Need to calculate — get user location and midpoint
+    const userLoc = getUserLocation();
+    const mid = getMidpoint();
+    if (!userLoc || !mid) return false;
+
+    const result = await fetchJSON(API.calculate(meetupId), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({
+        from_lat:     userLoc.lat,
+        from_lng:     userLoc.lng,
+        from_address: userLoc.address,
+        to_lat:       mid.lat,
+        to_lng:       mid.lng,
+        to_address:   mid.address || 'Midpoint',
+      }),
+    });
+    return !!(result && result.success);
+  }
+
   // ── Modal 1: Midpoint Calculator ─────────────────────────────────
-  // Already handled by real calcMidpoint in plan.html
+  // Handled by calcMidpoint() in plan.html — nothing to do here.
 
   // ── Modal 2: Restaurant Offers ────────────────────────────────────
+  // The modal HTML uses id="featured-restaurant-offers".
+  // plan.html's renderFeaturedRestaurantOffers() fills it from real DB data.
+  // This function is the fallback when that renderer isn't available.
   async function loadOffers() {
-    const container = document.getElementById('offers-dynamic-list');
+    if (typeof window.renderFeaturedRestaurantOffers === 'function') {
+      window.renderFeaturedRestaurantOffers();
+      return;
+    }
+    const container = document.getElementById('featured-restaurant-offers');
     if (!container) return;
     container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Loading offers…</div>';
 
     const data = await fetchJSON(API.offers);
     if (!data || !data.success || !data.offers || !data.offers.length) {
-      container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">No active offers found.</div>';
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">No active offers right now.</div>';
       return;
     }
-
     container.innerHTML = data.offers.map(o => `
-      <div class="restaurant-card" style="margin-bottom:10px;cursor:pointer;" onclick="selectOffer(this)">
+      <div class="restaurant-card" style="margin-bottom:10px;cursor:pointer;"
+           onclick="if(window.selectOfferRestaurant)selectOfferRestaurant(this);else this.style.borderColor='var(--green)'"
+           data-offer-restaurant="${escapeHtml(o.restaurant_name)}">
         <div class="rest-emoji">${offerEmoji(o.cuisine)}</div>
         <div style="flex:1">
           <div class="rest-name">${escapeHtml(o.restaurant_name)}</div>
           <div class="rest-meta">${escapeHtml(o.title)}${o.discount_percent ? ' · ' + o.discount_percent + '% off' : ''}</div>
         </div>
         ${o.discount_percent ? `<span style="background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px">${o.discount_percent}% OFF</span>` : ''}
-      </div>
-    `).join('');
+      </div>`).join('');
   }
 
   function offerEmoji(cuisine) {
-    const map = { 'nepali': '🍛', 'italian': '🍕', 'cafe': '☕', 'continental': '🥗', 'chinese': '🥡', 'indian': '🍛', 'japanese': '🍣', 'thai': '🍜' };
+    const map = { nepali:'🍛', indian:'🍛', italian:'🍕', cafe:'☕', 'coffee & cafe':'☕',
+                  continental:'🥗', chinese:'🥡', japanese:'🍣', thai:'🍜',
+                  asian:'🥡', 'fast food':'🍔', 'bakery & desserts':'🧁',
+                  'vegetarian & vegan':'🌱' };
     return map[(cuisine || '').toLowerCase()] || '🍽️';
   }
 
-  window.selectOffer = function (el) {
-    document.querySelectorAll('#offers-dynamic-list .restaurant-card').forEach(c => c.style.borderColor = 'var(--border)');
-    el.style.borderColor = 'var(--green)';
-  };
-
   // ── Modal 3: Cuisine Preference ──────────────────────────────────
+  // Loads real cuisine categories from the restaurants table.
   async function loadCuisines() {
     const container = document.getElementById('cuisine-dynamic-chips');
     if (!container) return;
+    container.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px">Loading cuisines…</div>';
+
     const data = await fetchJSON(API.cuisines);
-    const chips = (data && data.success && data.cuisines && data.cuisines.length)
-      ? data.cuisines.map(c => `<div class="filter-chip" onclick="toggleChip(this)">${cuisineEmoji(c)} ${escapeHtml(c)}</div>`).join('')
-      : '<div style="font-size:12px;color:var(--muted)">No cuisine data available.</div>';
-    container.innerHTML = chips;
+    if (!data || !data.success || !data.cuisines || !data.cuisines.length) {
+      // Fallback to sensible Kathmandu defaults
+      container.innerHTML = ['🍛 Nepali','☕ Coffee & Cafe','🍕 Italian','🥗 Continental','🌱 Vegetarian & Vegan','🥡 Asian','🍔 Fast Food']
+        .map(c => `<div class="filter-chip" onclick="toggleChip(this)">${c}</div>`).join('');
+      return;
+    }
+    container.innerHTML = data.cuisines.map(c =>
+      `<div class="filter-chip" onclick="toggleChip(this)">${cuisineEmoji(c)} ${escapeHtml(c)}</div>`
+    ).join('');
   }
 
   function cuisineEmoji(c) {
-    const map = { 'nepali': '🍛', 'italian': '🍕', 'cafe': '☕', 'continental': '🥗', 'chinese': '🥡', 'indian': '🍛', 'japanese': '🍣', 'thai': '🍜', 'vegetarian': '🌱', 'mexican': '🌮' };
+    const map = { nepali:'🍛', indian:'🍛', italian:'🍕', cafe:'☕', 'coffee & cafe':'☕',
+                  continental:'🥗', chinese:'🥡', japanese:'🍣', thai:'🍜',
+                  asian:'🥡', 'fast food':'🍔', 'bakery & desserts':'🧁',
+                  'vegetarian & vegan':'🌱', vegetarian:'🌱', mexican:'🌮' };
     return map[(c || '').toLowerCase()] || '🍽️';
   }
 
   // ── Modal 4: Budget Filter ───────────────────────────────────────
+  // Loads real min/max cost from the restaurants table.
   async function loadBudgetRange() {
-    const slider = document.querySelector('#modal-budget-filter input[type=range]');
+    const slider  = document.querySelector('#modal-budget-filter input[type=range]');
     const display = document.getElementById('budget-display');
     if (!slider) return;
 
     const data = await fetchJSON(API.budgetRange);
     if (data && data.success) {
-      slider.min = Math.max(200, Math.floor(data.min / 100) * 100);
-      slider.max = Math.ceil(data.max / 100) * 100 || 5000;
-      slider.step = 100;
+      slider.min   = Math.max(200, Math.floor((data.min || 200) / 100) * 100);
+      slider.max   = Math.ceil((data.max  || 5000) / 100) * 100 || 5000;
+      slider.step  = 100;
+      slider.value = Math.min(1000, slider.max);
       if (display) display.textContent = 'NPR ' + parseInt(slider.value).toLocaleString();
     }
   }
 
-  // ── Modal 5: Ambience Filter ─────────────────────────────────────
-  async function loadAmbiences() {
-    const container = document.getElementById('ambience-dynamic-pills');
-    if (!container) return;
-    const data = await fetchJSON(API.ambiences);
-    const pills = (data && data.success && data.ambiences && data.ambiences.length)
-      ? data.ambiences.map(a => `
-        <div class="ambience-pill" onclick="toggleAmbience(this)">
-          <div class="ambience-pill-icon">${ambienceEmoji(a)}</div>
-          <div class="ambience-pill-label">${escapeHtml(a)}</div>
-        </div>`).join('')
-      : '<div style="font-size:12px;color:var(--muted)">No ambience data available.</div>';
-    container.innerHTML = pills;
-  }
-
-  function ambienceEmoji(a) {
-    const map = { 'cozy cafe': '☕', 'rooftop': '🌇', 'garden': '🌿', 'quiet': '📚', 'lively': '🎉', 'romantic': '💖', 'family': '👨‍👩‍👧‍👦', 'luxury': '✨' };
-    return map[(a || '').toLowerCase()] || '🏛️';
-  }
-
-  // ── Modal 6: Nearby Restaurants ─────────────────────────────────
+  // ── Modal 5: Nearby Restaurants ──────────────────────────────────
+  // Defers to plan.html's refreshMidpointRestaurants() which fills
+  // #nearby-restaurant-results using the live midpoint from the map.
   async function loadNearby() {
-    const container = document.getElementById('nearby-dynamic-list');
-    const subtitle = document.getElementById('nearby-dynamic-subtitle');
+    if (typeof window.refreshMidpointRestaurants === 'function') {
+      window.refreshMidpointRestaurants();
+      return;
+    }
+    // Fallback: call the API directly
+    const container = document.getElementById('nearby-restaurant-results');
     if (!container) return;
     container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Finding nearby spots…</div>';
 
@@ -136,36 +207,167 @@
     let url = API.nearby;
     if (mid && mid.lat && mid.lng) {
       url += `?lat=${mid.lat}&lng=${mid.lng}&radius=3.0`;
-      if (subtitle) subtitle.textContent = 'Top picks near ' + (mid.address || 'the midpoint') + '.';
+      const sub = document.querySelector('#modal-nearby-restaurants .feat-modal-sub');
+      if (sub) sub.textContent = 'Top picks near ' + (mid.address || 'the midpoint') + '.';
     }
 
     const data = await fetchJSON(url);
     if (!data || !data.success || !data.restaurants || !data.restaurants.length) {
-      container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">No restaurants found nearby. Try adjusting the midpoint.</div>';
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">No restaurants found nearby. Try adjusting the midpoint first.</div>';
       return;
     }
-
     container.innerHTML = data.restaurants.slice(0, 6).map((r, i) => `
-      <div class="venue-row ${i === 0 ? 'selected' : ''}" id="venue${i + 1}" onclick="selectVenueRow(this)">
+      <div class="venue-row ${i === 0 ? 'selected' : ''}"
+           data-restaurant-name="${escapeHtml(r.name)}"
+           data-lat="${r.latitude || ''}" data-lng="${r.longitude || ''}"
+           onclick="if(window.selectVenueRow)selectVenueRow(this)">
         <div class="venue-emoji">${offerEmoji(r.cuisine)}</div>
         <div style="flex:1">
           <div class="venue-name">${escapeHtml(r.name)}</div>
           <div class="venue-rating">⭐ ${r.rating || '—'}${r.distance_km ? ' · ' + r.distance_km + ' km' : ''}${r.avg_cost_per_person ? ' · NPR ' + Math.round(r.avg_cost_per_person) : ''}</div>
         </div>
-      </div>
-    `).join('');
+      </div>`).join('');
   }
 
-  window.selectVenueRow = function (el) {
-    document.querySelectorAll('#nearby-dynamic-list .venue-row').forEach(c => c.classList.remove('selected'));
-    el.classList.add('selected');
-  };
+  // ── Modal 6: Walking Distance ─────────────────────────────────────
+  // Auto-calculates ride estimate for current user if not yet done,
+  // then shows per-member walking time from their location to midpoint.
+  async function loadWalkingDistance() {
+    const container = document.getElementById('walking-dynamic-list');
+    if (!container) return;
+    const meetupId = getMeetupId();
 
-  // ── Modal 7: Dynamic Budget Split ────────────────────────────────
+    if (!meetupId) {
+      container.innerHTML = '<div style="font-size:12px;color:var(--muted)">Create a meetup first to see walking distances.</div>';
+      return;
+    }
+
+    container.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px">Calculating walking distances…</div>';
+
+    // Auto-calculate estimate for current user if missing
+    await ensureRideEstimate();
+
+    const data = await fetchJSON(API.split(meetupId));
+
+    if (!data || !data.success || !data.data || !data.data.members || !data.data.members.length) {
+      // Graceful fallback: compute from PLAN_CONTEXT map points if available
+      const ctx = window.PLAN_CONTEXT || {};
+      const mid = getMidpoint();
+      if (mid && ctx.mapPoints && ctx.mapPoints.length > 0) {
+        const WALK_SPEED = 4.5;
+        container.innerHTML = ctx.mapPoints.map(p => {
+          const dist = haversineKm(p.lat, p.lng, mid.lat, mid.lng);
+          const mins = Math.round((dist / WALK_SPEED) * 60);
+          const isWalkable = dist <= 1.5;
+          return walkRow(p.name || 'Member', dist, mins, isWalkable);
+        }).join('');
+        return;
+      }
+      container.innerHTML = '<div style="font-size:12px;color:var(--muted)">Could not load distances. Make sure your location is set.</div>';
+      return;
+    }
+
+    const WALK_SPEED = 4.5;
+    container.innerHTML = data.data.members.map(m => {
+      const dist = m.distance || 0;
+      const mins = m.walk_mins != null ? m.walk_mins : Math.round((dist / WALK_SPEED) * 60);
+      const isWalkable = dist <= 1.5 && mins <= 20;
+      return walkRow(m.name || 'Member', dist, mins, isWalkable);
+    }).join('');
+  }
+
+  function walkRow(name, dist, mins, isWalkable) {
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;
+                  background:${isWalkable ? 'var(--green-light)' : 'var(--input-bg)'};
+                  border-radius:10px;border:1.5px solid ${isWalkable ? 'rgba(46,125,50,.25)' : 'var(--border)'};margin-bottom:8px;">
+        <span style="font-size:20px">${isWalkable ? '🚶' : '🚗'}</span>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:13px">${escapeHtml(name)}</div>
+          <div style="font-size:12px;color:var(--muted)">${dist.toFixed(1)} km · ~${mins} min walk</div>
+        </div>
+        <span style="font-size:11px;font-weight:700;color:${isWalkable ? 'var(--green)' : 'var(--amber)'}">
+          ${isWalkable ? 'WALKABLE' : 'RIDE'}
+        </span>
+      </div>`;
+  }
+
+  // ── Modal 7: Ride Cost Estimation ─────────────────────────────────
+  // Auto-calculates estimate for current user if missing,
+  // then shows real Pathao Bike / Car / Taxi costs.
+  async function loadRideCost() {
+    const container = document.getElementById('ride-dynamic-list');
+    if (!container) return;
+    const meetupId = getMeetupId();
+
+    if (!meetupId) {
+      container.innerHTML = '<div style="font-size:12px;color:var(--muted)">Create a meetup first to estimate ride costs.</div>';
+      return;
+    }
+
+    container.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px">Calculating ride costs…</div>';
+
+    // Auto-calculate estimate for current user if missing
+    await ensureRideEstimate();
+
+    const data = await fetchJSON(API.split(meetupId));
+    const myId = (window.PLAN_CONTEXT || {}).currentUserId || 0;
+
+    if (!data || !data.success || !data.data || !data.data.members || !data.data.members.length) {
+      // Fallback: compute costs from PLAN_CONTEXT directly
+      const ctx = window.PLAN_CONTEXT || {};
+      const mid = getMidpoint();
+      const userLoc = getUserLocation();
+      if (mid && userLoc) {
+        const dist = haversineKm(userLoc.lat, userLoc.lng, mid.lat, mid.lng);
+        renderRideCards(container, { distance: dist, bike_cost: bikeCost(dist), car_cost: carCost(dist), taxi_cost: taxiCost(dist), bike_mins: Math.round(dist/22*60)||5, car_mins: Math.round(dist/16*60)||7, is_peak: false });
+        return;
+      }
+      container.innerHTML = ridePlaceholder();
+      return;
+    }
+
+    const myEst = data.data.members.find(m => m.user_id === myId) || data.data.members[0];
+    renderRideCards(container, myEst);
+  }
+
+  function renderRideCards(container, est) {
+    const bikeMins = est.bike_mins != null ? est.bike_mins : Math.round((est.distance || 2) / 22 * 60) || 5;
+    const carMins  = est.car_mins  != null ? est.car_mins  : Math.round((est.distance || 2) / 16 * 60) || 8;
+    const peak     = est.is_peak ? ' · 🔴 Peak' : '';
+    container.innerHTML = `
+      <div class="restaurant-card selected" data-ride-option="Pathao Bike" onclick="selectRideOption(this)">
+        <div class="rest-emoji">🛵</div>
+        <div style="flex:1"><div class="rest-name">Pathao Bike</div>
+          <div class="rest-meta">~${bikeMins} mins · NPR ${Math.round(est.bike_cost || 85)}${peak}</div></div>
+      </div>
+      <div class="restaurant-card" data-ride-option="Pathao Car" onclick="selectRideOption(this)">
+        <div class="rest-emoji">🚗</div>
+        <div style="flex:1"><div class="rest-name">Pathao Car</div>
+          <div class="rest-meta">~${carMins} mins · NPR ${Math.round(est.car_cost || 200)}${peak}</div></div>
+      </div>
+      <div class="restaurant-card" data-ride-option="Taxi" onclick="selectRideOption(this)">
+        <div class="rest-emoji">🚕</div>
+        <div style="flex:1"><div class="rest-name">Taxi</div>
+          <div class="rest-meta">Meter fare · NPR ${Math.round(est.taxi_cost || 220)}${peak}</div></div>
+      </div>`;
+  }
+
+  function ridePlaceholder() {
+    return `
+      <div class="restaurant-card selected" data-ride-option="Pathao Bike" onclick="selectRideOption(this)">
+        <div class="rest-emoji">🛵</div><div style="flex:1"><div class="rest-name">Pathao Bike</div><div class="rest-meta">Set your location to calculate</div></div>
+      </div>
+      <div class="restaurant-card" data-ride-option="Taxi" onclick="selectRideOption(this)">
+        <div class="rest-emoji">🚕</div><div style="flex:1"><div class="rest-name">Taxi</div><div class="rest-meta">Set your location to calculate</div></div>
+      </div>`;
+  }
+
+  // ── Modal 8: Dynamic Budget Split ────────────────────────────────
   async function loadBudgetSplit() {
     const container = document.getElementById('split-dynamic-members');
-    const summary = document.getElementById('split-dynamic-summary');
-    const meetupId = getMeetupId();
+    const summary   = document.getElementById('split-dynamic-summary');
+    const meetupId  = getMeetupId();
     if (!container) return;
 
     if (!meetupId) {
@@ -173,125 +375,158 @@
       return;
     }
 
-    container.innerHTML = '<div style="font-size:12px;color:var(--muted)">Loading split data…</div>';
+    container.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px">Loading members…</div>';
     const data = await fetchJSON(API.split(meetupId));
 
-    if (!data || !data.success) {
-      container.innerHTML = '<div style="font-size:12px;color:var(--muted)">No ride estimates yet. Ask members to share their location first.</div>';
+    const totalEl = document.getElementById('budget-total');
+    const total   = parseFloat(totalEl ? totalEl.value : 3500) || 3500;
+
+    // If no ride estimates yet, still show member split using PLAN_CONTEXT
+    let members = [];
+    if (data && data.success && data.data && data.data.members && data.data.members.length) {
+      members = data.data.members;
+    } else {
+      // Fallback: use map points from PLAN_CONTEXT
+      const ctx = window.PLAN_CONTEXT || {};
+      if (ctx.mapPoints && ctx.mapPoints.length) {
+        members = ctx.mapPoints.map((p, i) => ({ user_id: i, name: p.name || ('Member ' + (i+1)) }));
+      }
+    }
+
+    if (!members.length) {
+      container.innerHTML = '<div style="font-size:12px;color:var(--muted)">No members found. Invite friends first.</div>';
       return;
     }
 
-    const members = data.data && data.data.members ? data.data.members : [];
-    const count = members.length || 1;
-    const total = parseFloat(document.getElementById('budget-total') ? document.getElementById('budget-total').value : 3500) || 3500;
+    const count     = members.length;
     const perPerson = Math.floor(total / count);
     const remainder = total - perPerson * (count - 1);
+    const colors    = ['var(--primary)', 'var(--blue)', 'var(--amber)', 'var(--green)', '#9c27b0'];
 
     container.innerHTML = members.map((m, i) => `
       <div class="split-member-row" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--input-bg);border-radius:10px;margin-bottom:6px;">
-        <div class="avatar" style="width:32px;height:32px;background:${i === 0 ? 'var(--primary)' : (i % 2 === 0 ? 'var(--blue)' : 'var(--amber)')};font-size:11px;flex-shrink:0;color:#fff;display:flex;align-items:center;justify-content:center;">${escapeHtml(m.name || 'M').slice(0, 2).toUpperCase()}</div>
+        <div class="avatar" style="width:32px;height:32px;background:${colors[i % colors.length]};font-size:11px;flex-shrink:0;color:#fff;display:flex;align-items:center;justify-content:center;border-radius:50%;">
+          ${escapeHtml(m.name || 'M').slice(0, 2).toUpperCase()}
+        </div>
         <div style="flex:1;font-weight:600;font-size:13px;">${escapeHtml(m.name || 'Member')}</div>
-        <span class="split-amount" style="font-weight:700;font-size:14px;color:var(--primary);">NPR ${(i === count - 1 ? remainder : perPerson).toLocaleString()}</span>
-      </div>
-    `).join('');
+        <span class="split-amount" style="font-weight:700;font-size:14px;color:var(--primary);">
+          NPR ${(i === count - 1 ? remainder : perPerson).toLocaleString()}
+        </span>
+      </div>`).join('');
 
     if (summary) summary.textContent = `Equal split: NPR ${perPerson.toLocaleString()} / person · ${count} member${count !== 1 ? 's' : ''}`;
   }
 
-  // ── Modal 8: Ride Cost Estimation ────────────────────────────────
-  async function loadRideCost() {
-    const container = document.getElementById('ride-dynamic-list');
-    const meetupId = getMeetupId();
-    if (!container) return;
+  // ── Ride option selection ─────────────────────────────────────────
+  window.selectRideOption = function(card) {
+    if (!card) return;
+    const c = card.closest('#ride-dynamic-list');
+    if (c) c.querySelectorAll('.restaurant-card').forEach(x => x.classList.remove('selected'));
+    card.classList.add('selected');
+  };
 
-    if (!meetupId) {
-      container.innerHTML = '<div style="font-size:12px;color:var(--muted)">Create a meetup first to estimate ride costs.</div>';
-      return;
-    }
+  // ── Local fare helpers (mirrors ride_controller.py constants) ────
+  function bikeCost(km) { return Math.round(25 + 18 * km); }
+  function carCost(km)  { return Math.round(50 + 35 * km); }
+  function taxiCost(km) { return Math.round(50 + 45 * km); }
 
-    container.innerHTML = '<div style="font-size:12px;color:var(--muted)">Loading ride estimates…</div>';
-    const data = await fetchJSON(API.split(meetupId));
-
-    if (!data || !data.success || !data.data || !data.data.members || !data.data.members.length) {
-      container.innerHTML = `
-        <div class="restaurant-card"><div class="rest-emoji">🛵</div><div style="flex:1"><div class="rest-name">Pathao Bike</div><div class="rest-meta">Share your location to calculate</div></div></div>
-        <div class="restaurant-card"><div class="rest-emoji">🚕</div><div style="flex:1"><div class="rest-name">Taxi</div><div class="rest-meta">Share your location to calculate</div></div></div>
-      `;
-      return;
-    }
-
-    const myId = (window.PLAN_CONTEXT && window.PLAN_CONTEXT.currentUserId) || (window.GROUPS_CONFIG && window.GROUPS_CONFIG.currentUserId) || 0;
-    const myEst = data.data.members.find(m => m.user_id === myId) || data.data.members[0];
-
-    container.innerHTML = `
-      <div class="restaurant-card">
-        <div class="rest-emoji">🛵</div>
-        <div style="flex:1"><div class="rest-name">Pathao Bike</div><div class="rest-meta">~${Math.round(myEst.distance / 18 * 60) || 12} mins · NPR ${Math.round(myEst.bike_cost || 85)}${myEst.is_peak ? ' · Peak surge' : ''}</div></div>
-      </div>
-      <div class="restaurant-card">
-        <div class="rest-emoji">🚗</div>
-        <div style="flex:1"><div class="rest-name">Pathao Car</div><div class="rest-meta">~${Math.round(myEst.distance / 25 * 60) || 18} mins · NPR ${Math.round(myEst.car_cost || 200)}${myEst.is_peak ? ' · Peak surge' : ''}</div></div>
-      </div>
-      <div class="restaurant-card">
-        <div class="rest-emoji">🚕</div>
-        <div style="flex:1"><div class="rest-name">Taxi</div><div class="rest-meta">Meter fare · NPR ${Math.round(myEst.taxi_cost || 220)}${myEst.is_peak ? ' · Peak surge' : ''}</div></div>
-      </div>
-    `;
+  function haversineKm(lat1, lng1, lat2, lng2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+    return R * 2 * Math.asin(Math.sqrt(a));
   }
 
-  // ── Modal 9: Walking Distance ────────────────────────────────────
-  async function loadWalkingDistance() {
-    const container = document.getElementById('walking-dynamic-list');
-    const meetupId = getMeetupId();
-    if (!container) return;
-
-    if (!meetupId) {
-      container.innerHTML = '<div style="font-size:12px;color:var(--muted)">Create a meetup first to calculate walking distances.</div>';
-      return;
-    }
-
-    container.innerHTML = '<div style="font-size:12px;color:var(--muted)">Calculating distances…</div>';
-    const data = await fetchJSON(API.split(meetupId));
-
-    if (!data || !data.success || !data.data || !data.data.members || !data.data.members.length) {
-      container.innerHTML = '<div style="font-size:12px;color:var(--muted)">No estimates yet. Share locations first.</div>';
-      return;
-    }
-
-    const walkSpeed = 4.5; // km/h
-    container.innerHTML = data.data.members.map(m => {
-      const dist = m.distance || 0;
-      const mins = Math.round((dist / walkSpeed) * 60);
-      const isWalkable = dist <= 1.5 && mins <= 20;
-      return `
-        <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:${isWalkable ? 'var(--green-light)' : 'var(--input-bg)'};border-radius:10px;border:1.5px solid ${isWalkable ? 'rgba(46,125,50,.25)' : 'var(--border)'};margin-bottom:8px;">
-          <span style="font-size:20px">👤</span>
-          <div style="flex:1">
-            <div style="font-weight:700;font-size:13px">${escapeHtml(m.name || 'Member')}</div>
-            <div style="font-size:12px;color:var(--muted)">${dist.toFixed(1)} km · ~${mins} min walk</div>
-          </div>
-          <span style="font-size:11px;font-weight:700;color:${isWalkable ? 'var(--green)' : 'var(--amber)'}">${isWalkable ? 'WALKABLE' : 'RIDE'}</span>
-        </div>
-      `;
-    }).join('');
-  }
-
-  // ── Escape helper ──────────────────────────────────────────────────
+  // ── Escape helper ─────────────────────────────────────────────────
   function escapeHtml(text) {
     if (text == null) return '';
-    return String(text).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    return String(text).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
   }
 
-  // ── Modal data loader router ───────────────────────────────────────
+  // ── Modal 1 (extra): Populate midpoint inputs from invited members ──
+  function loadMidpointModal() {
+    var list = document.getElementById('midpoint-location-list');
+    if (!list) return;
+
+    var ctx = window.PLAN_CONTEXT || {};
+    var members = ctx.members || [];
+    var mapPoints = ctx.mapPoints || [];
+
+    // Build per-person data: mapPoints has lat/lng for those who shared location,
+    // members has full_name for everyone including those who haven't shared yet.
+    var inputs = [];
+
+    if (members.length > 0) {
+      // Remove existing hardcoded inputs, replace with one per member
+      list.innerHTML = '';
+      members.forEach(function(m, i) {
+        // Find matching mapPoint (same user_id) for lat/lng
+        var pt = mapPoints.find(function(p) { return p.name === m.full_name; }) || null;
+        var hasLocation = m.latitude && m.longitude;
+
+        var input = document.createElement('input');
+        input.className = 'field-input mp-location-input';
+        input.id = i === 0 ? 'mp-loc1' : (i === 1 ? 'mp-loc2' : 'mp-loc' + (i + 1));
+
+        if (hasLocation) {
+          // Member already has a location
+          var addr = m.address || (m.full_name + ''s location');
+          input.value = addr;
+          input.dataset.lat = m.latitude;
+          input.dataset.lng = m.longitude;
+          input.dataset.name = m.full_name;
+          input.dataset.address = addr;
+        } else {
+          // Member invited but hasn't shared location yet
+          input.value = '';
+          input.placeholder = m.full_name + ' (location pending)';
+          input.dataset.name = m.full_name;
+        }
+
+        input.addEventListener('input', function() {
+          if (window.midpointDirty !== undefined) window.midpointDirty = true;
+        });
+        list.appendChild(input);
+        inputs.push(input);
+      });
+    } else if (mapPoints.length > 0) {
+      // No members array, fall back to mapPoints (creator only scenario)
+      list.innerHTML = '';
+      mapPoints.forEach(function(p, i) {
+        var input = document.createElement('input');
+        input.className = 'field-input mp-location-input';
+        input.id = i === 0 ? 'mp-loc1' : ('mp-loc' + (i + 1));
+        input.value = p.address || p.name || '';
+        input.dataset.lat = p.lat;
+        input.dataset.lng = p.lng;
+        input.dataset.name = p.name || '';
+        input.dataset.address = p.address || '';
+        input.addEventListener('input', function() {
+          if (window.midpointDirty !== undefined) window.midpointDirty = true;
+        });
+        list.appendChild(input);
+      });
+    }
+    // If there are at least 2 inputs with coordinates, auto-calc
+    var allHaveCoords = inputs.length >= 2 && inputs.every(function(inp) {
+      return inp.dataset.lat && inp.dataset.lng;
+    });
+    if (allHaveCoords && typeof window.calcMidpoint === 'function') {
+      window.calcMidpoint();
+    }
+  }
+
+  // ── Modal data loader router ──────────────────────────────────────
   const MODAL_LOADERS = {
-    'modal-restaurant-offers': loadOffers,
+    'modal-midpoint':           loadMidpointModal,
+    'modal-restaurant-offers':  loadOffers,
     'modal-cuisine-preference': loadCuisines,
-    'modal-budget-filter': loadBudgetRange,
-    'modal-ambience-filter': loadAmbiences,
+    'modal-budget-filter':      loadBudgetRange,
     'modal-nearby-restaurants': loadNearby,
-    'modal-budget-split': loadBudgetSplit,
-    'modal-ride-cost': loadRideCost,
-    'modal-walking-distance': loadWalkingDistance,
+    'modal-walking-distance':   loadWalkingDistance,
+    'modal-ride-cost':          loadRideCost,
+    'modal-budget-split':       loadBudgetSplit,
   };
 
   function loadModalData(modalId) {
@@ -299,11 +534,11 @@
     if (loader) loader();
   }
 
-  // ── MutationObserver to detect modal open ────────────────────────
+  // ── MutationObserver — fire loader when modal gets class "open" ──
   const observer = new MutationObserver(mutations => {
-    mutations.forEach(mutation => {
-      if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-        const el = mutation.target;
+    mutations.forEach(m => {
+      if (m.type === 'attributes' && m.attributeName === 'class') {
+        const el = m.target;
         if (el.classList.contains('open') && el.id && MODAL_LOADERS[el.id]) {
           loadModalData(el.id);
         }
@@ -315,23 +550,22 @@
     observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
   });
 
-  // Also hook into the existing serial planner start
-  const originalStartSerialPlan = window.startSerialPlan;
-  window.startSerialPlan = function () {
-    if (originalStartSerialPlan) originalStartSerialPlan.apply(this, arguments);
-    // Pre-load first modal data after a short delay
+  // ── Hook into startSerialPlan to pre-load first modal ────────────
+  const _origStart = window.startSerialPlan;
+  window.startSerialPlan = function() {
+    if (_origStart) _origStart.apply(this, arguments);
     setTimeout(() => {
-      const firstModal = document.querySelector('.feat-modal-overlay.open, .modal-overlay.open');
-      if (firstModal && firstModal.id) loadModalData(firstModal.id);
+      const first = document.querySelector('.feat-modal-overlay.open, .modal-overlay.open');
+      if (first && first.id) loadModalData(first.id);
     }, 300);
   };
 
-  // Expose for manual triggering and inline event handlers
-  window.loadModalData = loadModalData;
-  window.loadBudgetSplit = loadBudgetSplit;
-  window.loadRideCost = loadRideCost;
-  window.loadWalkingDistance = loadWalkingDistance;
-  window.loadNearby = loadNearby;
-  window.loadOffers = loadOffers;
+  // ── Public API ────────────────────────────────────────────────────
+  window.loadModalData        = loadModalData;
+  window.loadBudgetSplit      = loadBudgetSplit;
+  window.loadRideCost         = loadRideCost;
+  window.loadWalkingDistance  = loadWalkingDistance;
+  window.loadNearby           = loadNearby;
+  window.loadOffers           = loadOffers;
 
 })();

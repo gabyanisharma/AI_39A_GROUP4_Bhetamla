@@ -37,7 +37,7 @@
   <div class="topbar">
     <div class="topbar-search" style="padding:0 14px"><label for="search-plan" style="display:flex;align-items:center;gap:10px;cursor:text;flex:1"><span aria-hidden="true" style="font-size:14px">&#128269;</span><input id="search-plan" type="search" placeholder="Search venues or friends..." aria-label="Search venues or friends" style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
     <div class="topbar-controls">
-      <button class="ctrl-btn" type="button" onclick="toggleTheme()">&#127769;</button>
+    <button class="ctrl-btn" type="button" onclick="openModal('modal-budget-split')" title="Split the bill">&#128176; Split Bill</button>      <button class="ctrl-btn" type="button" onclick="toggleTheme()">&#127769;</button>
     </div>
     <button class="sos-btn" type="button" onclick="openModal('modal-sos')">&#10033; SOS</button>
     <button aria-label="Notifications" type="button" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px">&#128276;</button>
@@ -150,6 +150,7 @@
         </div>
         {% for m in meetups[:5] %}
         <div style="display:flex;align-items:center;gap:8px;padding:10px;border-radius:12px;border:1.5px solid var(--border);margin-bottom:10px;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+          {% if m.created_by == current_user_id %}
           <a href="{{ url_for('meetup.plan', meetup_id=m.id) }}" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;">
             <div style="width:42px;height:42px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📅</div>
             <div style="flex:1;min-width:0;">
@@ -158,6 +159,16 @@
               <div style="font-size:11px;color:var(--blue);font-weight:700;margin-top:3px;">Open planner</div>
             </div>
           </a>
+          {% else %}
+          <a href="javascript:void(0)" onclick="showToast('Only the organiser can make changes to this meetup.')" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;cursor:pointer;">
+            <div style="width:42px;height:42px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📅</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ m.title }}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">By {{ m.creator_name }} — {{ m.meetup_date or 'Date not set' }}</div>
+              <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:3px;">View only</div>
+            </div>
+          </a>
+          {% endif %}
           <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;">
             <span style="background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">{{ m.status|title }}</span>
             {% if m.created_by == current_user_id %}
@@ -207,7 +218,8 @@ window.PLAN_CONTEXT = {
   people: {{ (created_members|length if show_advanced else 1) }},
   mapPoints: {{ (created_map_points if show_advanced else [])|tojson }},
   midpoint: {{ (created_midpoint if show_advanced else none)|tojson }},
-  creatorName: {{ session.get('user_name', 'You')|tojson }}
+  creatorName: {{ session.get('user_name', 'You')|tojson }},
+  members: {{ (created_members|tojson if show_advanced and created_members else '[]') }}
 };
 
 var planLeafletMap = null;
@@ -223,84 +235,41 @@ var planRestaurantFilters = {
   maxBudget: null,
   minRating: 0
 };
-var planSelectedVenueName = 'Jimbu Thakali by Capital Grill';
-var FEATURED_OFFER_RESTAURANTS = [
-  {
-    id: 'offer-jimbu-thakali',
-    name: 'Jimbu Thakali by Capital Grill',
-    offer: 'Thakali set combo: 15% off for groups of 4+ today',
-    badge: '15% OFF',
-    emoji: 'JT',
-    cuisine: 'Nepali',
-    category: 'Thakali',
-    ambience: 'casual',
-    rating: 4.6,
-    review_count: 218,
-    avg_cost_per_person: 900,
-    latitude: 27.7104,
-    longitude: 85.3172
-  },
-  {
-    id: 'offer-yatri-cafe',
-    name: 'Yatri Cafe',
-    offer: 'Buy 2 coffees, get 1 pastry free before 5 PM',
-    badge: 'COMBO',
-    emoji: 'YC',
-    cuisine: 'Coffee',
-    category: 'Cafe',
-    ambience: 'casual',
-    rating: 4.5,
-    review_count: 164,
-    avg_cost_per_person: 650,
-    latitude: 27.7171,
-    longitude: 85.3098
-  },
-  {
-    id: 'offer-temple-town',
-    name: 'Temple Town Rooftop Restaurant & Bar',
-    offer: 'Rooftop platter + mocktail deal at NPR 999 per person',
-    badge: 'NPR 999',
-    emoji: 'TT',
-    cuisine: 'Continental',
-    category: 'Restaurant and Bar',
-    ambience: 'rooftop',
-    rating: 4.4,
-    review_count: 191,
-    avg_cost_per_person: 999,
-    latitude: 27.6729,
-    longitude: 85.3254
-  },
-  {
-    id: 'offer-cafe-98',
-    name: 'Cafe 98',
-    offer: 'Free dessert with any main course for meetup groups',
-    badge: 'FREE DESSERT',
-    emoji: '98',
-    cuisine: 'Coffee',
-    category: 'Cafe',
-    ambience: 'casual',
-    rating: 4.3,
-    review_count: 126,
-    avg_cost_per_person: 700,
-    latitude: 27.7042,
-    longitude: 85.3079
-  },
-  {
-    id: 'offer-monster-meal',
-    name: 'Monster Meal',
-    offer: 'Burger bucket deal: 20% off on orders above NPR 2,500',
-    badge: '20% OFF',
-    emoji: 'MM',
-    cuisine: 'Burgers',
-    category: 'Fast Food',
-    ambience: 'casual',
-    rating: 4.2,
-    review_count: 143,
-    avg_cost_per_person: 750,
-    latitude: 27.7112,
-    longitude: 85.3241
-  }
-];
+var planSelectedVenueName = '';
+var FEATURED_OFFER_RESTAURANTS = [];
+
+// Load real offers from DB and refresh the offer modal
+(function loadLiveOffers() {
+  fetch('/place/api/offers', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(function(r) { return r.ok ? r.json() : { success: false }; })
+    .then(function(data) {
+      if (!data.success || !data.offers || !data.offers.length) return;
+      var emojiMap = { nepali:'🍛', indian:'🍛', italian:'🍕', cafe:'☕', coffee:'☕',
+        'coffee & cafe':'☕', continental:'🥗', chinese:'🥡', japanese:'🍣', thai:'🍜',
+        asian:'🥡', 'fast food':'🍔', 'bakery & desserts':'🧁', vegetarian:'🌱', burgers:'🍔' };
+      FEATURED_OFFER_RESTAURANTS = data.offers.map(function(o) {
+        var c = (o.cuisine || '').toLowerCase();
+        return {
+          id: 'offer-' + o.id,
+          name: o.restaurant_name,
+          offer: o.title + (o.discount_percent ? ' · ' + o.discount_percent + '% off' : ''),
+          badge: o.discount_percent ? o.discount_percent + '% OFF' : 'OFFER',
+          emoji: emojiMap[c] || '🍽️',
+          cuisine: o.cuisine || '',
+          rating: o.rating || 0,
+          avg_cost_per_person: o.avg_cost_per_person || 0,
+          latitude: o.latitude,
+          longitude: o.longitude
+        };
+      });
+      if (!planSelectedVenueName && FEATURED_OFFER_RESTAURANTS.length) {
+        planSelectedVenueName = FEATURED_OFFER_RESTAURANTS[0].name;
+      }
+      // Re-render the offers modal if it's open
+      if (typeof renderFeaturedRestaurantOffers === 'function') renderFeaturedRestaurantOffers();
+    })
+    .catch(function() {});
+})();
 var routeColors = ['#1565C0', '#1B6B3A', '#D99A00', '#C0392B', '#5D6DFF'];
 var PLAN_LOCATION_LOOKUP = {
   'thamel': {name:'Thamel', lat:27.7153, lng:85.3123, address:'Thamel, Kathmandu'},
@@ -625,7 +594,26 @@ function mergePlanRestaurants(restaurants, midpoint){
 function restaurantMarkerIcon(){
   return L.divIcon({
     className: '',
-    html: '<div class="plan-map-dot" style="background:linear-gradient(135deg,var(--green),var(--blue));font-size:14px">R</div>',
+    html: '<div class="plan-map-dot" style="background:linear-gradient(135deg,var(--green),var(--blue));font-size:14px">🍽️</div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -18]
+  });
+}
+
+function restaurantMarkerIconForCuisine(cuisine, isOffer){
+  var emojiMap = { nepali:'🍛', indian:'🍛', italian:'🍕', cafe:'☕', coffee:'☕',
+    'coffee & cafe':'☕', continental:'🥗', chinese:'🥡', japanese:'🍣', thai:'🍜',
+    asian:'🥡', 'fast food':'🍔', 'bakery & desserts':'🧁', vegetarian:'🌱', burgers:'🍔' };
+  var c = (cuisine || '').toLowerCase();
+  var emoji = emojiMap[c] || '🍽️';
+  var bg = isOffer
+    ? 'linear-gradient(135deg,var(--green),#1B6B3A)'
+    : 'linear-gradient(135deg,var(--green),var(--blue))';
+  var border = isOffer ? 'border:2px solid var(--amber);' : '';
+  return L.divIcon({
+    className: '',
+    html: '<div class="plan-map-dot" style="background:' + bg + ';font-size:15px;' + border + '">' + emoji + '</div>',
     iconSize: [32, 32],
     iconAnchor: [16, 16],
     popupAnchor: [0, -18]
@@ -657,7 +645,7 @@ function fetchMidpointRestaurants(midpoint){
   var params = new URLSearchParams();
   params.set('lat', midpoint.lat);
   params.set('lng', midpoint.lng);
-  params.set('radius', '4');
+  params.set('radius', '2');
   if(planRestaurantFilters.maxBudget) params.set('max_budget', planRestaurantFilters.maxBudget);
   if(planRestaurantFilters.minRating) params.set('min_rating', planRestaurantFilters.minRating);
   planRestaurantFilters.cuisines.forEach(function(c){ params.append('cuisine', c); });
@@ -671,12 +659,14 @@ function fetchMidpointRestaurants(midpoint){
       planRestaurantLayer.clearLayers();
       restaurants.forEach(function(r){
         if(r.latitude == null || r.longitude == null) return;
-        L.marker([r.latitude, r.longitude], {icon: restaurantMarkerIcon()})
+        var offerBadge = r.is_featured_offer ? '<br><span style="background:var(--green);color:#fff;font-size:10px;padding:2px 6px;border-radius:6px;font-weight:700">' + escapePlanHtml(r.badge || 'OFFER') + '</span>' : '';
+        L.marker([r.latitude, r.longitude], {icon: restaurantMarkerIconForCuisine(r.cuisine, r.is_featured_offer)})
           .addTo(planRestaurantLayer)
           .bindPopup(
             '<strong>' + escapePlanHtml(r.name) + '</strong><br>' +
-            escapePlanHtml(r.cuisine || 'Restaurant') + ' · Star ' + Number(r.rating || 0).toFixed(1) + '<br>' +
-            restaurantPriceLabel(r.avg_cost_per_person) + ' · ' + Number(r.distance_km || 0).toFixed(1) + ' km from midpoint'
+            escapePlanHtml(r.cuisine || 'Restaurant') + ' · ⭐ ' + Number(r.rating || 0).toFixed(1) + '<br>' +
+            restaurantPriceLabel(r.avg_cost_per_person) + ' · ' + Number(r.distance_km || 0).toFixed(1) + ' km' +
+            offerBadge
           );
       });
       updateNearbyRestaurantList(restaurants);
@@ -708,7 +698,29 @@ function selectVenueRow(row){
 function renderFeaturedRestaurantOffers(){
   var holder = document.getElementById('featured-restaurant-offers');
   if(!holder) return;
-  holder.innerHTML = FEATURED_OFFER_RESTAURANTS.map(function(r){
+
+  // If the user already picked a specific venue (in Nearby Restaurants),
+  // only show that venue's offer here — not every offer in the system.
+  var selectedName = readVenueSelection() || planSelectedVenueName;
+  var pool = FEATURED_OFFER_RESTAURANTS;
+  if(selectedName){
+    var matches = FEATURED_OFFER_RESTAURANTS.filter(function(r){
+      return normalizePlanName(r.name) === normalizePlanName(selectedName);
+    });
+    if(matches.length){
+      pool = matches;
+    } else {
+      holder.innerHTML = '<div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px;text-align:center;">No current offer for '+escapePlanHtml(selectedName)+'. Showing all offers instead:</div>';
+      pool = FEATURED_OFFER_RESTAURANTS;
+      renderOfferCards(pool, holder, true);
+      return;
+    }
+  }
+  renderOfferCards(pool, holder, false);
+}
+
+function renderOfferCards(pool, holder, append){
+  var html = pool.map(function(r){
     var selected = normalizePlanName(r.name) === normalizePlanName(planSelectedVenueName) ? ' selected' : '';
     return '<div class="restaurant-card'+selected+'" data-offer-restaurant="'+escapePlanHtml(r.name)+'" onclick="selectOfferRestaurant(this)">' +
       '<div class="rest-emoji">'+escapePlanHtml(r.emoji)+'</div>' +
@@ -716,7 +728,13 @@ function renderFeaturedRestaurantOffers(){
       '<span style="background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px">'+escapePlanHtml(r.badge)+'</span>' +
       '</div>';
   }).join('');
+  if(append){
+    holder.innerHTML += html;
+  } else {
+    holder.innerHTML = html;
+  }
 }
+
 
 function syncOfferRestaurantHighlight(name){
   document.querySelectorAll('#modal-restaurant-offers .restaurant-card').forEach(function(card){
@@ -1087,14 +1105,102 @@ async function calcMidpoint(){
   return true;
 }
 
+function saveRideEstimateToMidpoint(){
+  var meetupId = planPrefMeetupId();
+  if(!meetupId || !window.fetch) return Promise.resolve(false);
+  var ctx = window.PLAN_CONTEXT || {};
+  var midpoint = ctx.midpoint;
+  if(!midpoint || !Number.isFinite(Number(midpoint.lat)) || !Number.isFinite(Number(midpoint.lng))){
+    return Promise.resolve(false);
+  }
+
+  var fromLat = document.getElementById('pm-lat') ? document.getElementById('pm-lat').value : '';
+  var fromLng = document.getElementById('pm-lng') ? document.getElementById('pm-lng').value : '';
+  var fromAddr = document.getElementById('pm-addr') ? document.getElementById('pm-addr').value : '';
+
+  // Fall back to the first midpoint-calculator input if pm-lat/lng weren't set
+  if(!fromLat || !fromLng){
+    var firstInput = document.getElementById('mp-loc1');
+    if(firstInput && firstInput.dataset.lat && firstInput.dataset.lng){
+      fromLat = firstInput.dataset.lat;
+      fromLng = firstInput.dataset.lng;
+      fromAddr = firstInput.dataset.address || firstInput.value || '';
+    }
+  }
+
+  if(!fromLat || !fromLng) return Promise.resolve(false);
+
+  return fetch('/ride/calculate/' + meetupId, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+    body: JSON.stringify({
+      from_lat: Number(fromLat),
+      from_lng: Number(fromLng),
+      from_address: fromAddr || 'My location',
+      to_lat: Number(midpoint.lat),
+      to_lng: Number(midpoint.lng),
+      to_address: midpoint.address || 'Smart midpoint'
+    })
+  }).then(function(r){ return r.json(); }).catch(function(){ return false; });
+}
+
 async function acceptMidpointStep(){
   if(midpointDirty || !window.PLAN_CONTEXT || !PLAN_CONTEXT.midpoint){
     var ok = await calcMidpoint();
     if(!ok) return false;
   }
+  // Save a ride estimate (my location → midpoint) so Ride Cost and
+  // Walking Distance have real numbers when the user reaches those steps.
+  await saveRideEstimateToMidpoint();
   showToast('Midpoint set!');
   completeSerialStep('modal-midpoint', 'midpoint accepted');
   return true;
+}
+
+function loadMultiStopRoute(){
+  var ctx = window.PLAN_CONTEXT || {};
+  var startEl = document.getElementById('ms-start');
+  var stop1El = document.getElementById('ms-stop1');
+  var stop2El = document.getElementById('ms-stop2');
+  var summaryEl = document.getElementById('multistop-route-summary');
+  if(!startEl || !stop1El || !stop2El || !summaryEl) return;
+
+  // Start: meetup date/time, or "Now" if not set
+  var when = formatPlanDate(ctx.date, ctx.time) || 'Time not set';
+  startEl.textContent = 'Your Location · ' + when;
+
+  // Stop 1: the calculated midpoint
+  var midpoint = ctx.midpoint;
+  var midLabel = midpoint && midpoint.address ? midpoint.address : 'Midpoint not calculated yet';
+  stop1El.textContent = midLabel;
+
+  // Stop 2: whichever venue was selected in Nearby Restaurants / Offers
+  var venue = readVenueSelection() || planSelectedVenueName || 'Venue not selected yet';
+  stop2El.textContent = venue;
+
+  // Pull the saved ride cost estimate for a real transport total
+  var meetupId = planPrefMeetupId();
+  if(meetupId && window.fetch){
+    fetch('/ride/split/' + meetupId, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        var stops = 2;
+        if(data && data.success && data.data && data.data.members && data.data.members.length){
+          var m = data.data.members[0];
+          var mins = (m.bike_mins || 15) + 30; // travel + time at first stop, rough
+          var hrs = (mins / 60).toFixed(1);
+          var transport = Math.round((m.bike_cost || 0) * (ctx.people || 1));
+          summaryEl.textContent = 'Route summary: ' + stops + ' stops · ~' + hrs + ' hrs · NPR ' + transport + ' estimated transport';
+        } else {
+          summaryEl.textContent = 'Route summary: ' + stops + ' stops · transport cost not yet calculated';
+        }
+      })
+      .catch(function(){
+        summaryEl.textContent = 'Route summary: 2 stops · transport cost not yet calculated';
+      });
+  } else {
+    summaryEl.textContent = 'Route summary: 2 stops · transport cost not yet calculated';
+  }
 }
 
 function applyBrowserLocationToPlanner(point){
@@ -1274,8 +1380,10 @@ function readVenueSelectionPayload(){
 }
 
 function readRideSelection(){
-  var card = document.querySelector('#modal-ride-cost .restaurant-card .rest-name');
-  return card ? card.textContent.trim() : '';
+  var selected = document.querySelector('#modal-ride-cost .restaurant-card.selected');
+  var card = selected || document.querySelector('#modal-ride-cost .restaurant-card');
+  if(!card) return '';
+  return card.dataset.rideOption || (card.querySelector('.rest-name') ? card.querySelector('.rest-name').textContent.trim() : '');
 }
 
 function confirmAdvancedPlan(){
@@ -1363,19 +1471,22 @@ function completeSerialStep(id, value){
   };
 
   window.closeFeatModal = function(id){
-    if(id && id === currentSerialStepId()){
-      return requireSerialResponse(id);
+    // ✕ always exits the step flow and goes back to the map —
+    // it should never be blocked by an unanswered step.
+    if(id && id === currentSerialStepId() && window.exitSerialToMap){
+      window.exitSerialToMap();
     }
     if(baseCloseFeatModal) return baseCloseFeatModal(id);
   };
 
   window.closeModal = function(id){
-    if(id && id === currentSerialStepId()){
-      return requireSerialResponse(id);
+    if(id && id === currentSerialStepId() && window.exitSerialToMap){
+      window.exitSerialToMap();
     }
     if(baseCloseModal) return baseCloseModal(id);
   };
 
+  
   document.addEventListener('click', function(e){
     var currentId = currentSerialStepId();
     if(!currentId || e.target.id !== currentId) return;
@@ -1408,7 +1519,17 @@ function completeSerialStep(id, value){
     if(dt) dt.textContent = formatPlanDate(ctx.date, ctx.time);
     if(people) people.textContent = (ctx.people || 1) + ' people';
   };
-
+// If we arrived here via the Dashboard's "Split Bill" shortcut, open that modal directly.
+  if(new URLSearchParams(window.location.search).get('open') === 'split'){
+    var openSplitModal = function(){
+      if(window.openModal) window.openModal('modal-budget-split');
+    };
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', openSplitModal);
+    } else {
+      openSplitModal();
+    }
+  }
   if(window.PLAN_CONTEXT && PLAN_CONTEXT.hasMeetup){
     var hydratePlanner = function(){
       var titleEl = document.getElementById('pm-title');
