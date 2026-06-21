@@ -99,7 +99,10 @@ def create_app():
     # in the Werkzeug reloader child, and never during testing).
     if not app.config.get('TESTING') and os.environ.get('WERKZEUG_RUN_MAIN') != 'false':
         from apscheduler.schedulers.background import BackgroundScheduler
-        from app.services.offer_reminder_service import check_expiring_offers
+        from app.services.offer_reminder_service import (
+            check_expiring_offers, check_meeting_reminders,
+            check_fare_alerts, check_smart_alerts
+        )
 
         scheduler = BackgroundScheduler(daemon=True)
         scheduler.add_job(
@@ -107,6 +110,30 @@ def create_app():
             trigger='interval',
             hours=1,
             id='offer_reminder',
+            replace_existing=True,
+        )
+        scheduler.add_job(
+            func=check_meeting_reminders,
+            args=[app],
+            trigger='interval',
+            minutes=30,
+            id='meeting_reminders',
+            replace_existing=True,
+        )
+        scheduler.add_job(
+            func=check_fare_alerts,
+            args=[app],
+            trigger='interval',
+            minutes=15,
+            id='fare_alerts',
+            replace_existing=True,
+        )
+        scheduler.add_job(
+            func=check_smart_alerts,
+            args=[app],
+            trigger='interval',
+            minutes=30,
+            id='smart_alerts',
             replace_existing=True,
         )
         scheduler.start()
@@ -119,6 +146,16 @@ def create_app():
     def settings_plural_alias():
         from app.controllers.user_controller import settings
         return settings()
+
+    @app.errorhandler(404)
+    def page_not_found(e):
+        from flask import render_template
+        return render_template('errors/404.html'), 404
+
+    @app.errorhandler(500)
+    def internal_error(e):
+        from flask import render_template
+        return render_template('errors/404.html'), 500
 
     return app
 

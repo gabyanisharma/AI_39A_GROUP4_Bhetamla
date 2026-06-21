@@ -21,6 +21,8 @@ from app.controllers.group_features_controller import (
     gallery_comment, gallery_comments_list, gallery_privacy, chat_messages,
     meetup_chat_group, chat_invite_link, join_via_invite as join_via_invite_ctrl,
     leave_meetup_chat, record_budget_split, translate_message,
+    gallery_comment, gallery_privacy, chat_messages, record_budget_split,
+    translate_message, gallery_page,
 )
 
 meetup_bp = Blueprint('meetup', __name__, url_prefix='/meetup')
@@ -93,6 +95,12 @@ def load_preferences(meetup_id):
 @login_required
 def calendar_ics(meetup_id):
     return meetup_calendar(meetup_id)
+
+
+@meetup_bp.route('/gallery')
+@login_required
+def gallery_page_route():
+    return gallery_page()
 
 
 @meetup_bp.route('/groups')

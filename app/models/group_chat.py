@@ -3,27 +3,53 @@ from app.database import execute_query
 
 class FriendGroup:
 
+    GLOBAL_GROUP_NAME = 'Bhetamla Community Chat'
+
     @staticmethod
-    def ensure_for_user(user_id):
-        """Get or create the user's primary friend group with all accepted friends."""
+    def ensure_global_room():
+        """Get or create the single app-wide chat room every user shares."""
         rows = execute_query(
             """
-            SELECT fg.id FROM friend_groups fg
-            WHERE fg.owner_id = %s
-            ORDER BY fg.id LIMIT 1
+            SELECT id FROM friend_groups
+            WHERE name = %s
+            ORDER BY id LIMIT 1
             """,
-            (user_id,), fetch=True
+            (FriendGroup.GLOBAL_GROUP_NAME,), fetch=True
         )
         if rows:
             group_id = rows[0]['id']
-        else:
-            group_id = execute_query(
-                """
-                INSERT INTO friend_groups (name, owner_id)
-                VALUES ('Friends Circle', %s)
-                """,
-                (user_id,)
+            # Ensure existing group is marked as a chat group
+            execute_query(
+                "UPDATE friend_groups SET is_chat_group = TRUE WHERE id = %s",
+                (group_id,)
             )
+            return group_id
+
+        # owner_id is NOT NULL with ON DELETE CASCADE in the schema, so we
+        # anchor the room to the earliest-registered account rather than
+        # leaving it NULL or tying it to whichever user happens to trigger
+        # creation first. Ownership has no special meaning for this room —
+        # FriendGroup.is_member() is what actually gates access.
+        anchor = execute_query(
+            "SELECT id FROM users ORDER BY id LIMIT 1",
+            fetch=True
+        )
+        anchor_id = anchor[0]['id'] if anchor else None
+        if anchor_id is None:
+            return None
+
+        return execute_query(
+            """
+            INSERT INTO friend_groups (name, owner_id, is_chat_group)
+            VALUES (%s, %s, TRUE)
+            """,
+            (FriendGroup.GLOBAL_GROUP_NAME, anchor_id)
+        )
+
+    @staticmethod
+    def ensure_member(user_id):
+        """Make sure this user is in the global room, then return its id."""
+        group_id = FriendGroup.ensure_global_room()
         execute_query(
             """
             INSERT IGNORE INTO friend_group_members (group_id, user_id)
@@ -31,22 +57,6 @@ class FriendGroup:
             """,
             (group_id, user_id)
         )
-        friends = execute_query(
-            """
-            SELECT CASE WHEN f.user_id = %s THEN f.friend_id ELSE f.user_id END AS fid
-            FROM friends f
-            WHERE (f.user_id = %s OR f.friend_id = %s) AND f.status = 'accepted'
-            """,
-            (user_id, user_id, user_id), fetch=True
-        ) or []
-        for f in friends:
-            execute_query(
-                """
-                INSERT IGNORE INTO friend_group_members (group_id, user_id)
-                VALUES (%s, %s)
-                """,
-                (group_id, f['fid'])
-            )
         return group_id
 
     @staticmethod
@@ -135,17 +145,13 @@ class FriendGroup:
 
     @staticmethod
     def get_for_user(user_id):
-        FriendGroup.ensure_for_user(user_id)
-        return execute_query(
-            """
-            SELECT fg.* FROM friend_groups fg
-            JOIN friend_group_members fgm ON fgm.group_id = fg.id
-            WHERE fgm.user_id = %s
-            GROUP BY fg.id
-            ORDER BY fg.name
-            """,
-            (user_id,), fetch=True
-        ) or []
+        """Every user is in exactly one room: the global one."""
+        group_id = FriendGroup.ensure_member(user_id)
+        rows = execute_query(
+            "SELECT * FROM friend_groups WHERE id = %s",
+            (group_id,), fetch=True
+        )
+        return rows or []
 
     @staticmethod
     def is_member(group_id, user_id):

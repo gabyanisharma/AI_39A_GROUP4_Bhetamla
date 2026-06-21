@@ -72,7 +72,7 @@
 
   /* ── Stats bar (enhanced) ── */
   #rp-stats {
-    display: flex; gap: 14px;
+    display: flex; gap: 10px;
     padding: 14px 22px;
     background: var(--input-bg);
     border-top: 1.5px solid var(--border);
@@ -88,6 +88,51 @@
     line-height: 1.1;
   }
   .rp-stat-lbl { font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .5px; }
+
+  /* ── Transport mode selector ── */
+  .rp-mode-bar {
+    display: flex; gap: 6px; margin-bottom: 14px;
+  }
+  .rp-mode-btn {
+    flex: 1; padding: 10px 6px; border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: var(--input-bg);
+    color: var(--muted); font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all .15s;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .rp-mode-btn.active {
+    background: var(--primary); color: #fff; border-color: var(--primary);
+  }
+  .rp-mode-icon { font-size: 18px; line-height: 1; }
+
+  /* ── Multi-ETA panel ── */
+  #rp-eta-panel {
+    padding: 12px 22px;
+    background: var(--input-bg);
+    border-top: 1px solid var(--border);
+    display: none;
+  }
+  #rp-eta-panel.visible { display: block; }
+  .eta-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .eta-row:last-child { margin-bottom: 0; }
+  .eta-mode-icon { font-size: 18px; flex-shrink: 0; }
+  .eta-mode-label { flex: 1; font-weight: 600; color: var(--text); }
+  .eta-mode-time { font-weight: 800; color: var(--primary); font-family: 'Playfair Display', serif; font-size: 15px; }
+  .eta-mode-dist { font-size: 11px; color: var(--muted); margin-left: 4px; }
+  .eta-active-badge {
+    font-size: 9px; font-weight: 700; color: #fff;
+    background: var(--blue); border-radius: 20px;
+    padding: 2px 7px; margin-left: 6px;
+  }
 
   /* ── Optimize toggle ── */
   .opt-tab {
@@ -270,6 +315,20 @@
           Search above, use your location, or click the map.<br>Add at least 2 stops to calculate a route.
         </div>
 
+        <!-- Transport mode -->
+        <div class="rp-section-head">Travel Mode</div>
+        <div class="rp-mode-bar">
+          <button id="mode-driving" class="rp-mode-btn active" onclick="setTravelMode('driving')">
+            <span class="rp-mode-icon">🚗</span>Driving
+          </button>
+          <button id="mode-walking" class="rp-mode-btn" onclick="setTravelMode('walking')">
+            <span class="rp-mode-icon">🚶</span>Walking
+          </button>
+          <button id="mode-cycling" class="rp-mode-btn" onclick="setTravelMode('cycling')">
+            <span class="rp-mode-icon">🚴</span>Cycling
+          </button>
+        </div>
+
         <!-- Optimization mode -->
         <div class="rp-section-head">Optimise By</div>
         <div style="display:flex;gap:8px;margin-bottom:14px;">
@@ -318,6 +377,12 @@
         {% endif %}
 
       </div><!-- /rp-panel-inner -->
+
+      <!-- Multi-ETA comparison panel -->
+      <div id="rp-eta-panel">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">ETA Comparison</div>
+        <div id="eta-rows"></div>
+      </div>
 
       <!-- Stats bar pinned to bottom of panel -->
       <div id="rp-stats">
@@ -381,8 +446,10 @@ let stops = [];          // [{name, lat, lng}]
 let markers = [];        // Leaflet markers
 let routeLayer = null;   // Leaflet polyline layer
 let optMode = 'time';    // 'time' | 'distance'
+let travelMode = 'driving'; // 'driving' | 'walking' | 'cycling'
 let routeStats = { distance: 0, duration: 0 };
 let dragSrcIdx = null;
+let multiETA = {};       // { driving: {dist, dur}, walking: {...}, cycling: {...} }
 
 // ── Map Init ─────────────────────────────────────────────────
 const map = L.map('rp-map').setView(KTM, 13);
@@ -588,13 +655,29 @@ function setOptMode(mode) {
   document.getElementById('opt-distance').classList.toggle('active', mode === 'distance');
 }
 
+// ── Travel mode selector ─────────────────────────────────────────
+function setTravelMode(mode) {
+  travelMode = mode;
+  ['driving','walking','cycling'].forEach(function(m) {
+    var btn = document.getElementById('mode-' + m);
+    if (btn) btn.classList.toggle('active', m === mode);
+  });
+  // If we already have multi-ETA data, re-render stats with the new mode
+  if (multiETA[mode]) {
+    updateStats({ distance: multiETA[mode].dist, duration: multiETA[mode].dur });
+    renderETAPanel();
+  }
+}
+
 // ── Calculate Route via OSRM ─────────────────────────────────
 function calculateRoute() {
   if (stops.length < 2) { showToast('Add at least 2 stops first!'); return; }
   setLoading(true);
 
   const coords = stops.map(s => `${s.lng},${s.lat}`).join(';');
-  const url = `${OSRM_BASE}/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`;
+  const profile = travelMode === 'walking' ? 'foot' : (travelMode === 'cycling' ? 'bike' : 'driving');
+  const osrmProfile = travelMode === 'cycling' ? 'cycling' : travelMode;
+  const url = `${OSRM_BASE}/route/v1/${osrmProfile}/${coords}?overview=full&geometries=geojson&steps=false`;
 
   fetch(url)
     .then(r => r.json())
@@ -602,14 +685,85 @@ function calculateRoute() {
       if (data.code !== 'Ok') { showToast('Routing failed. Try again.'); return; }
       const route = data.routes[0];
       drawRoute(route.geometry.coordinates);
-      updateStats({
-        distance: route.distance / 1000,
-        duration: Math.round(route.duration / 60)
-      });
-      showToast('✅ Route calculated successfully!');
+      const mainDist = route.distance / 1000;
+      const mainDur = Math.round(route.duration / 60);
+      routeStats = { distance: mainDist, duration: mainDur };
+      multiETA[travelMode] = { dist: mainDist, dur: mainDur };
+      updateStats(routeStats);
+      // Fetch other modes for comparison
+      fetchMultiETA(coords, route.geometry.coordinates);
+      showToast('✅ Route calculated for ' + travelMode + '!');
     })
     .catch(() => showToast('Network error — could not reach routing server.'))
     .finally(() => setLoading(false));
+}
+
+// ── Fetch ETA for all travel modes (comparison) ──────────────
+function fetchMultiETA(coords, activeGeometry) {
+  const modes = [
+    { key: 'driving', profile: 'driving' },
+    { key: 'walking', profile: 'foot' },
+    { key: 'cycling', profile: 'cycling' }
+  ];
+  const otherModes = modes.filter(m => m.key !== travelMode);
+  let pending = otherModes.length;
+
+  otherModes.forEach(function(m) {
+    const url = `${OSRM_BASE}/route/v1/${m.profile}/${coords}?overview=false&geometries=geojson&steps=false`;
+    fetch(url)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.code === 'Ok' && data.routes.length) {
+          var route = data.routes[0];
+          multiETA[m.key] = {
+            dist: route.distance / 1000,
+            dur: Math.round(route.duration / 60)
+          };
+        } else {
+          multiETA[m.key] = null;
+        }
+      })
+      .catch(function() { multiETA[m.key] = null; })
+      .finally(function() {
+        pending--;
+        if (pending <= 0) renderETAPanel();
+      });
+  });
+}
+
+// ── Render multi-ETA comparison panel ─────────────────────────
+function renderETAPanel() {
+  var panel = document.getElementById('rp-eta-panel');
+  var rows = document.getElementById('eta-rows');
+  if (!panel || !rows) return;
+
+  var modeInfo = {
+    driving: { icon: '🚗', label: 'Driving' },
+    walking: { icon: '🚶', label: 'Walking' },
+    cycling: { icon: '🚴', label: 'Cycling' }
+  };
+
+  var html = '';
+  ['driving', 'walking', 'cycling'].forEach(function(key) {
+    var info = modeInfo[key];
+    var data = multiETA[key];
+    if (!data) return;
+    var isActive = key === travelMode;
+    var h = Math.floor(data.dur / 60);
+    var m = data.dur % 60;
+    var timeStr = h > 0 ? h + 'h ' + m + 'm' : m + ' min';
+    html += '<div class="eta-row" style="' + (isActive ? 'border-color:var(--blue);background:var(--blue-light)' : '') + '">'
+      + '<span class="eta-mode-icon">' + info.icon + '</span>'
+      + '<span class="eta-mode-label">' + info.label
+      + (isActive ? '<span class="eta-active-badge">SELECTED</span>' : '')
+      + '</span>'
+      + '<span class="eta-mode-time">' + timeStr + '</span>'
+      + '<span class="eta-mode-dist">' + data.dist.toFixed(1) + ' km</span>'
+      + '</div>';
+  });
+
+  rows.innerHTML = html;
+  panel.classList.add('visible');
 }
 
 // ── Optimise Stop Order via OSRM trip API ────────────────────
@@ -619,7 +773,8 @@ function optimiseRoute() {
   setLoading(true);
 
   const coords = stops.map(s => `${s.lng},${s.lat}`).join(';');
-  const url = `${OSRM_BASE}/trip/v1/driving/${coords}?overview=full&geometries=geojson&source=first&roundtrip=false`;
+  const osrmProfile = travelMode === 'walking' ? 'foot' : (travelMode === 'cycling' ? 'cycling' : 'driving');
+  const url = `${OSRM_BASE}/trip/v1/${osrmProfile}/${coords}?overview=full&geometries=geojson&source=first&roundtrip=false`;
 
   fetch(url)
     .then(r => r.json())
@@ -668,9 +823,19 @@ function updateStats(data) {
     const h = Math.floor(data.duration / 60);
     const m = data.duration % 60;
     document.getElementById('stat-eta').textContent = h > 0 ? `${h}h ${m}m` : `${m} min`;
+    // Update ETA label to show active mode
+    var etaLbl = document.querySelector('#rp-stats .rp-stat:nth-child(3) .rp-stat-lbl');
+    if (etaLbl) {
+      var modeIcons = { driving: '🚗', walking: '🚶', cycling: '🚴' };
+      etaLbl.textContent = 'ETA (' + (modeIcons[travelMode] || '') + ' ' + travelMode + ')';
+    }
   } else {
     document.getElementById('stat-dist').textContent = '—';
     document.getElementById('stat-eta').textContent = '—';
+    // Hide ETA panel
+    var etaPanel = document.getElementById('rp-eta-panel');
+    if (etaPanel) etaPanel.classList.remove('visible');
+    multiETA = {};
   }
 }
 

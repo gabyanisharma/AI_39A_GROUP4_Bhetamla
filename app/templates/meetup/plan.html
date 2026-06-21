@@ -218,7 +218,8 @@ window.PLAN_CONTEXT = {
   people: {{ (created_members|length if show_advanced else 1) }},
   mapPoints: {{ (created_map_points if show_advanced else [])|tojson }},
   midpoint: {{ (created_midpoint if show_advanced else none)|tojson }},
-  creatorName: {{ session.get('user_name', 'You')|tojson }}
+  creatorName: {{ session.get('user_name', 'You')|tojson }},
+  members: {{ (created_members|tojson if show_advanced and created_members else '[]') }}
 };
 
 var planLeafletMap = null;
@@ -234,84 +235,41 @@ var planRestaurantFilters = {
   maxBudget: null,
   minRating: 0
 };
-var planSelectedVenueName = 'Jimbu Thakali by Capital Grill';
-var FEATURED_OFFER_RESTAURANTS = [
-  {
-    id: 'offer-jimbu-thakali',
-    name: 'Jimbu Thakali by Capital Grill',
-    offer: 'Thakali set combo: 15% off for groups of 4+ today',
-    badge: '15% OFF',
-    emoji: 'JT',
-    cuisine: 'Nepali',
-    category: 'Thakali',
-    ambience: 'casual',
-    rating: 4.6,
-    review_count: 218,
-    avg_cost_per_person: 900,
-    latitude: 27.7104,
-    longitude: 85.3172
-  },
-  {
-    id: 'offer-yatri-cafe',
-    name: 'Yatri Cafe',
-    offer: 'Buy 2 coffees, get 1 pastry free before 5 PM',
-    badge: 'COMBO',
-    emoji: 'YC',
-    cuisine: 'Coffee',
-    category: 'Cafe',
-    ambience: 'casual',
-    rating: 4.5,
-    review_count: 164,
-    avg_cost_per_person: 650,
-    latitude: 27.7171,
-    longitude: 85.3098
-  },
-  {
-    id: 'offer-temple-town',
-    name: 'Temple Town Rooftop Restaurant & Bar',
-    offer: 'Rooftop platter + mocktail deal at NPR 999 per person',
-    badge: 'NPR 999',
-    emoji: 'TT',
-    cuisine: 'Continental',
-    category: 'Restaurant and Bar',
-    ambience: 'rooftop',
-    rating: 4.4,
-    review_count: 191,
-    avg_cost_per_person: 999,
-    latitude: 27.6729,
-    longitude: 85.3254
-  },
-  {
-    id: 'offer-cafe-98',
-    name: 'Cafe 98',
-    offer: 'Free dessert with any main course for meetup groups',
-    badge: 'FREE DESSERT',
-    emoji: '98',
-    cuisine: 'Coffee',
-    category: 'Cafe',
-    ambience: 'casual',
-    rating: 4.3,
-    review_count: 126,
-    avg_cost_per_person: 700,
-    latitude: 27.7042,
-    longitude: 85.3079
-  },
-  {
-    id: 'offer-monster-meal',
-    name: 'Monster Meal',
-    offer: 'Burger bucket deal: 20% off on orders above NPR 2,500',
-    badge: '20% OFF',
-    emoji: 'MM',
-    cuisine: 'Burgers',
-    category: 'Fast Food',
-    ambience: 'casual',
-    rating: 4.2,
-    review_count: 143,
-    avg_cost_per_person: 750,
-    latitude: 27.7112,
-    longitude: 85.3241
-  }
-];
+var planSelectedVenueName = '';
+var FEATURED_OFFER_RESTAURANTS = [];
+
+// Load real offers from DB and refresh the offer modal
+(function loadLiveOffers() {
+  fetch('/place/api/offers', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(function(r) { return r.ok ? r.json() : { success: false }; })
+    .then(function(data) {
+      if (!data.success || !data.offers || !data.offers.length) return;
+      var emojiMap = { nepali:'🍛', indian:'🍛', italian:'🍕', cafe:'☕', coffee:'☕',
+        'coffee & cafe':'☕', continental:'🥗', chinese:'🥡', japanese:'🍣', thai:'🍜',
+        asian:'🥡', 'fast food':'🍔', 'bakery & desserts':'🧁', vegetarian:'🌱', burgers:'🍔' };
+      FEATURED_OFFER_RESTAURANTS = data.offers.map(function(o) {
+        var c = (o.cuisine || '').toLowerCase();
+        return {
+          id: 'offer-' + o.id,
+          name: o.restaurant_name,
+          offer: o.title + (o.discount_percent ? ' · ' + o.discount_percent + '% off' : ''),
+          badge: o.discount_percent ? o.discount_percent + '% OFF' : 'OFFER',
+          emoji: emojiMap[c] || '🍽️',
+          cuisine: o.cuisine || '',
+          rating: o.rating || 0,
+          avg_cost_per_person: o.avg_cost_per_person || 0,
+          latitude: o.latitude,
+          longitude: o.longitude
+        };
+      });
+      if (!planSelectedVenueName && FEATURED_OFFER_RESTAURANTS.length) {
+        planSelectedVenueName = FEATURED_OFFER_RESTAURANTS[0].name;
+      }
+      // Re-render the offers modal if it's open
+      if (typeof renderFeaturedRestaurantOffers === 'function') renderFeaturedRestaurantOffers();
+    })
+    .catch(function() {});
+})();
 var routeColors = ['#1565C0', '#1B6B3A', '#D99A00', '#C0392B', '#5D6DFF'];
 var PLAN_LOCATION_LOOKUP = {
   'thamel': {name:'Thamel', lat:27.7153, lng:85.3123, address:'Thamel, Kathmandu'},
@@ -636,7 +594,26 @@ function mergePlanRestaurants(restaurants, midpoint){
 function restaurantMarkerIcon(){
   return L.divIcon({
     className: '',
-    html: '<div class="plan-map-dot" style="background:linear-gradient(135deg,var(--green),var(--blue));font-size:14px">R</div>',
+    html: '<div class="plan-map-dot" style="background:linear-gradient(135deg,var(--green),var(--blue));font-size:14px">🍽️</div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -18]
+  });
+}
+
+function restaurantMarkerIconForCuisine(cuisine, isOffer){
+  var emojiMap = { nepali:'🍛', indian:'🍛', italian:'🍕', cafe:'☕', coffee:'☕',
+    'coffee & cafe':'☕', continental:'🥗', chinese:'🥡', japanese:'🍣', thai:'🍜',
+    asian:'🥡', 'fast food':'🍔', 'bakery & desserts':'🧁', vegetarian:'🌱', burgers:'🍔' };
+  var c = (cuisine || '').toLowerCase();
+  var emoji = emojiMap[c] || '🍽️';
+  var bg = isOffer
+    ? 'linear-gradient(135deg,var(--green),#1B6B3A)'
+    : 'linear-gradient(135deg,var(--green),var(--blue))';
+  var border = isOffer ? 'border:2px solid var(--amber);' : '';
+  return L.divIcon({
+    className: '',
+    html: '<div class="plan-map-dot" style="background:' + bg + ';font-size:15px;' + border + '">' + emoji + '</div>',
     iconSize: [32, 32],
     iconAnchor: [16, 16],
     popupAnchor: [0, -18]
@@ -682,12 +659,14 @@ function fetchMidpointRestaurants(midpoint){
       planRestaurantLayer.clearLayers();
       restaurants.forEach(function(r){
         if(r.latitude == null || r.longitude == null) return;
-        L.marker([r.latitude, r.longitude], {icon: restaurantMarkerIcon()})
+        var offerBadge = r.is_featured_offer ? '<br><span style="background:var(--green);color:#fff;font-size:10px;padding:2px 6px;border-radius:6px;font-weight:700">' + escapePlanHtml(r.badge || 'OFFER') + '</span>' : '';
+        L.marker([r.latitude, r.longitude], {icon: restaurantMarkerIconForCuisine(r.cuisine, r.is_featured_offer)})
           .addTo(planRestaurantLayer)
           .bindPopup(
             '<strong>' + escapePlanHtml(r.name) + '</strong><br>' +
-            escapePlanHtml(r.cuisine || 'Restaurant') + ' · Star ' + Number(r.rating || 0).toFixed(1) + '<br>' +
-            restaurantPriceLabel(r.avg_cost_per_person) + ' · ' + Number(r.distance_km || 0).toFixed(1) + ' km from midpoint'
+            escapePlanHtml(r.cuisine || 'Restaurant') + ' · ⭐ ' + Number(r.rating || 0).toFixed(1) + '<br>' +
+            restaurantPriceLabel(r.avg_cost_per_person) + ' · ' + Number(r.distance_km || 0).toFixed(1) + ' km' +
+            offerBadge
           );
       });
       updateNearbyRestaurantList(restaurants);
@@ -1073,11 +1052,53 @@ async function calcMidpoint(){
   return true;
 }
 
+function saveRideEstimateToMidpoint(){
+  var meetupId = planPrefMeetupId();
+  if(!meetupId || !window.fetch) return Promise.resolve(false);
+  var ctx = window.PLAN_CONTEXT || {};
+  var midpoint = ctx.midpoint;
+  if(!midpoint || !Number.isFinite(Number(midpoint.lat)) || !Number.isFinite(Number(midpoint.lng))){
+    return Promise.resolve(false);
+  }
+
+  var fromLat = document.getElementById('pm-lat') ? document.getElementById('pm-lat').value : '';
+  var fromLng = document.getElementById('pm-lng') ? document.getElementById('pm-lng').value : '';
+  var fromAddr = document.getElementById('pm-addr') ? document.getElementById('pm-addr').value : '';
+
+  // Fall back to the first midpoint-calculator input if pm-lat/lng weren't set
+  if(!fromLat || !fromLng){
+    var firstInput = document.getElementById('mp-loc1');
+    if(firstInput && firstInput.dataset.lat && firstInput.dataset.lng){
+      fromLat = firstInput.dataset.lat;
+      fromLng = firstInput.dataset.lng;
+      fromAddr = firstInput.dataset.address || firstInput.value || '';
+    }
+  }
+
+  if(!fromLat || !fromLng) return Promise.resolve(false);
+
+  return fetch('/ride/calculate/' + meetupId, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+    body: JSON.stringify({
+      from_lat: Number(fromLat),
+      from_lng: Number(fromLng),
+      from_address: fromAddr || 'My location',
+      to_lat: Number(midpoint.lat),
+      to_lng: Number(midpoint.lng),
+      to_address: midpoint.address || 'Smart midpoint'
+    })
+  }).then(function(r){ return r.json(); }).catch(function(){ return false; });
+}
+
 async function acceptMidpointStep(){
   if(!window.PLAN_CONTEXT || !PLAN_CONTEXT.midpoint || midpointDirty){
     var ok = await calcMidpoint();
     if(!ok) return false;
   }
+  // Save a ride estimate (my location → midpoint) so Ride Cost and
+  // Walking Distance have real numbers when the user reaches those steps.
+  await saveRideEstimateToMidpoint();
   showToast('Midpoint set!');
   completeSerialStep('modal-midpoint', 'midpoint accepted');
   return true;

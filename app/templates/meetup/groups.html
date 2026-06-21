@@ -65,11 +65,15 @@
         </div>
 
         <!-- Group Vote -->
-        <div class="card" style="margin-bottom:20px" id="vote-panel">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div class="card" style="padding:20px" id="vote-panel">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;cursor:pointer" onclick="toggleVotePanel()">
             <div style="font-weight:700;font-size:15px;color:var(--primary)">🗳️ Group Vote</div>
-            <span id="vote-status-badge" class="badge" style="background:rgba(37,99,235,.12);color:var(--blue)">Select a meetup</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="vote-status-badge" class="badge" style="background:rgba(37,99,235,.12);color:var(--blue)">Select a meetup</span>
+              <span id="vote-collapse-icon" style="font-size:12px;color:var(--muted);transition:transform .2s">▼</span>
+            </div>
           </div>
+          <div id="vote-body">
           <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Organisers start a 24h venue vote with 3 options. Accepted members cast one vote each.</p>
           <div id="vote-organiser-actions" style="display:none;margin-bottom:12px">
             <button type="button" class="btn-primary" style="padding:8px 16px;font-size:12px" onclick="startVote()">Start Venue Vote (24h)</button>
@@ -77,6 +81,7 @@
           <div id="vote-options" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
           <div id="vote-results" style="background:var(--input-bg);border-radius:12px;padding:14px;min-height:60px">
             <div style="font-size:12px;color:var(--muted)">Live results appear here when a vote is active.</div>
+          </div>
           </div>
         </div>
 
@@ -178,6 +183,9 @@
 <script>
 window.GROUPS_CONFIG = {
   currentUserId: {{ current_user_id }},
+  chatGroupId: {{ active_chat_group.id if active_chat_group is defined and active_chat_group else 'null' }},
+  chatTitle: {{ (active_chat_group.name if active_chat_group else 'Group Chat')|tojson }},
+  profileUploadBase: "{{ url_for('static', filename='uploads/profiles/') }}",
   meetups: [
     {% for m in meetups %}
     { id: {{ m.id }}, title: {{ m.title|tojson }}, isOrganiser: {{ 'true' if m.created_by == current_user_id else 'false' }} }{% if not loop.last %},{% endif %}

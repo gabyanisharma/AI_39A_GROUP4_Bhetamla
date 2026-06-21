@@ -898,6 +898,7 @@ CREATE TABLE IF NOT EXISTS friend_groups (
 
     name     VARCHAR(255) NOT NULL,
     owner_id INT          NOT NULL,
+    is_chat_group BOOLEAN DEFAULT FALSE,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -1017,7 +1018,7 @@ CREATE TABLE IF NOT EXISTS venue_votes (
     created_by INT NOT NULL,
 
     deadline DATETIME NOT NULL,
-    status   ENUM('open', 'closed') NOT NULL DEFAULT 'open',
+    status   ENUM('open', 'closed', 'draw') NOT NULL DEFAULT 'open',
 
     winner_option_id INT NULL,
 

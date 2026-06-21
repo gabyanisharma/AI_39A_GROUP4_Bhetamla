@@ -84,8 +84,8 @@
         {% endfor %}
       {% endif %}
 
-      <!-- Creator actions -->
-      {% if is_creator %}
+      <!-- Member actions (creator, or any accepted member) -->
+      {% if can_edit_route %}
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn-primary" style="flex:1;min-width:140px;padding:11px" onclick="openModal('modal-suggest')">📍 Suggest a Place</button>
         <a href="{{ url_for('place.restaurants_page') }}?meetup_id={{ meetup.id }}" class="btn-sec" style="flex:1;min-width:140px;padding:11px;justify-content:center;text-decoration:none">🍽️ Browse Restaurants</a>
@@ -93,7 +93,14 @@
       {% endif %}
     </div>
 
-
+    <!-- Meetup map -->
+    <div class="card" style="margin-bottom:20px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:12px">🗺️ Map</div>
+      <div id="meetup-map"></div>
+      <div id="meetup-map-fallback" style="display:none;padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px;text-align:center;">
+        Map could not load. Check your internet connection.
+      </div>
+    </div>
 
         <!-- Place suggestions card -->
         <div class="card">
@@ -134,9 +141,9 @@
         </div>
         {% endif %}
 
-        {% if is_creator %}
+        {% if can_edit_route %}
         <div class="card">
-          <div style="font-weight:700;font-size:14px;margin-bottom:12px">⚙️ Organiser Actions</div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:12px">⚙️ Meetup Actions</div>
           <div style="display:flex;flex-direction:column;gap:8px">
             <a href="{{ url_for('place.restaurants_page') }}?meetup_id={{ meetup.id }}" class="btn-sec" style="font-size:12px;padding:9px 14px;justify-content:center;text-decoration:none">🍽️ Find Restaurants Near Midpoint</a>
             <button class="btn-sec" type="button" style="font-size:12px;padding:9px 14px;justify-content:center" onclick="openModal('modal-suggest')">💡 Suggest a Place</button>
@@ -217,3 +224,60 @@ function shareMyLocation(meetupId){
   }, {timeout: 6000});
 }
 </script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  var mapEl = document.getElementById('meetup-map');
+  var fallback = document.getElementById('meetup-map-fallback');
+  if(!mapEl) return;
+  if(!window.L){
+    mapEl.style.display = 'none';
+    if(fallback) fallback.style.display = 'block';
+    return;
+  }
+
+  var locations = {{ map_points|tojson if map_points else '[]' }};
+  var midLat = {{ midpoint_lat|tojson if midpoint_lat is not none else 'null' }};
+  var midLng = {{ midpoint_lng|tojson if midpoint_lng is not none else 'null' }};
+
+  var ktmCenter = [27.7172, 85.3240];
+  var pins = locations.filter(function(l){ return l.latitude != null && l.longitude != null; });
+  var center = pins.length ? [parseFloat(pins[0].latitude), parseFloat(pins[0].longitude)] : ktmCenter;
+
+  var map = L.map(mapEl, { zoomControl: true, scrollWheelZoom: true }).setView(center, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(map);
+
+  var bounds = [];
+  pins.forEach(function(l){
+    var lat = parseFloat(l.latitude), lng = parseFloat(l.longitude);
+    L.marker([lat, lng]).addTo(map).bindPopup(
+      '<strong>' + (l.full_name || 'Member') + '</strong>' +
+      (l.distance_to_mid != null ? '<br>' + l.distance_to_mid + ' km from midpoint' : '')
+    );
+    bounds.push([lat, lng]);
+  });
+
+  if(midLat != null && midLng != null){
+    L.marker([midLat, midLng], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div style="background:#1976D2;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)">📍</div>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      })
+    }).addTo(map).bindPopup('<strong>Smart Midpoint</strong>');
+    bounds.push([midLat, midLng]);
+  }
+
+  if(bounds.length > 1){
+    map.fitBounds(bounds, { padding: [30, 30] });
+  } else if(bounds.length === 1){
+    map.setView(bounds[0], 14);
+  }
+})();
+</script>
+{% endblock %}

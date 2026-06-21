@@ -14,6 +14,12 @@
     document.querySelectorAll('.meetup-row-item').forEach(el => {
       el.style.borderColor = parseInt(el.dataset.meetupId, 10) === id ? 'var(--blue)' : 'var(--border)';
     });
+    // Update chat context label
+    const meetup = selectedMeetup();
+    const chatLabel = document.getElementById('chat-meetup-label');
+    const chatMsg = document.getElementById('chat-context-msg');
+    if (chatLabel && meetup) chatLabel.textContent = meetup.title;
+    if (chatMsg && meetup) chatMsg.textContent = 'Chatting in: ' + meetup.title;
     refreshVotePanel();
     connectMeetupChat(id);
   };
@@ -95,7 +101,13 @@
       body: JSON.stringify({ option_id: optionId })
     });
     const data = await res.json();
-    if (data.success) refreshVotePanel();
+    if (data.success) {
+      refreshVotePanel();
+    } else if (typeof showToast === 'function') {
+      showToast(data.message || 'Could not cast vote.');
+    } else {
+      alert(data.message || 'Could not cast vote.');
+    }
   }
 
   window.recordBudgetSplit = async function () {
@@ -134,6 +146,24 @@
       // New-message alert, unless the chat is muted or it's our own message.
       if (msg.user_id !== cfg.currentUserId && !isChatMuted() && typeof showToast === 'function') {
         showToast('💬 ' + (msg.full_name || 'New message') + ': ' + (msg.body || '').slice(0, 60));
+      appendChatMessage(msg);
+      if (socket && msg.id && Number(msg.user_id) !== Number(cfg.currentUserId)) {
+        socket.emit('mark_read', { message_id: msg.id, group_id: cfg.chatGroupId });
+      }
+    });
+    socket.on('all_read', data => {
+      if (Number(data.user_id) !== Number(cfg.currentUserId)) return;
+      document.querySelectorAll('#chat-messages .chat-message-row').forEach(el => {
+        const meta = el.querySelector('.chat-message-meta');
+        if (meta && !meta.textContent.includes('seen')) {
+          meta.textContent += ' · seen';
+        }
+      });
+    });
+    socket.on('message_read', data => {
+      const el = document.querySelector(`[data-msg-id="${data.message_id}"] .chat-message-meta`);
+      if (el && !el.textContent.includes('seen')) {
+        el.textContent += ' · seen 1';
       }
     });
     socket.on('user_typing', data => {
@@ -203,6 +233,9 @@
     const data = await res.json();
     box.innerHTML = '';
     (data.messages || []).forEach(appendChatMessage);
+    if (socket && cfg.chatGroupId) {
+      socket.emit('mark_all_read', { group_id: cfg.chatGroupId });
+    }
   }
 
   function escapeChatHtml(value) {
@@ -340,4 +373,14 @@
     if (selectedMeetupId) selectMeetup(selectedMeetupId);
     else connectMeetupChat(null);
   });
+
+  // ── Collapsible vote panel ────────────────────────────────────────
+  window.toggleVotePanel = function () {
+    const body = document.getElementById('vote-body');
+    const icon = document.getElementById('vote-collapse-icon');
+    if (!body) return;
+    const isHidden = body.style.display === 'none';
+    body.style.display = isHidden ? 'block' : 'none';
+    if (icon) icon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(-90deg)';
+  };
 })();
