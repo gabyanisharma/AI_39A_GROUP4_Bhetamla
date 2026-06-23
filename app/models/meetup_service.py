@@ -1,0 +1,1 @@
+# This file has been moved to app/services/meetup_service.py
