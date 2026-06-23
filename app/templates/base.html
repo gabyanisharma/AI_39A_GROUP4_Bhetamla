@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ session.get('theme', 'light') }}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Bhetamल — Coordinate meetups with friends. Find midpoints, discover restaurants, plan routes, and stay safe." />
+  <meta name="theme-color" content="#082D25" />
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}" />
+  <title>{% block title %}Bhetamल{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,700;0,800;1,600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+  {% block head %}{% endblock %}
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
+
+  <!-- Global flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div id="flash-stack" style="position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:3000;display:flex;flex-direction:column;gap:8px;width:min(440px,92vw)">
+      {% for category, message in messages %}
+      <div class="flash-msg" role="alert"
+           style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-radius:12px;font-size:13.5px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.16);
+           {% if category == 'error' %}background:#FDECEC;color:#B42318;border:1px solid #F3B4B0
+           {% elif category == 'success' %}background:#E8F6EE;color:#067647;border:1px solid #A6E2C0
+           {% elif category == 'warning' %}background:#FEF6E7;color:#B25E09;border:1px solid #F5D49B
+           {% else %}background:#EAF1FE;color:#1D4ED8;border:1px solid #B6CCF7{% endif %}">
+        <span>{{ message }}</span>
+        <button type="button" onclick="this.parentElement.remove()" aria-label="Dismiss"
+                style="background:none;border:none;cursor:pointer;font-size:15px;color:inherit;opacity:.7">✕</button>
+      </div>
+      {% endfor %}
+    </div>
+    <script>
+      setTimeout(function(){ var s=document.getElementById('flash-stack'); if(s) s.remove(); }, 6000);
+    </script>
+    {% endif %}
+  {% endwith %}
+
+  {% block body %}{% endblock %}
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Win popup overlay -->
+  <div class="win-popup-overlay" id="win-popup-overlay">
+    <div class="win-popup">
+      <div class="win-popup-badge">🏆 WINNER ANNOUNCED</div>
+      <span class="win-popup-icon">🎉</span>
+      <div class="win-popup-title">We Have a Winner!</div>
+      <div class="win-popup-place" id="win-popup-place-name">—</div>
+      <div class="win-popup-stats">
+        <div class="win-stat"><div class="win-stat-val" id="win-popup-votes">—</div><div class="win-stat-lbl">Votes</div></div>
+        <div class="win-stat"><div class="win-stat-val" id="win-popup-pct">—</div><div class="win-stat-lbl">Support</div></div>
+        <div class="win-stat"><div class="win-stat-val" id="win-popup-total">—</div><div class="win-stat-lbl">Total Cast</div></div>
+      </div>
+      <p class="win-popup-desc" id="win-popup-place-desc">—</p>
+      <div class="win-popup-actions">
+        <button class="win-btn-primary" onclick="proceedToPlanWithWinner()">📅 Use This Venue for Meetup</button>
+        <button class="win-btn-sec" onclick="closeWinPopup()">Maybe Later</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+  {% block extra_js %}{% endblock %}
+  {# Notification badge — runs on every page #}
+  <style>
+  .notif-badge-count{position:absolute;top:-2px;right:-2px;background:#dc2626;color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:20px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;pointer-events:none}
+  </style>
+  <script>
+  (function(){
+    var count = {{ header_notifications|length if header_notifications else 0 }};
+    document.querySelectorAll('button[onclick*="openNotifPanel"]').forEach(function(btn){
+      btn.style.position='relative';
+      if(count>0){var b=document.createElement('span');b.className='notif-badge-count';b.textContent=count>99?'99+':count;btn.appendChild(b);}
+    });
+  })();
+  </script>
+</body>
+</html>

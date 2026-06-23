@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Register — Bhetamल{% endblock %}
+
+{% block body %}
+<div id="setup" class="screen active" style="flex-direction:row">
+  <div class="setup-left">
+    <div class="setup-card">
+      <div class="setup-card-title">Personalizing Your Profile</div>
+      <div class="setup-card-sub">Let's set the foundation for seamless meetups.</div>
+      <form method="POST" action="{{ url_for('auth.register') }}" onsubmit="return handleAuthSubmit(this)">
+        <div class="form-stack">
+          <div>
+            <label class="field-label" for="setup-name">Full Name</label>
+            <input class="field-input" id="setup-name" name="full_name" placeholder="e.g. Aarav Sharma" autocomplete="name" required />
+          </div>
+          <div>
+            <label class="field-label" for="setup-email">Email Address</label>
+            <input class="field-input" id="setup-email" name="email" type="email" placeholder="hello@example.com" autocomplete="email" required />
+          </div>
+          <div>
+            <label class="field-label" for="setup-phone">Phone Number</label>
+            <input class="field-input" id="setup-phone" name="phone" type="tel" placeholder="98XXXXXXXX" autocomplete="tel" required />
+          </div>
+          <div class="form-row">
+            <div>
+              <label class="field-label" for="setup-password">Password</label>
+              <div class="password-wrap">
+                <input class="field-input" id="setup-password" name="password" type="password" placeholder="Min 6 characters" autocomplete="new-password" required minlength="6" />
+                <button type="button" class="pw-toggle" onclick="togglePassword('setup-password', this)" aria-label="Show password">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="field-label" for="setup-confirm">Confirm Password</label>
+              <div class="password-wrap">
+                <input class="field-input" id="setup-confirm" name="confirm_password" type="password" placeholder="Repeat password" autocomplete="new-password" required minlength="6" />
+                <button type="button" class="pw-toggle" onclick="togglePassword('setup-confirm', this)" aria-label="Show password">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- Captured from the "Allow Location Access" button (F1 AC: location access) -->
+          <input type="hidden" id="reg-lat" name="latitude" />
+          <input type="hidden" id="reg-lng" name="longitude" />
+          <input type="hidden" id="reg-address" name="address" />
+          <button class="btn-primary" type="submit">
+            <span>Create Account</span>
+          </button>
+          <div class="setup-foot">
+            <span>Already have an account?</span>
+            <a href="{{ url_for('auth.login') }}"> Log in</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="setup-right">
+    <div class="info-card">
+      <div class="loc-icon-wrap" aria-hidden="true">&#128205;</div>
+      <h3>Enable Precise Location</h3>
+      <p>Bhetam&#2354; uses your live location to calculate the exact midpoint between you and your friends.</p>
+      <div class="privacy-box">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:16px;flex-shrink:0" aria-hidden="true">&#128274;</span>
+          <p style="text-align:left;font-size:12px;color:var(--muted);margin:0">We only access your location while you're actively planning a meetup. Your data is encrypted and never sold.</p>
+        </div>
+      </div>
+      <button class="btn-ghost" type="button" id="loc-btn" onclick="requestLocation()">&#129517; <span id="loc-btn-label">Allow Location Access</span></button>
+      <p id="loc-status" style="font-size:12px;color:var(--muted);margin:10px 0 0"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+function requestLocation() {
+  var status = document.getElementById('loc-status');
+  var label  = document.getElementById('loc-btn-label');
+  if (!navigator.geolocation) {
+    status.textContent = 'Geolocation is not supported by this browser.';
+    return;
+  }
+  label.textContent = 'Requesting…';
+  navigator.geolocation.getCurrentPosition(function (pos) {
+    var lat = pos.coords.latitude, lng = pos.coords.longitude;
+    document.getElementById('reg-lat').value = lat;
+    document.getElementById('reg-lng').value = lng;
+    label.textContent = 'Location Captured ✓';
+    status.textContent = 'Saved: ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
+    // Best-effort reverse geocode for a human-readable address.
+    fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng)
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.display_name) {
+          document.getElementById('reg-address').value = d.display_name;
+          status.textContent = d.display_name;
+        }
+      })
+      .catch(function () { /* coordinates are enough; address is optional */ });
+  }, function (err) {
+    label.textContent = 'Allow Location Access';
+    status.textContent = 'Location permission denied. You can still register and set it later.';
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+</script>
+{% endblock %}
