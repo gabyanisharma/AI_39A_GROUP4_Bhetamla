@@ -1,0 +1,233 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'settings' %}
+{% block title %}Settings — Bhetamल{% endblock %}
+
+{% block page_content %}
+<div id="page-settings" class="page active" style="flex-direction:column" role="main">
+  <div class="topbar">
+    <div class="topbar-search" style="padding:0 14px"><label for="search-settings" style="display:flex;align-items:center;gap:10px;cursor:text;flex:1"><span aria-hidden="true" style="font-size:14px">&#128269;</span><input id="search-settings" type="search" placeholder="Search settings..." aria-label="Search settings" style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
+    <div class="topbar-controls">
+      <button class="ctrl-btn" type="button" onclick="togglePref('language')">EN | नेपाली</button>
+      <button class="ctrl-btn" type="button" onclick="togglePref('theme')">{{ '☀️ Light' if user.theme_preference == 'dark' else '🌙 Dark' }}</button>
+    </div>
+    <span style="font-size:13px;font-weight:600;color:var(--muted)">{{ session.get('user_name','User') }}</span>
+    {% if user.profile_pic and user.profile_pic != 'default.png' %}
+    <img src="{{ url_for('static', filename='uploads/profiles/' ~ user.profile_pic) }}" alt="{{ user.full_name }}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid rgba(20,95,227,.18)">
+    {% else %}
+    <div class="avatar" style="width:34px;height:34px;background:var(--blue);font-size:13px">{{ session.get('user_name','U')[0]|upper }}</div>
+    {% endif %}
+  </div>
+
+  <div class="settings-inner">
+    <div class="settings-main">
+
+      <!-- Profile card -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="profile-card-inner">
+          <div class="profile-avatar-wrap">
+            {% if user.profile_pic and user.profile_pic != 'default.png' %}
+            <img src="{{ url_for('static', filename='uploads/profiles/' ~ user.profile_pic) }}" alt="{{ user.full_name }}" style="width:74px;height:74px;border-radius:50%;object-fit:cover;border:3px solid var(--white);box-shadow:0 6px 18px rgba(8,45,37,.16)">
+            {% else %}
+            <div class="avatar" style="width:74px;height:74px;background:var(--blue);font-size:26px">{{ (user.full_name or 'U')[0]|upper }}</div>
+            {% endif %}
+            {% if user.is_verified %}<div class="profile-avatar-badge">&#10003;</div>{% endif %}
+          </div>
+          <div style="flex:1">
+            <div style="font-size:24px;font-weight:700;margin-bottom:7px">{{ user.full_name }}</div>
+            {% if user.is_verified %}<span class="badge" style="background:rgba(5,150,105,.12);color:var(--green)">&#10003; SAFETY VERIFIED</span>{% endif %}
+            <div style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;margin-top:8px">&#128205; {{ user.email }} · {{ user.phone or 'No phone added' }}</div>
+            <!-- Decorative badges — no backend data behind these yet -->
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <span class="badge" style="background:rgba(5,150,105,.1);color:var(--green)">PREMIUM MEMBER</span>
+              <span class="badge" style="background:rgba(124,58,237,.1);color:var(--purple)">SAFETY CHAMPION</span>
+            </div>
+          </div>
+          <button class="btn-primary" type="button" style="width:auto;padding:10px 18px;font-size:13px" onclick="openModal('modal-edit-profile')">✏️ Edit Profile</button>
+        </div>
+      </div>
+
+      <!-- Safety & Privacy -->
+      <div class="card" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div style="font-weight:700;font-size:15px">&#128737; Safety &amp; Privacy</div>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div class="card" style="flex:1;min-width:220px;box-shadow:none;border:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:22px">&#128154;</span>
+              <span class="badge" style="background:rgba(5,150,105,.12);color:var(--green)">{{ contacts|length }} ACTIVE</span>
+            </div>
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px">Emergency Contacts</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Trusted individuals to notify in emergencies.</div>
+            <a class="btn-sec" style="font-size:12px;padding:8px 14px;text-decoration:none" href="{{ url_for('user.safety_page') }}">Manage Contacts</a>
+          </div>
+          <!-- Decorative: live location sharing isn't backed by a real setting yet -->
+          <div class="card" style="flex:1;min-width:220px;box-shadow:none;border:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:22px">&#129517;</span>
+            </div>
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px">Live Location Sharing</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Shared only during active SOS alerts — see Safety Hub.</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--blue)"></div>
+              <span style="font-size:12px;color:var(--blue);font-weight:600">SOS-only sharing active</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Change Password -->
+      <div class="card" style="margin-bottom:20px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px">&#128274; Password</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Change the password used to sign in to your account.</p>
+        <button class="btn-sec" type="button" style="font-size:13px;padding:10px 16px" onclick="openModal('modal-change-password')">Change Password</button>
+      </div>
+
+      <!-- Profile picture -->
+      <div class="card" style="margin-bottom:20px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px">Profile Picture</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Upload a JPG, PNG, GIF, or WEBP image. It updates your sidebar profile across the app.</p>
+        <button class="btn-sec" type="button" style="font-size:13px;padding:10px 16px" onclick="openModal('modal-profile-picture')">Change Profile Picture</button>
+      </div>
+
+      <!-- Decorative: Wallet & Payments — no backend wallet system exists -->
+      <div class="card" style="margin-bottom:20px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:20px">&#128179; Wallet &amp; Payments</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div class="card" style="flex:1;min-width:200px;box-shadow:none;border:1px solid var(--border);text-align:center">
+            <div style="font-size:28px;margin-bottom:8px">&#128183;</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px">MONEY SAVED</div>
+            <div style="font-size:22px;font-weight:800">NPR —</div>
+            <div style="font-size:11px;color:var(--muted)">Coming soon</div>
+          </div>
+          <div class="card" style="flex:1;min-width:200px;box-shadow:none;border:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;margin-bottom:10px">PAYMENT METHOD</div>
+            <div style="font-size:12px;color:var(--muted)">Payment methods aren't set up yet.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <aside class="settings-right">
+      <!-- Decorative: invite/referral system not built yet -->
+      <div style="background:linear-gradient(160deg,#1B3D2F 0%,#2d5a3d 50%,#1565C0 100%);border-radius:var(--radius);padding:24px;text-align:center;margin-bottom:16px">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Bhetam logo" style="height:60px;width:auto;margin:0 auto 12px;display:block;object-fit:contain;filter:brightness(0) invert(1)">
+        <div style="font-family:'Playfair Display',serif;font-size:18px;margin-bottom:4px;color:#fff">Invite a Friend</div>
+        <div style="font-size:12px;opacity:.8;margin-bottom:14px;color:rgba(255,255,255,.85);line-height:1.5">Referral rewards are coming soon.</div>
+        <button type="button" onclick="showToast('Referral program coming soon!')" style="background:rgba(255,255,255,.95);color:#1B3D2F;font-weight:700;font-size:13px;padding:10px 20px;border:none;border-radius:10px;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%">&#128279; Copy Invite Link</button>
+      </div>
+
+      <!-- Real: verification status -->
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:14px">ACCOUNT STATUS</div>
+        {% if user.is_verified %}
+        <div class="check-row">&#9989; Email Verified</div>
+        {% else %}
+        <div class="check-row" style="color:var(--red)">&#10060; Email Not Verified</div>
+        {% endif %}
+      </div>
+
+      <!-- Decorative: notification toggle isn't persisted yet -->
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:16px">&#8645; Preferences</div>
+        <div class="card" style="box-shadow:none;border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px">&#128276;</span>
+            <div>
+              <div style="font-size:13px;font-weight:600">Push Notifications</div>
+              <div style="font-size:11px;color:var(--muted)">Coming soon</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal-overlay" id="modal-edit-profile" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:480px">
+    <button class="modal-close" type="button" onclick="closeModal('modal-edit-profile')">✕</button>
+    <div class="modal-title">Edit Profile</div>
+    <form method="POST" action="{{ url_for('user.settings_page') }}" enctype="multipart/form-data">
+      <input type="hidden" name="action" value="update_profile">
+      <div style="margin-bottom:14px"><label class="field-label" for="ep-fullname">Full Name</label><input class="field-input" id="ep-fullname" name="full_name" value="{{ user.full_name }}" required /></div>
+      <div style="margin-bottom:14px"><label class="field-label" for="ep-phone">Phone</label><input class="field-input" id="ep-phone" name="phone" value="{{ user.phone or '' }}" /></div>
+      <div style="margin-bottom:14px"><label class="field-label" for="ep-budget">Budget Preference (NPR)</label><input class="field-input" id="ep-budget" name="budget_preference" type="number" min="0" step="0.01" value="{{ user.budget_preference or 0 }}" /></div>
+      <div style="margin-bottom:14px"><label class="field-label" for="ep-cuisine">Cuisine Preference</label><input class="field-input" id="ep-cuisine" name="cuisine_preference" value="{{ user.cuisine_preference or '' }}" placeholder="e.g. Newari, Italian, Vegan" /></div>
+      <div style="margin-bottom:20px">
+        <label class="field-label" for="ep-transport">Transport Preference</label>
+        <select class="field-input" id="ep-transport" name="transport_preference">
+          <option value="any" {% if user.transport_preference == 'any' %}selected{% endif %}>Any</option>
+          <option value="walking" {% if user.transport_preference == 'walking' %}selected{% endif %}>Walking</option>
+          <option value="bike" {% if user.transport_preference == 'bike' %}selected{% endif %}>Bike</option>
+          <option value="car" {% if user.transport_preference == 'car' %}selected{% endif %}>Car</option>
+          <option value="public" {% if user.transport_preference == 'public' %}selected{% endif %}>Public Transport</option>
+        </select>
+      </div>
+      <div style="margin-bottom:20px">
+        <label class="field-label" for="ep-profile-pic">Profile Picture</label>
+        <input class="field-input" id="ep-profile-pic" name="profile_pic" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
+      </div>
+      <button class="btn-primary" type="submit">Save Changes</button>
+    </form>
+  </div>
+</div>
+
+<!-- Profile Picture Modal -->
+<div class="modal-overlay" id="modal-profile-picture" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:420px">
+    <button class="modal-close" type="button" onclick="closeModal('modal-profile-picture')">x</button>
+    <div class="modal-title">Change Profile Picture</div>
+    <div class="modal-sub">This updates your profile image anywhere the app shows your account.</div>
+    <form method="POST" action="{{ url_for('user.settings_page') }}" enctype="multipart/form-data">
+      <input type="hidden" name="action" value="update_profile">
+      <input type="hidden" name="full_name" value="{{ user.full_name }}">
+      <input type="hidden" name="phone" value="{{ user.phone or '' }}">
+      <input type="hidden" name="budget_preference" value="{{ user.budget_preference or 0 }}">
+      <input type="hidden" name="cuisine_preference" value="{{ user.cuisine_preference or '' }}">
+      <input type="hidden" name="transport_preference" value="{{ user.transport_preference or 'any' }}">
+      <div style="margin-bottom:20px">
+        <label class="field-label" for="profile-picture-file">Choose Image</label>
+        <input class="field-input" id="profile-picture-file" name="profile_pic" type="file" accept="image/png,image/jpeg,image/gif,image/webp" required />
+      </div>
+      <button class="btn-primary" type="submit">Upload Picture</button>
+    </form>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-overlay" id="modal-change-password" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:420px">
+    <button class="modal-close" type="button" onclick="closeModal('modal-change-password')">✕</button>
+    <div class="modal-title">Change Password</div>
+    <form method="POST" action="{{ url_for('user.settings_page') }}">
+      <input type="hidden" name="action" value="change_password">
+      <div style="margin-bottom:14px"><label class="field-label" for="cp-current">Current Password</label><input class="field-input" id="cp-current" name="current_password" type="password" required /></div>
+      <div style="margin-bottom:14px"><label class="field-label" for="cp-new">New Password</label><input class="field-input" id="cp-new" name="new_password" type="password" placeholder="Min 6 characters" required /></div>
+      <div style="margin-bottom:20px"><label class="field-label" for="cp-confirm">Confirm New Password</label><input class="field-input" id="cp-confirm" name="confirm_password" type="password" required /></div>
+      <button class="btn-primary" type="submit">Update Password</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePref(field){
+  let theme = "{{ user.theme_preference or 'light' }}";
+  let language = "{{ user.language_preference or 'en' }}";
+  if(field === 'theme'){
+    theme = (theme === 'dark') ? 'light' : 'dark';
+  } else {
+    language = (language === 'en') ? 'np' : 'en';
+  }
+  fetch("{{ url_for('user.settings_page') }}", {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: 'theme=' + theme + '&language=' + language
+  }).then(() => location.reload());
+}
+</script>
+{% endblock %}

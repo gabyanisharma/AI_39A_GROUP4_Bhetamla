@@ -1,0 +1,18 @@
+login credentials-
+Name: John Doe
+Email: john.doe@example.com
+Password: StrongPassword123!
+
+Name: Amy Flame
+Email: amyflame11@gmail.com
+Password: P@$$w0rd123
+
+Name: Bipul Maharjan
+Email: bipulmaharjan22@gmail.com
+Password: P@$$w0rd123
+
+emergency contact:
+Name: Jane Doe
+Phone: 9800000000
+Relationship: Family
+

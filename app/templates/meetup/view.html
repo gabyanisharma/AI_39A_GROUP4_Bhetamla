@@ -1,0 +1,235 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'plan' %}
+{% block title %}{{ meetup.title }} — Bhetamल{% endblock %}
+
+{% block page_content %}
+<!-- Leaflet map CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+<style>
+  #meetup-map {
+    width: 100%;
+    height: 380px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    z-index: 1;
+    margin-bottom: 16px;
+  }
+  .route-stops-list { display:grid; gap:8px; padding-left:18px; margin:0; }
+  .route-stop-item { background:var(--input-bg); border:1px solid var(--border); border-radius:10px; padding:10px; }
+  .route-stop-title { font-size:13px; font-weight:700; color:var(--text); }
+  .route-stop-meta { font-size:12px; color:var(--muted); margin-top:2px; word-break:break-word; }
+  .route-stop-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .route-stop-actions button { border:1px solid var(--border); background:white; color:var(--text); border-radius:8px; padding:5px 9px; font-size:11px; font-weight:600; cursor:pointer; }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); }
+    70%  { box-shadow: 0 0 0 12px rgba(220,38,38,0); }
+    100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+  }
+</style>
+<div class="page active" style="flex-direction:column" role="main">
+  <div class="topbar">
+    <div class="topbar-search" style="padding:0 14px"><label style="display:flex;align-items:center;gap:10px;flex:1"><span style="font-size:14px">&#128269;</span><input type="search" placeholder="Search..." style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
+    <div class="topbar-controls">
+      <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
+    </div>
+    <button class="sos-btn" onclick="openModal('modal-sos')">&#10033; SOS</button>
+    <button aria-label="Notifications" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px">&#128276;</button>
+  </div>
+
+  <div style="padding:28px;max-width:860px;width:100%">
+    <a href="{{ url_for('meetup.plan') }}" style="display:inline-flex;align-items:center;gap:6px;color:var(--blue);font-size:13px;font-weight:700;text-decoration:none;margin-bottom:20px;">← Back to Plan</a>
+
+    <!-- Header card -->
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--primary);margin-bottom:8px;">{{ meetup.title }}</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted);">
+            {% if meetup.meetup_date %}<span>📅 {{ meetup.meetup_date }}{% if meetup.meetup_time %} · {{ meetup.meetup_time }}{% endif %}</span>{% endif %}
+            {% if meetup.midpoint_address %}<span>·</span><span>📍 {{ meetup.midpoint_address }}</span>{% endif %}
+          </div>
+          {% if meetup.description %}<div style="margin-top:10px;font-size:13.5px;color:var(--text);line-height:1.6">{{ meetup.description }}</div>{% endif %}
+        </div>
+        <span class="badge" style="background:var(--blue-light);color:var(--blue);flex-shrink:0">{{ meetup.status|capitalize }}</span>
+      </div>
+
+      <!-- Accept/Decline for invited members -->
+      {% if is_member and not is_creator %}
+        {% for m in members %}
+          {% if m.user_id == user_id %}
+            {% if m.status == 'invited' %}
+            <form method="POST" action="{{ url_for('meetup.respond', meetup_id=meetup.id) }}" style="display:flex;gap:10px;margin-bottom:16px">
+              <button name="action" value="accept" class="btn-primary" style="flex:1;padding:11px">✓ Accept Invite</button>
+              <button name="action" value="decline" class="btn-sec" style="flex:1;justify-content:center;padding:11px">✕ Decline</button>
+            </form>
+            {% elif m.status == 'accepted' %}
+            <div style="padding:10px 14px;background:#E8F5E9;border-radius:10px;font-size:13px;font-weight:600;color:var(--green);margin-bottom:16px">✓ You have accepted this meetup</div>
+            {% elif m.status == 'declined' %}
+            <div style="padding:10px 14px;background:#FFF3E0;border-radius:10px;font-size:13px;font-weight:600;color:var(--amber);margin-bottom:16px">You declined this meetup</div>
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+
+      <!-- Member actions (creator, or any accepted member) -->
+      {% if can_edit_route %}
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-primary" style="flex:1;min-width:140px;padding:11px" onclick="openModal('modal-suggest')">📍 Suggest a Place</button>
+        <a href="{{ url_for('place.restaurants_page') }}?meetup_id={{ meetup.id }}" class="btn-sec" style="flex:1;min-width:140px;padding:11px;justify-content:center;text-decoration:none">🍽️ Browse Restaurants</a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Meetup map -->
+    <div class="card" style="margin-bottom:20px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:12px">🗺️ Map</div>
+      <div id="meetup-map"></div>
+      <div id="meetup-map-fallback" style="display:none;padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px;text-align:center;">
+        Map could not load. Check your internet connection.
+      </div>
+    </div>
+
+        <!-- Place suggestions card -->
+        <div class="card">
+          <div style="font-weight:700;font-size:15px;margin-bottom:16px">💡 Place Suggestions ({{ suggestions|length }})</div>
+          {% for s in suggestions %}
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--input-bg);border-radius:12px;margin-bottom:10px">
+            <div style="width:40px;height:40px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🍽️</div>
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:13px">{{ s.place_name }}</div>
+              {% if s.address %}<div style="font-size:11px;color:var(--muted)">📍 {{ s.address }}</div>{% endif %}
+              {% if s.rating %}<div style="font-size:11px;color:var(--amber)">★ {{ s.rating }}</div>{% endif %}
+            </div>
+            {% if s.latitude and s.longitude %}
+            <a href="https://www.google.com/maps?q={{ s.latitude }},{{ s.longitude }}" target="_blank" style="font-size:12px;color:var(--blue);font-weight:600;text-decoration:none">Map →</a>
+            {% endif %}
+          </div>
+          {% else %}
+          <div style="text-align:center;color:var(--muted);font-size:13px;padding:16px 0">No place suggestions yet.</div>
+          {% endfor %}
+        </div>
+
+
+        </div>
+
+        <!-- Member locations for midpoint -->
+        {% if locations %}
+        <div class="card" style="margin-bottom:16px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:12px">📍 Member Locations</div>
+          {% for loc in locations %}
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px">
+            <div class="avatar" style="width:28px;height:28px;background:var(--blue);font-size:10px;flex-shrink:0">{{ loc.full_name[:2]|upper }}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600">{{ loc.full_name }}</div>
+              {% if loc.distance_to_mid is defined %}<div style="color:var(--muted)">{{ loc.distance_to_mid }} km from midpoint</div>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if can_edit_route %}
+        <div class="card">
+          <div style="font-weight:700;font-size:14px;margin-bottom:12px">⚙️ Meetup Actions</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="{{ url_for('place.restaurants_page') }}?meetup_id={{ meetup.id }}" class="btn-sec" style="font-size:12px;padding:9px 14px;justify-content:center;text-decoration:none">🍽️ Find Restaurants Near Midpoint</a>
+            <button class="btn-sec" type="button" style="font-size:12px;padding:9px 14px;justify-content:center" onclick="openModal('modal-suggest')">💡 Suggest a Place</button>
+            {% if meetup.meetup_date %}
+            <a href="{{ url_for('meetup.calendar_ics', meetup_id=meetup.id) }}" class="btn-sec" style="font-size:12px;padding:9px 14px;justify-content:center;text-decoration:none">📅 Add to Calendar</a>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Suggest place modal -->
+<div class="modal-overlay" id="modal-suggest" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:440px">
+    <button class="modal-close" type="button" onclick="closeModal('modal-suggest')">✕</button>
+    <div class="modal-title">Suggest a Place</div>
+    <div class="modal-sub">Recommend a venue for this meetup.</div>
+    <form method="POST" action="{{ url_for('meetup.suggest', meetup_id=meetup.id) }}">
+      <div style="margin-bottom:14px"><label class="field-label" for="sg-name">Place Name</label><input class="field-input" id="sg-name" name="place_name" placeholder="e.g. Himalayan Java, Thamel" required /></div>
+      <div style="margin-bottom:14px"><label class="field-label" for="sg-addr">Address (optional)</label><input class="field-input" id="sg-addr" name="address" placeholder="Street, Area, City" /></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div><label class="field-label" for="sg-lat">Latitude</label><input class="field-input" id="sg-lat" name="latitude" type="number" step="any" placeholder="27.7172" /></div>
+        <div><label class="field-label" for="sg-lng">Longitude</label><input class="field-input" id="sg-lng" name="longitude" type="number" step="any" placeholder="85.3240" /></div>
+      </div>
+      <div style="margin-bottom:20px"><label class="field-label" for="sg-rating">Rating (optional)</label><input class="field-input" id="sg-rating" name="rating" type="number" min="0" max="5" step="0.1" placeholder="e.g. 4.5" /></div>
+      <button class="btn-primary" type="submit">Add Suggestion</button>
+    </form>
+  </div>
+</div>
+
+<!-- SOS Modal -->
+<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
+  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
+    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
+    <div style="font-size:48px;margin-bottom:10px">🆘</div>
+    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
+    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
+    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
+    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  var mapEl = document.getElementById('meetup-map');
+  var fallback = document.getElementById('meetup-map-fallback');
+  if(!mapEl) return;
+  if(!window.L){
+    mapEl.style.display = 'none';
+    if(fallback) fallback.style.display = 'block';
+    return;
+  }
+
+  var locations = {{ map_points|tojson if map_points else '[]' }};
+  var midLat = {{ midpoint_lat|tojson if midpoint_lat is not none else 'null' }};
+  var midLng = {{ midpoint_lng|tojson if midpoint_lng is not none else 'null' }};
+
+  var ktmCenter = [27.7172, 85.3240];
+  var pins = locations.filter(function(l){ return l.latitude != null && l.longitude != null; });
+  var center = pins.length ? [parseFloat(pins[0].latitude), parseFloat(pins[0].longitude)] : ktmCenter;
+
+  var map = L.map(mapEl, { zoomControl: true, scrollWheelZoom: true }).setView(center, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(map);
+
+  var bounds = [];
+  pins.forEach(function(l){
+    var lat = parseFloat(l.latitude), lng = parseFloat(l.longitude);
+    L.marker([lat, lng]).addTo(map).bindPopup(
+      '<strong>' + (l.full_name || 'Member') + '</strong>' +
+      (l.distance_to_mid != null ? '<br>' + l.distance_to_mid + ' km from midpoint' : '')
+    );
+    bounds.push([lat, lng]);
+  });
+
+  if(midLat != null && midLng != null){
+    L.marker([midLat, midLng], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div style="background:#1976D2;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)">📍</div>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      })
+    }).addTo(map).bindPopup('<strong>Smart Midpoint</strong>');
+    bounds.push([midLat, midLng]);
+  }
+
+  if(bounds.length > 1){
+    map.fitBounds(bounds, { padding: [30, 30] });
+  } else if(bounds.length === 1){
+    map.setView(bounds[0], 14);
+  }
+})();
+</script>
+{% endblock %}
