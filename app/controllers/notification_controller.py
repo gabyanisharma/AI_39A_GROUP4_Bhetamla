@@ -3,6 +3,7 @@ from app.models.notification import EmergencyContact, SOSAlert, Notification
 from app.models.user import User
 from app.auth import get_current_user_id, is_logged_in
 from app import mail
+from app.database import execute_query
 from flask_mail import Message
 from config import Config
 import secrets
@@ -32,6 +33,7 @@ def add_contact():
         name         = request.form.get('name', '').strip()
         phone        = request.form.get('phone', '').strip()
         relationship = request.form.get('relationship', '').strip()
+        email        = request.form.get('email', '').strip()
 
         if not name or not phone:
             flash('Name and phone are required.', 'error')
@@ -43,6 +45,8 @@ def add_contact():
             return redirect(url_for('user.safety_page'))
 
         EmergencyContact.create(get_current_user_id(), name, phone, relationship)
+        from app.services import achievement_service
+        achievement_service.on_emergency_contact_added(get_current_user_id())
         flash('Emergency contact added!', 'success')
 
     return redirect(url_for('user.safety_page'))
@@ -89,32 +93,51 @@ def trigger_sos():
             'message':    'SOS alert saved successfully!'
         })
 
+    sent_to = []
     for contact in contacts:
         try:
+            # Look up emergency contact's email — they may be a registered user
+            contact_email = None
+            contact_user = execute_query(
+                "SELECT email FROM users WHERE phone = %s LIMIT 1",
+                (contact['phone'],), fetch=True
+            )
+            if contact_user:
+                contact_email = contact_user[0]['email']
+
+            if not contact_email:
+                # Skip contacts without a resolvable email address
+                print(f"SOS: No email found for contact {contact['name']} (phone: {contact['phone']}). Skipping.")
+                continue
+
             msg = Message(
                 subject=f'🚨 SOS Alert from {user["full_name"]}',
-                recipients=[user['email']]  # send to user's email for now
+                recipients=[contact_email]
             )
             msg.html = f"""
                 <h2>🚨 Emergency Alert</h2>
                 <p><strong>{user['full_name']}</strong> has triggered an SOS alert!</p>
-                <p><strong>Contact:</strong> {contact['name']} ({contact['relationship']})</p>
-                <p><strong>Phone:</strong> {contact['phone']}</p>
+                <p><strong>Emergency Contact:</strong> {contact['name']} ({contact['relationship']})</p>
+                <p><strong>Contact Phone:</strong> {contact['phone']}</p>
                 <p><strong>Message:</strong> {message}</p>
                 <p><strong>Location:</strong> <a href="{maps_link}">{maps_link}</a></p>
+                <p><strong>Reach them:</strong> {user.get('phone') or 'phone unavailable'}</p>
                 <p><strong>Time:</strong> Just now</p>
                 <hr>
-                <p style="color:red;">Please check on them immediately!</p>
+                <p style="color:red;">Please check on {user['full_name']} immediately!</p>
             """
             mail.send(msg)
+            sent_to.append(recipient)
         except Exception as e:
-            print(f"SOS email error: {e}")
+            print(f"SOS email error for contact {contact['name']}: {e}")
 
     return jsonify({
         'success':    True,
         'alert_id':   alert_id,
         'cancel_pin': cancel_pin,
-        'message':    'SOS alert sent successfully!'
+        'recipients': len(sent_to),
+        'message':    f'SOS alert sent to {len(sent_to)} contact(s)!' if sent_to
+                      else 'SOS alert saved.'
     })
 
 
@@ -173,12 +196,63 @@ def notifications():
     if not is_logged_in():
         return redirect(url_for('auth.login'))
 
+    from app.models.notification_preference import (
+        NotificationPreference, SmartAlertEngine
+    )
+
     user_id = get_current_user_id()
+
+    # Generate any due smart alerts before showing the feed.
+    try:
+        SmartAlertEngine.run(user_id)
+    except Exception as e:  # never let alert generation break the page
+        print(f"Smart alert engine error: {e}")
+
+    prefs   = NotificationPreference.get_or_create(user_id)
     notifs  = Notification.get_by_user(user_id)
     Notification.mark_all_read(user_id)
 
     return render_template('user/notifications.html',
-                           notifications=notifs)
+                           notifications=notifs,
+                           prefs=prefs)
+
+
+def update_notification_preferences():
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+
+    from app.models.notification_preference import NotificationPreference
+
+    user_id = get_current_user_id()
+
+    def _checkbox(name):
+        return 1 if request.form.get(name) else 0
+
+    def _int_or_none(name):
+        raw = request.form.get(name, '').strip()
+        if raw == '':
+            return None
+        try:
+            return int(raw)
+        except ValueError:
+            return None
+
+    lead = _int_or_none('reminder_lead_hours')
+    if lead is None:
+        lead = 24
+    lead = max(1, min(lead, 168))  # clamp 1h .. 1 week
+
+    NotificationPreference.update(user_id, {
+        'smart_alerts_enabled': _checkbox('smart_alerts_enabled'),
+        'meetup_reminders':     _checkbox('meetup_reminders'),
+        'invite_alerts':        _checkbox('invite_alerts'),
+        'trending_alerts':      _checkbox('trending_alerts'),
+        'reminder_lead_hours':  lead,
+        'quiet_hours_start':    _int_or_none('quiet_hours_start'),
+        'quiet_hours_end':      _int_or_none('quiet_hours_end'),
+    })
+    flash('Notification preferences saved.', 'success')
+    return redirect(url_for('user.notifications_page'))
 
 
 def mark_read(notification_id):

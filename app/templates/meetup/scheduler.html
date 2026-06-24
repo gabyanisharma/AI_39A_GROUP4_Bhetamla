@@ -5,7 +5,6 @@
 {% block page_content %}
 <div id="page-scheduler" class="page active" style="flex-direction:column" role="main">
   <div class="topbar">
-    <div class="topbar-search" style="padding:0 14px"><label for="search-sched" style="display:flex;align-items:center;gap:10px;cursor:text;flex:1"><span aria-hidden="true" style="font-size:14px">&#128269;</span><input id="search-sched" type="search" placeholder="Search people to add as friends..." aria-label="Search users" style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0" oninput="searchUsers(this.value)"></label></div>
     <div class="topbar-controls">
       <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
     </div>
@@ -138,6 +137,16 @@
           {% else %}
           <div style="text-align:center;color:var(--muted);font-size:13px;padding:14px 0">No availability slots added yet.</div>
           {% endif %}
+        </div>
+
+        <!-- Import calendar (.ics) -->
+        <div class="card" style="margin-top:16px">
+          <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:6px">📥 Import Calendar (.ics)</div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Upload a calendar file (Google, Apple, Outlook). Events become availability slots — any that clash with your meetups or existing slots are flagged and skipped.</p>
+          <form method="POST" action="{{ url_for('meetup.import_calendar_route') }}" enctype="multipart/form-data" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <input type="file" name="ics_file" accept=".ics" required style="font-size:12px;flex:1;min-width:160px">
+            <button type="submit" class="btn-primary" style="width:auto;padding:8px 16px;font-size:13px">Import</button>
+          </form>
         </div>
 
       </div>

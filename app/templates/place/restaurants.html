@@ -1,17 +1,10 @@
 {% extends "base_dashboard.html" %}
-{% set active_page = 'saved' %}
+{% set active_page = 'restaurants' %}
 {% block title %}Restaurants — Bhetamल{% endblock %}
 
 {% block page_content %}
 <div class="page active" style="flex-direction:column" role="main">
   <div class="topbar">
-    <div class="topbar-search" style="padding:0 14px">
-      <form method="GET" action="{{ url_for('place.restaurants_page') }}" style="display:flex;align-items:center;gap:10px;flex:1">
-        {% if meetup_id %}<input type="hidden" name="meetup_id" value="{{ meetup_id }}" />{% endif %}
-        <span style="font-size:14px">&#128269;</span>
-        <input name="q" type="search" value="{{ search_q }}" placeholder="Search restaurants..." style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0" />
-      </form>
-    </div>
     <div class="topbar-controls">
       <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
     </div>
@@ -29,9 +22,16 @@
           {% else %}Discover verified dining spots perfect for meetups in Kathmandu.{% endif %}
         </p>
       </div>
-      {% if meetup_id %}
-      <a href="{{ url_for('meetup.view_meetup', meetup_id=meetup_id) }}" style="color:var(--blue);font-size:13px;font-weight:700;text-decoration:none">← Back to Meetup</a>
-      {% endif %}
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <form method="GET" action="{{ url_for('place.restaurants_page') }}" style="display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:8px 14px;">
+          {% if meetup_id %}<input type="hidden" name="meetup_id" value="{{ meetup_id }}" />{% endif %}
+          <span style="font-size:14px">&#128269;</span>
+          <input name="q" type="search" value="{{ search_q }}" placeholder="Search restaurants..." style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);min-width:200px;padding:0" />
+        </form>
+        {% if meetup_id %}
+        <a href="{{ url_for('meetup.view_meetup', meetup_id=meetup_id) }}" style="color:var(--blue);font-size:13px;font-weight:700;text-decoration:none">← Back to Meetup</a>
+        {% endif %}
+      </div>
     </div>
 
     <!-- Filters -->

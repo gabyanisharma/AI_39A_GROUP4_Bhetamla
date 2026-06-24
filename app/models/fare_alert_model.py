@@ -12,23 +12,35 @@ from datetime import datetime
 from config import Config
 from app.database import get_db_connection
 
+FARE_MODES = ('car', 'bike', 'public', 'walk')
+RATE_PER_KM = {
+    'car': 35,
+    'bike': 18,
+    'public': 5,
+    'walk': 0,
+}
+
 # ── DB connection ─────────────────────────────────────────────────────────────
 def get_db():
     return get_db_connection()
 
 
-# ── Fare estimation (mock — swap in real Pathao / OSRM API) ──────────────────
-RATE_PER_KM = {
-    'car':    18.0,   # NPR
-    'bike':   10.0,
-    'public':  5.0,
-    'walk':    0.0,
-}
-
 def estimate_fare(distance_km: float, mode: str) -> float:
     """Return estimated fare in NPR for a given distance + travel mode."""
-    base        = RATE_PER_KM.get(mode, 15.0) * distance_km
-    fluctuation = random.uniform(0.85, 1.15)   # ← replace with real API call
+    if mode == 'bike':
+        base = 25 + 18 * distance_km
+    elif mode == 'car':
+        base = 50 + 35 * distance_km
+    elif mode == 'taxi':
+        base = 50 + 45 * distance_km
+    elif mode == 'public':
+        base = 25 + 5 * distance_km
+    elif mode == 'walk':
+        base = 0.0
+    else:
+        base = 0.0
+        
+    fluctuation = random.uniform(0.85, 1.15)   # ← simulate peak/off-peak fluctuation
     return round(base * fluctuation, 2)
 
 
@@ -141,6 +153,23 @@ def deactivate_alert(alert_id: int, user_id: int) -> bool:
         db.close()
 
 
+def get_pending_alert_targets() -> list[dict]:
+    """All active, not-yet-triggered (user, meetup, mode) combos across every
+    user. Used by the background scheduler to auto-check fare drops."""
+    db  = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            SELECT DISTINCT userID, meetupID, mode
+            FROM   fare_alert
+            WHERE  isActive = 1 AND isTriggered = 0
+        """)
+        return cur.fetchall()
+    finally:
+        cur.close()
+        db.close()
+
+
 # ── Meetup queries ────────────────────────────────────────────────────────────
 def get_meetup(meetup_id: int) -> dict | None:
     """Return meetup row with destination address and coordinates."""
@@ -242,9 +271,9 @@ def group_history_by_mode(rows: list[dict]) -> dict:
     Transform raw fare_history rows into
     { mode: [{fare, time}, ...], ... }
     """
-    grouped = {m: [] for m in RATE_PER_KM}
+    grouped = {m: [] for m in FARE_MODES}
     for row in rows:
-        grouped[row['mode']].append({
+        grouped.setdefault(row['mode'], []).append({
             'fare': float(row['fare']),
             'time': row['recordedAt'].strftime('%H:%M'),
         })

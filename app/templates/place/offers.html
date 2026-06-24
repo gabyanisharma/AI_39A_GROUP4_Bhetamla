@@ -1,0 +1,53 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'offers' %}
+{% block title %}Restaurant Offers — Bhetamल{% endblock %}
+
+{% block page_content %}
+<div class="page active" style="flex-direction:column" role="main">
+  <div class="topbar">
+    <div class="topbar-controls">
+      <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
+    </div>
+    <button class="sos-btn" onclick="openModal('modal-sos')">&#10033; SOS</button>
+  </div>
+
+  <div style="padding:28px;overflow-y:auto;flex:1">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--primary);margin-bottom:6px">Active Offers & Deals</h1>
+        <p style="color:var(--muted);font-size:13.5px">Browse the latest discounts at our verified restaurants.</p>
+      </div>
+      <div>
+        <a href="{{ url_for('place.restaurants_page') }}" class="btn-sec" style="text-decoration:none">Browse Restaurants</a>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;">
+      {% for o in offers %}
+      <div class="card" style="padding:16px;display:flex;flex-direction:column">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--text)">🏷️ {{ o.title }}</div>
+            <div style="font-size:12px;color:var(--muted)">@ {{ o.restaurant_name }}</div>
+          </div>
+          <span style="background:rgba(30,130,76,.1);color:var(--green);font-weight:700;font-size:11px;padding:4px 10px;border-radius:20px">{{ o.discount_percent }}% OFF</span>
+        </div>
+        <div style="font-size:12px;color:var(--text);margin-bottom:12px">Valid until: <strong style="color:var(--amber)">{{ o.valid_until }}</strong></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:auto">
+          <a href="{{ url_for('place.restaurant_detail_page', restaurant_id=o.restaurant_id) }}" class="btn-primary" style="flex:1;text-align:center;padding:10px;font-size:12px;text-decoration:none">View Restaurant</a>
+          <form method="POST" action="{{ url_for('place.save_offer_route', offer_id=o.id) }}" style="flex:1">
+            <button type="submit" class="btn-sec" style="width:100%;padding:10px;font-size:12px;cursor:pointer">Save Offer</button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <div class="card" style="grid-column: 1 / -1; padding:40px; text-align:center; color:var(--muted)">
+        <div style="font-size:32px; margin-bottom:10px;">🏷️</div>
+        <h3 style="font-size:18px; margin-bottom:5px; color:var(--text)">No active offers</h3>
+        <p style="font-size:14px">There are currently no active restaurant deals.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -3,15 +3,42 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Bhetamल — Coordinate meetups with friends. Find midpoints, discover restaurants, plan routes, and stay safe." />
+  <meta name="theme-color" content="#082D25" />
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}" />
   <title>{% block title %}Bhetamल{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,700;0,800;1,600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
   {% block head %}{% endblock %}
+  {% block extra_css %}{% endblock %}
 </head>
 <body>
   <a href="#main-content" class="skip-link">Skip to content</a>
+
+  <!-- Global flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div id="flash-stack" style="position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:3000;display:flex;flex-direction:column;gap:8px;width:min(440px,92vw)">
+      {% for category, message in messages %}
+      <div class="flash-msg" role="alert"
+           style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-radius:12px;font-size:13.5px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.16);
+           {% if category == 'error' %}background:#FDECEC;color:#B42318;border:1px solid #F3B4B0
+           {% elif category == 'success' %}background:#E8F6EE;color:#067647;border:1px solid #A6E2C0
+           {% elif category == 'warning' %}background:#FEF6E7;color:#B25E09;border:1px solid #F5D49B
+           {% else %}background:#EAF1FE;color:#1D4ED8;border:1px solid #B6CCF7{% endif %}">
+        <span>{{ message }}</span>
+        <button type="button" onclick="this.parentElement.remove()" aria-label="Dismiss"
+                style="background:none;border:none;cursor:pointer;font-size:15px;color:inherit;opacity:.7">✕</button>
+      </div>
+      {% endfor %}
+    </div>
+    <script>
+      setTimeout(function(){ var s=document.getElementById('flash-stack'); if(s) s.remove(); }, 6000);
+    </script>
+    {% endif %}
+  {% endwith %}
 
   {% block body %}{% endblock %}
 
@@ -38,19 +65,95 @@
     </div>
   </div>
 
-  <!-- Notification panel overlay -->
-  <div id="notif-overlay" onclick="closeNotifPanel()" style="display:none;position:fixed;inset:0;z-index:1400;background:rgba(0,0,0,.3)"></div>
-  <div id="notif-panel" class="notif-panel" role="dialog" aria-label="Notifications">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <div style="font-family:'Playfair Display',serif;font-weight:700;font-size:18px">Notifications</div>
-      <button onclick="closeNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted)">✕</button>
-    </div>
-    <div class="notif-item"><div class="notif-dot"></div><div><div style="font-weight:600;font-size:13px">Priya accepted your invite</div><div style="font-size:11px;color:var(--muted)">Dinner @ Aura · 2 min ago</div></div></div>
-    <div class="notif-item"><div class="notif-dot"></div><div><div style="font-weight:600;font-size:13px">Group vote ends in 2 hours</div><div style="font-size:11px;color:var(--muted)">Kathmandu Foodies · 1 hr ago</div></div></div>
-    <div class="notif-item"><div class="notif-dot" style="background:var(--green)"></div><div><div style="font-weight:600;font-size:13px">Arjun checked in safely</div><div style="font-size:11px;color:var(--muted)">Group Hike · 3 hrs ago</div></div></div>
-  </div>
-
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   {% block scripts %}{% endblock %}
+  {% block extra_js %}{% endblock %}
+  {# Notification badge — runs on every page #}
+  <style>
+  .notif-badge-count{position:absolute;top:-2px;right:-2px;background:#dc2626;color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:20px;display:flex;align-items:center;justify-content:center;padding:0 4px;line-height:1;pointer-events:none}
+  </style>
+  <script>
+  (function(){
+    var count = {{ header_notifications|length if header_notifications else 0 }};
+    document.querySelectorAll('button[onclick*="openNotifPanel"]').forEach(function(btn){
+      btn.style.position='relative';
+      if(count>0){var b=document.createElement('span');b.className='notif-badge-count';b.textContent=count>99?'99+':count;btn.appendChild(b);}
+    });
+  })();
+  </script>
+
+  <!-- ── Persistent Translation (EN ⇄ NE) — runs on every page ── -->
+  <script>
+  (function(){
+    var LANG_KEY = 'bhetamla-lang';
+    var CACHE_KEY = 'bhetamla-translate-cache';
+    var saved = null;
+    try { saved = localStorage.getItem(LANG_KEY); } catch(e){}
+    if (!saved || saved === 'en') return; // English = no translation needed
+
+    // Load cache
+    var cache = {};
+    try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch(e){}
+
+    // Collect translatable text nodes (skip scripts, styles, inputs)
+    var root = document.body;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function(node) {
+        var p = node.parentElement;
+        if (!p) return NodeFilter.FILTER_REJECT;
+        var tag = p.tagName;
+        if (['SCRIPT','STYLE','NOSCRIPT','TEXTAREA','INPUT','SELECT'].indexOf(tag) !== -1) return NodeFilter.FILTER_REJECT;
+        var text = node.textContent.trim();
+        if (!text || text.length < 2) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }, false);
+
+    var nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+
+    var pending = [];
+    nodes.forEach(function(node) {
+      var text = node.textContent.trim();
+      if (cache[text]) {
+        node.textContent = node.textContent.replace(text, cache[text]);
+      } else {
+        pending.push(node);
+      }
+    });
+
+    // Translate uncached nodes in batches of 5 to avoid hammering the endpoint
+    var batchSize = 5;
+    var idx = 0;
+    function nextBatch() {
+      var batch = pending.slice(idx, idx + batchSize);
+      if (!batch.length) return;
+      idx += batchSize;
+      batch.forEach(function(node) {
+        var text = node.textContent.trim();
+        fetch('/meetup/chat/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          body: JSON.stringify({ text: text, target: saved })
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d && d.success && d.translated) {
+            // Update cache
+            try {
+              cache[text] = d.translated;
+              localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+            } catch(e){}
+            node.textContent = node.textContent.replace(text, d.translated);
+          }
+        })
+        .catch(function(){})
+        .finally(function(){ nextBatch(); });
+      });
+    }
+    // Start first batch
+    nextBatch();
+  })();
+  </script>
 </body>
 </html>

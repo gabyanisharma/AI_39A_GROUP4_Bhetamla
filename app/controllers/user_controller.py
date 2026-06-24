@@ -1,11 +1,12 @@
 from flask import render_template, request, redirect, url_for, flash, session
 from app.models.user import User
+from app.models.feedback import Feedback
 from app.auth import is_logged_in, get_current_user_id
 import os
 from werkzeug.utils import secure_filename
 from app.models.notification import SOSAlert
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -110,4 +111,30 @@ def support():
             flash('Your message has been sent to our support team. We will get back to you shortly!', 'success')
             return redirect(url_for('user.support_page'))
             
-    return render_template('user/support.html')
+    feedback_summary = Feedback.average_rating()
+    my_feedback = Feedback.get_by_user(get_current_user_id())
+    return render_template('user/support.html',
+                           feedback_summary=feedback_summary,
+                           my_feedback=my_feedback)
+
+
+def submit_feedback():
+    """Store an app rating + optional message (US27)."""
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+
+    try:
+        rating = int(request.form.get('rating', ''))
+    except (TypeError, ValueError):
+        rating = 0
+
+    if rating < 1 or rating > 5:
+        flash('Please select a rating between 1 and 5 stars.', 'error')
+        return redirect(url_for('user.support_page'))
+
+    message = request.form.get('message', '').strip()
+    category = (request.form.get('category', 'general').strip() or 'general')[:50]
+
+    Feedback.create(get_current_user_id(), rating, message, category)
+    flash('Thanks for your feedback! 🌟', 'success')
+    return redirect(url_for('user.support_page'))

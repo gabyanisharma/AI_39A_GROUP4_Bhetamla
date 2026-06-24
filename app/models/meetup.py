@@ -1,6 +1,31 @@
+import secrets
+
 from app.database import execute_query
 
 class Meetup:
+
+    @staticmethod
+    def get_or_create_invite_code(meetup_id):
+        """Return the meetup's shareable invite code, generating one if needed."""
+        row = execute_query(
+            "SELECT invite_code FROM meetups WHERE id = %s", (meetup_id,), fetch=True
+        )
+        if not row:
+            return None
+        code = row[0].get('invite_code')
+        if not code:
+            code = secrets.token_urlsafe(9)
+            execute_query(
+                "UPDATE meetups SET invite_code = %s WHERE id = %s", (code, meetup_id)
+            )
+        return code
+
+    @staticmethod
+    def get_by_invite_code(code):
+        rows = execute_query(
+            "SELECT * FROM meetups WHERE invite_code = %s", (code,), fetch=True
+        )
+        return rows[0] if rows else None
 
     @staticmethod
     def create(title, description, created_by, meetup_date=None, meetup_time=None):
@@ -22,19 +47,31 @@ class Meetup:
         return results[0] if results else None
 
     @staticmethod
-    def get_by_user(user_id):
-        query = """
+    def get_by_user(user_id, include_hidden=True):
+        hidden_filter = ""
+        if not include_hidden:
+            hidden_filter = """
+               AND COALESCE((
+                   SELECT mm.hidden_from_groups FROM meetup_members mm
+                   WHERE mm.meetup_id = m.id AND mm.user_id = %s
+               ), 0) = 0
+            """
+        query = f"""
             SELECT m.*, u.full_name as creator_name
             FROM meetups m
             JOIN users u ON m.created_by = u.id
-            WHERE m.created_by = %s
+            WHERE (m.created_by = %s
                OR m.id IN (
                    SELECT meetup_id FROM meetup_members
                    WHERE user_id = %s
-               )
+               ))
+            {hidden_filter}
             ORDER BY m.created_at DESC
         """
-        return execute_query(query, (user_id, user_id), fetch=True)
+        params = (user_id, user_id)
+        if not include_hidden:
+            params = (user_id, user_id, user_id)
+        return execute_query(query, params, fetch=True)
 
     @staticmethod
     def update_midpoint(meetup_id, lat, lng, address=''):
@@ -44,6 +81,33 @@ class Meetup:
             WHERE id = %s
         """
         return execute_query(query, (lat, lng, address, meetup_id))
+
+    @staticmethod
+    def update_status(meetup_id, status):
+        query = """
+            UPDATE meetups
+            SET status = %s
+            WHERE id = %s
+        """
+        return execute_query(query, (status, meetup_id))
+    
+    @staticmethod
+    def hide_from_groups(meetup_id, user_id):
+        execute_query(
+            """
+            UPDATE meetup_members SET hidden_from_groups = TRUE
+            WHERE meetup_id = %s AND user_id = %s
+            """,
+            (meetup_id, user_id)
+        )
+
+    @staticmethod
+    def delete_by_creator(meetup_id, user_id):
+        query = """
+            DELETE FROM meetups
+            WHERE id = %s AND created_by = %s
+        """
+        return execute_query(query, (meetup_id, user_id))
 
 
 class MeetupMember:

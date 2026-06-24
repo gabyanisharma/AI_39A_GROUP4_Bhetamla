@@ -1,8 +1,33 @@
-let currentLang = 'en';
 let currentTheme = 'light';
 let userVote = null;
 const votes = {1:11,2:6,3:3};
 const totalVotes = () => Object.values(votes).reduce((a,b)=>a+b,0);
+
+// ── PASSWORD VISIBILITY TOGGLE ──
+function togglePassword(inputId, btn) {
+  var input = document.getElementById(inputId);
+  if (!input) return;
+  var isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+  btn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+  // Swap icon: eye vs eye-off
+  if (isPassword) {
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  } else {
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  }
+}
+
+// ── AUTH FORM LOADING STATE ──
+function handleAuthSubmit(form) {
+  var btn = form.querySelector('button[type="submit"]');
+  if (!btn) return true;
+  var originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" style="animation:spin .8s linear infinite"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/></svg> Please wait…</span>';
+  // Allow form to submit normally
+  return true;
+}
  
 function goTo(id){
   const current=document.querySelector('.screen.active');
@@ -32,12 +57,32 @@ document.querySelectorAll('.nav-btn[data-page]').forEach(btn=>{
   btn.addEventListener('click',()=>navTo(btn.dataset.page));
 });
  
-function setTheme(t){
+var THEME_KEY = 'bhetamla-theme';
+function applyTheme(t){
   currentTheme=t;
   document.documentElement.setAttribute('data-theme',t);
   document.getElementById('theme-label') && (document.getElementById('theme-label').textContent = t==='dark'?'Light':'Dark');
+  try { localStorage.setItem(THEME_KEY, t); } catch(e) {}
+}
+// setTheme = an explicit user choice → persisted across sessions.
+function setTheme(t){
+  applyTheme(t);
 }
 function toggleTheme(){setTheme(currentTheme==='light'?'dark':'light');}
+// On load: use the saved choice, else follow the OS (auto mode). Auto mode is
+// not persisted, so it keeps tracking the system until the user picks one.
+(function initTheme(){
+  var saved=null; try { saved=localStorage.getItem(THEME_KEY); } catch(e) {}
+  if(saved==='light'||saved==='dark'){ applyTheme(saved); return; }
+  var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+  applyTheme(mq && mq.matches ? 'dark' : 'light');
+  if(mq && mq.addEventListener){
+    mq.addEventListener('change', function(e){
+      var s=null; try { s=localStorage.getItem(THEME_KEY); } catch(_){}
+      if(s!=='light'&&s!=='dark') applyTheme(e.matches?'dark':'light');
+    });
+  }
+})();
  
 function applyLang(lang){
   currentLang=lang;
@@ -54,16 +99,18 @@ function applyLang(lang){
   showToast(lang==='ne'?'नेपाली भाषामा परिवर्तन गरियो':'Switched to English');
 }
 function toggleLang(){applyLang(currentLang==='en'?'ne':'en');}
- 
+
 function selectVenue(n){
-  [1,2].forEach(i=>{
-    const v=document.getElementById('venue'+i);
-    const nm=v.querySelector('.venue-name');
-    const sel=i===n;
-    v.classList.toggle('selected',sel);
-    nm.style.color=sel?'var(--blue)':'';
+  var all = document.querySelectorAll('#nearby-dynamic-list .venue-row, #modal-nearby-restaurants .venue-row');
+  all.forEach(function(v, i){
+    var sel = (i + 1) === n;
+    v.classList.toggle('selected', sel);
+    var nm = v.querySelector('.venue-name');
+    if (nm) nm.style.color = sel ? 'var(--blue)' : '';
   });
-  showToast(n===1?'Himalayan Java selected!':'Cafe de Patan selected!');
+  var selected = document.querySelector('#modal-nearby-restaurants .venue-row.selected .venue-name, #modal-nearby-restaurants .venue-row:nth-child(1) .venue-name');
+  var name = selected ? selected.textContent : 'Venue';
+  showToast('Selected: ' + name);
 }
  
 // ── VOTE NAMES MAP ──
@@ -361,10 +408,48 @@ function closeNotifPanel(){
   document.getElementById('notif-overlay').style.display='none';
 }
 
-// SOS TRIGGER
+// SOS TRIGGER — sends live location to the backend, which logs the alert
+// and notifies the user's emergency contacts. Surfaces the cancel PIN.
 function triggerSOS(){
   closeModal('modal-sos');
-  showToast('🚨 SOS Alert Sent! Contacts notified with your location.');
+  showToast('🚨 Sending SOS…');
+
+  var send = function(lat, lng){
+    fetch('/notification/trigger-sos', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+      body: JSON.stringify({latitude: lat, longitude: lng})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d && d.success){
+        if(typeof sosActive !== 'undefined') sosActive = true;
+        var badge = document.getElementById('sos-status-badge');
+        if(badge){
+          badge.innerHTML = '<div style="width:9px;height:9px;border-radius:50%;background:var(--red);flex-shrink:0;"></div><span style="font-size:12.5px;font-weight:700;color:var(--red)">SOS ACTIVE</span>';
+          badge.style.background = '#FFEBEE';
+        }
+        showToast('🚨 SOS sent! Emergency contacts notified.');
+        if(d.cancel_pin){
+          alert('SOS alert active.\n\nYour cancel PIN is: ' + d.cancel_pin +
+                '\n\nKeep this PIN to deactivate the alert from the Safety page.');
+        }
+      } else {
+        showToast((d && d.message) || 'Could not send SOS.');
+      }
+    })
+    .catch(function(){ showToast('Could not send SOS. Check your connection.'); });
+  };
+
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      function(pos){ send(pos.coords.latitude, pos.coords.longitude); },
+      function(){ send(null, null); },
+      {timeout: 4000}
+    );
+  } else {
+    send(null, null);
+  }
 }
 
 // FORGOT PASSWORD
@@ -433,17 +518,8 @@ function pickSlot(el){
 }
 
 // ── MIDPOINT CALCULATOR ──
-const MIDPOINT_SPOTS=['Patan Durbar Square','Garden of Dreams, Thamel','Sankhamul Park','Naxal Central Park','Boudha Stupa Area'];
-let mpIdx=0;
-function calcMidpoint(){
-  mpIdx=(mpIdx+1)%MIDPOINT_SPOTS.length;
-  const box=document.getElementById('midpoint-result');
-  const spot=MIDPOINT_SPOTS[mpIdx];
-  box.querySelector('h3').textContent=spot;
-  const mins=[14,20,18,12,22][mpIdx];
-  box.querySelector('p').textContent='~'+mins+' min avg travel · Ideal central point';
-  showToast('Midpoint recalculated: '+spot);
-}
+// NOTE: Real calcMidpoint is defined in plan.html extra_js (async with geocoding).
+// This stub is removed so the real implementation is used on the plan page.
 
 // ── BUDGET FILTER ──
 function updateBudget(val){
@@ -542,15 +618,59 @@ function filterGallery(cat,btn){
 // ═══════════════════════════════════════
 //  PLAN MEETUP — Phase 1 → Phase 2
 // ═══════════════════════════════════════
-function detectPMLocation(){
-  var label = document.getElementById('pm-loc-label');
-  if(!label) return;
-  label.textContent = 'Detecting…';
-  setTimeout(function(){
-    label.textContent = 'Thamel, Kathmandu (detected)';
-    showToast('📍 Location detected: Thamel');
-  }, 800);
+// NOTE: Real calcMidpoint and detectPMLocation are defined in plan.html extra_js.
+// The main.js versions have been removed to avoid overriding the real implementations.
+
+var selectedNearbyVenue = null;
+
+function loadNearbyRestaurants(){
+  var list = document.getElementById('nearby-venue-list');
+  if(!list) return;
+  var ctx = window.PLAN_CONTEXT || {};
+  var mid = ctx.midpoint;
+  if(!mid || !Number.isFinite(Number(mid.lat)) || !Number.isFinite(Number(mid.lng))){
+    list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">Calculate the midpoint first.</div>';
+    return;
+  }
+  list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">Loading nearby places...</div>';
+
+  fetch('/place/api/nearby-midpoint?lat=' + mid.lat + '&lng=' + mid.lng + '&radius=100.0')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(!data.success || !data.restaurants.length){
+        list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">No restaurants found.</div>';
+        return;
+      }
+      selectedNearbyVenue = data.restaurants[0];
+      list.innerHTML = data.restaurants.map(function(r, i){
+        return '<div class="venue-row' + (i === 0 ? ' selected' : '') + '" data-id="' + r.id + '" onclick="selectNearbyVenue(' + r.id + ')">' +
+          '<div class="venue-emoji">🍽️</div>' +
+          '<div style="flex:1"><div class="venue-name">' + escapePlanHtml(r.name) + '</div>' +
+          '<div class="venue-rating">⭐ ' + r.rating.toFixed(1) + ' · ' + r.distance_km.toFixed(2) + ' km · NPR ' + Math.round(r.avg_cost_per_person) + '</div></div>' +
+        '</div>';
+      }).join('');
+    })
+    .catch(function(){
+      list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">Could not load restaurants.</div>';
+    });
 }
+
+function selectNearbyVenue(id){
+  selectedNearbyVenue = { id: id };
+  document.querySelectorAll('#nearby-venue-list .venue-row').forEach(function(row){
+    row.classList.toggle('selected', row.dataset.id === String(id));
+  });
+}
+
+function setNearbyVenue(){
+  if(!selectedNearbyVenue){
+    showToast('Please select a restaurant.');
+    return;
+  }
+  showToast('Venue updated!');
+  completeSerialStep('modal-nearby-restaurants', 'venue selected');
+}
+
 
 function createMeetupAndProceed(){
   var title = document.getElementById('pm-title') ? document.getElementById('pm-title').value.trim() : '';
@@ -656,15 +776,11 @@ document.addEventListener('click', function(e){
 // ═══════════════════════════════════════
 var STEPS = [
   { id:'modal-midpoint',           label:'Midpoint Meeting Calculator'     },
-  { id:'modal-restaurant-offers',  label:'Restaurant Offers Check'          },
   { id:'modal-cuisine-preference', label:'Cuisine Preference Selection'     },
   { id:'modal-budget-filter',      label:'Budget-Based Restaurant Filter'   },
-  { id:'modal-ambience-filter',    label:'Ambience-Based Restaurant Filter' },
   { id:'modal-nearby-restaurants', label:'Nearby Restaurant Recommendations'},
-  { id:'modal-budget-split',       label:'Dynamic Budget Split'             },
-  { id:'modal-ride-cost',          label:'Ride Cost Estimation'             },
-  { id:'modal-walking-distance',   label:'Walking Distance Calculator'      },
-  { id:'modal-multistop-route',    label:'Multi-Stop Route Planning'        }
+  { id:'modal-restaurant-offers',  label:'Restaurant Offers Check'          }, 
+  { id:'modal-ride-cost',          label:'Ride Cost Estimation'             }
 ];
 var stepIdx = -1; // -1 = not started
 
@@ -672,7 +788,21 @@ var stepIdx = -1; // -1 = not started
 function _rawOpen(id){
   var el = document.getElementById(id);
   if(el) el.classList.add('open');
+  if(id === 'modal-nearby-restaurants' && typeof window.refreshMidpointRestaurants === 'function'){
+    window.refreshMidpointRestaurants();
+  }
+  if(id === 'modal-restaurant-offers' && typeof window.renderFeaturedRestaurantOffers === 'function'){
+    window.renderFeaturedRestaurantOffers();
+  }
+  if(id === 'modal-budget-split' && typeof window.loadBudgetSplit === 'function'){
+    window.loadBudgetSplit();
+  }
+  if(id === 'modal-multistop-route' && typeof window.loadMultiStopRoute === 'function'){
+    window.loadMultiStopRoute();
+  }
 }
+
+
 function _rawClose(id){
   var el = document.getElementById(id);
   if(el) el.classList.remove('open');
@@ -793,26 +923,37 @@ function resetSerialPlan(){
   if(titleEl) titleEl.value = '';
   if(descEl) descEl.value = '';
 }
-
-/* ── override closeFeatModal so the × button also advances serial ── */
+/* ── EXIT TO MAP ── closes any open popup and returns to the map view,
+   without sending the user back to the create-meetup form ── */
+function exitSerialToMap(){
+  stepIdx = -1;
+  // Close all serial modals
+  document.querySelectorAll('.feat-modal-overlay.open,.modal-overlay.open').forEach(function(m){ m.classList.remove('open'); });
+  // Reset sidebar cards back to the "start" card (so re-opening starts fresh)
+  var startCard = document.getElementById('plan-start-card');
+  var activeCard = document.getElementById('plan-active-card');
+  var doneCard = document.getElementById('plan-done-card');
+  if(startCard) startCard.style.display = 'flex';
+  if(activeCard) activeCard.style.display = 'none';
+  if(doneCard) doneCard.style.display = 'none';
+  // Stay on the map — do NOT touch plan-phase-create / plan-phase-advanced
+}
+/* ── × button always closes and exits back to the map; it never advances the serial flow ── */
 var _baseFeatClose = closeFeatModal;
 closeFeatModal = function(id){
-  // if serial is running and this is the current step's modal → advance
+  // If a serial flow is running, exit it entirely so the user lands back on the map.
   if(stepIdx >= 0 && stepIdx < STEPS.length && STEPS[stepIdx].id === id){
-    serialNext(id);
-  } else {
-    _baseFeatClose(id);
+    exitSerialToMap();
   }
+  _baseFeatClose(id);
 };
-/* ── also override closeModal for regular modals in serial ── */
+/* ── × button always closes and exits the serial flow if one is active ── */
 var _baseModalClose = closeModal;
 closeModal = function(id){
   if(stepIdx >= 0 && stepIdx < STEPS.length && STEPS[stepIdx].id === id){
-    // serial advances via the primary button; just close here
-    _baseModalClose(id);
-  } else {
-    _baseModalClose(id);
+    exitSerialToMap();
   }
+  _baseModalClose(id);
 };
 
 /* ── init step list on load ── */
@@ -836,7 +977,7 @@ function setSplitMode(mode, btn) {
 }
 function calcSplit() {
   const total = parseFloat(document.getElementById('budget-total').value) || 0;
-  const members = document.querySelectorAll('#split-members .split-member-row');
+  const members = document.querySelectorAll('#split-dynamic-members .split-member-row, #split-members .split-member-row');
   const n = members.length;
   const perPerson = Math.floor(total / n);
   const remainder = total - perPerson * (n - 1);
@@ -844,7 +985,7 @@ function calcSplit() {
     const amt = row.querySelector('.split-amount');
     if (amt) amt.textContent = 'NPR ' + (i === n-1 ? remainder : perPerson).toLocaleString();
   });
-  const summary = document.getElementById('split-summary');
+  const summary = document.getElementById('split-dynamic-summary') || document.getElementById('split-summary');
   if (summary) summary.textContent = 'Equal split: NPR ' + perPerson.toLocaleString() + ' / person';
 }
 
@@ -1029,4 +1170,6 @@ function setEPTheme(theme) {
     lightBtn.style.color = 'var(--muted)';
     document.documentElement.setAttribute('data-theme','dark');
   }
+  currentTheme = theme;
+  try { localStorage.setItem('bhetamla-theme', theme); } catch(e) {}
 }
