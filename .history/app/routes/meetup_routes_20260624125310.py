@@ -265,6 +265,6 @@ def join_via_invite(code):
     
     user_id = session.get('user_id')
     # Add user to the meetup
-    Meetup.accept(meetup['id'], user_id)
+    Meetup.add_participant(meetup['id'], user_id)
     
     return redirect(url_for('meetup.view_meetup', meetup_id=meetup['id']))
