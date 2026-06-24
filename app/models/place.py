@@ -36,14 +36,29 @@ class Restaurant:
             cuisines = filters['cuisine']
             if not isinstance(cuisines, (list, tuple, set)):
                 cuisines = [cuisines]
+            
             cuisine_clauses = []
             for cuisine in cuisines:
-                cuisine = str(cuisine).strip()
+                cuisine = str(cuisine).strip().lower()
                 if not cuisine:
                     continue
-                cuisine_clauses.append("(LOWER(cuisine) LIKE %s OR LOWER(category) LIKE %s)")
-                like = f"%{cuisine.lower()}%"
-                params.extend([like, like])
+                
+                # Expand grouped cuisines back into their constituent keywords
+                keywords = [cuisine]
+                for group_name, kw_list in Restaurant._CUISINE_GROUP_RULES:
+                    if cuisine == group_name.lower():
+                        keywords.extend(kw_list)
+                        break
+                
+                kw_clauses = []
+                for kw in keywords:
+                    kw_clauses.append("(LOWER(cuisine) LIKE %s OR LOWER(category) LIKE %s)")
+                    like = f"%{kw}%"
+                    params.extend([like, like])
+                
+                if kw_clauses:
+                    cuisine_clauses.append("(" + " OR ".join(kw_clauses) + ")")
+            
             if cuisine_clauses:
                 query += " AND (" + " OR ".join(cuisine_clauses) + ")"
 
@@ -113,7 +128,7 @@ class Restaurant:
         return results[0] if results else None
 
     @staticmethod
-    def get_nearby(lat, lng, radius_km=3.0, filters=None):
+    def get_nearby(lat, lng, radius_km=100.0, filters=None):
         all_restaurants = Restaurant.get_all(filters)
         nearby = []
 
@@ -133,7 +148,7 @@ class Restaurant:
         return nearby
 
     @staticmethod
-    def get_near_midpoint(mid_lat, mid_lng, radius_km=3.0, filters=None):
+    def get_near_midpoint(mid_lat, mid_lng, radius_km=100.0, filters=None):
         return Restaurant.get_nearby(mid_lat, mid_lng, radius_km, filters)
 
     @staticmethod
@@ -251,6 +266,19 @@ class RestaurantReview:
         return results[0] if results else None
 
 class RestaurantOffer:
+    @staticmethod
+    def get_all_active():
+        query = """
+            SELECT o.*, r.name as restaurant_name, r.cuisine, r.rating, 
+                   r.avg_cost_per_person, r.latitude, r.longitude
+            FROM restaurant_offers o
+            JOIN restaurants r ON o.restaurant_id = r.id
+            WHERE o.is_active = TRUE
+              AND o.valid_until >= CURDATE()
+            ORDER BY o.valid_until ASC
+        """
+        return execute_query(query, fetch=True)
+
     @staticmethod
     def get_active_by_restaurant(restaurant_id):
         query = """

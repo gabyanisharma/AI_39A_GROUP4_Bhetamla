@@ -21,7 +21,6 @@ from flask import (
 )
 from datetime import datetime
 from app.models.fare_alert_model import (
-    RATE_PER_KM,
     estimate_fare,
     get_distance,
     get_alerts_for_user,
@@ -33,6 +32,7 @@ from app.models.fare_alert_model import (
     record_fare_history,
     check_and_trigger_alerts,
     group_history_by_mode,
+    FARE_MODES,
 )
 from app.controllers.notification_controller import send_notification, fare_drop_notification
 
@@ -86,7 +86,7 @@ def meetup_alerts(meetup_id):
     distance = get_distance(meetup_id, user_id)
 
     # Current fare estimates for all modes
-    fares = {mode: estimate_fare(distance, mode) for mode in RATE_PER_KM}
+    fares = {mode: estimate_fare(distance, mode) for mode in FARE_MODES}
 
     # Existing alert (if any) for this user + meetup
     existing_alert = get_alert_for_meetup(user_id, meetup_id)
@@ -119,6 +119,8 @@ def create():
     meetup_id   = int(request.form.get('meetup_id', 0))
     mode        = request.form.get('mode', 'car')
     target_fare = float(request.form.get('target_fare', 0))
+    if mode not in FARE_MODES:
+        mode = 'car'
 
     if not meetup_id or target_fare <= 0:
         flash('Please fill in all fields.', 'error')
@@ -159,7 +161,7 @@ def check_fare(meetup_id):
     fares             = {}
     triggered_alerts  = []
 
-    for mode in RATE_PER_KM:
+    for mode in FARE_MODES:
         fare          = estimate_fare(distance, mode)
         fares[mode]   = fare
 

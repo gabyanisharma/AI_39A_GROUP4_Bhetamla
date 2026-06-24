@@ -26,7 +26,7 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 from app import create_app
-from app.database import get_db_connection, execute_query
+from app.database import execute_query
 from app.models.notification import Notification
 from app.controllers.notification_controller import (
     send_notification,
@@ -36,8 +36,6 @@ from app.models.fare_alert_model import (
     create_alert,
     check_and_trigger_alerts,
     record_fare_history,
-    estimate_fare,
-    get_distance,
     get_alerts_for_user,
     deactivate_alert,
 )

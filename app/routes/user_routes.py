@@ -7,6 +7,7 @@ from app.controllers.user_controller import (
 from app.controllers.notification_controller import safety
 from datetime import datetime
 from app.models.meetup import Meetup
+from app.models.meetup_preference import MeetupPlanPreference
 from app.database import execute_query
 
 user_bp = Blueprint('user', __name__, url_prefix='/user')
@@ -27,6 +28,17 @@ def dashboard():
 
     # ── Core meetup data ──────────────────────────────────────────────────────
     meetups = Meetup.get_by_user(user_id) or []
+    for meetup in meetups:
+        prefs = MeetupPlanPreference.get_for_meetup(meetup['id'])
+        selected_pref = next(
+            (p for p in prefs if p.get('selected_venue')),
+            None
+        )
+        meetup['dashboard_venue'] = (
+            meetup.get('winning_venue_name')
+            or (selected_pref.get('selected_venue') if selected_pref else None)
+            or ''
+        )
 
     # ── Today's meetups (status active OR date = today) ───────────────────────
     today_str = datetime.now().strftime('%Y-%m-%d')

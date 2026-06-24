@@ -81,5 +81,79 @@
     });
   })();
   </script>
+
+  <!-- ── Persistent Translation (EN ⇄ NE) — runs on every page ── -->
+  <script>
+  (function(){
+    var LANG_KEY = 'bhetamla-lang';
+    var CACHE_KEY = 'bhetamla-translate-cache';
+    var saved = null;
+    try { saved = localStorage.getItem(LANG_KEY); } catch(e){}
+    if (!saved || saved === 'en') return; // English = no translation needed
+
+    // Load cache
+    var cache = {};
+    try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch(e){}
+
+    // Collect translatable text nodes (skip scripts, styles, inputs)
+    var root = document.body;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function(node) {
+        var p = node.parentElement;
+        if (!p) return NodeFilter.FILTER_REJECT;
+        var tag = p.tagName;
+        if (['SCRIPT','STYLE','NOSCRIPT','TEXTAREA','INPUT','SELECT'].indexOf(tag) !== -1) return NodeFilter.FILTER_REJECT;
+        var text = node.textContent.trim();
+        if (!text || text.length < 2) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }, false);
+
+    var nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+
+    var pending = [];
+    nodes.forEach(function(node) {
+      var text = node.textContent.trim();
+      if (cache[text]) {
+        node.textContent = node.textContent.replace(text, cache[text]);
+      } else {
+        pending.push(node);
+      }
+    });
+
+    // Translate uncached nodes in batches of 5 to avoid hammering the endpoint
+    var batchSize = 5;
+    var idx = 0;
+    function nextBatch() {
+      var batch = pending.slice(idx, idx + batchSize);
+      if (!batch.length) return;
+      idx += batchSize;
+      batch.forEach(function(node) {
+        var text = node.textContent.trim();
+        fetch('/meetup/chat/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          body: JSON.stringify({ text: text, target: saved })
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d && d.success && d.translated) {
+            // Update cache
+            try {
+              cache[text] = d.translated;
+              localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+            } catch(e){}
+            node.textContent = node.textContent.replace(text, d.translated);
+          }
+        })
+        .catch(function(){})
+        .finally(function(){ nextBatch(); });
+      });
+    }
+    // Start first batch
+    nextBatch();
+  })();
+  </script>
 </body>
 </html>

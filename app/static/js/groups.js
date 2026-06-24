@@ -10,15 +10,14 @@
 
   window.selectMeetup = function (id) {
     selectedMeetupId = id;
+    // Highlight the selected meetup row
     document.querySelectorAll('.meetup-row-item').forEach(el => {
       el.style.borderColor = parseInt(el.dataset.meetupId, 10) === id ? 'var(--blue)' : 'var(--border)';
     });
-    // Update chat context label
-    const meetup = selectedMeetup();
-    const chatLabel = document.getElementById('chat-meetup-label');
-    const chatMsg = document.getElementById('chat-context-msg');
-    if (chatLabel && meetup) chatLabel.textContent = meetup.title;
-    if (chatMsg && meetup) chatMsg.textContent = 'Chatting in: ' + meetup.title;
+    // Keep the vote dropdown in sync
+    const sel = document.getElementById('vote-meetup-select');
+    if (sel && sel.value !== String(id)) sel.value = String(id);
+    // Refresh vote panel for the selected meetup
     refreshVotePanel();
   };
 
@@ -141,11 +140,39 @@
   };
 
   function initChat() {
-    if (!cfg.chatGroupId || typeof io === 'undefined') return;
-    socket = io({ withCredentials: true });
-    socket.emit('join_group', { group_id: cfg.chatGroupId });
+    if (!cfg.chatGroupId) {
+      // No chat group — show error in chat box
+      const box = document.getElementById('chat-messages');
+      if (box) box.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px 0">Chat room unavailable. Try refreshing.</div>';
+      return;
+    }
+    if (typeof io === 'undefined') {
+      loadChatMessages();
+      if (!window.chatPollTimer) {
+        window.chatPollTimer = setInterval(loadChatMessages, 5000);
+      }
+      return;
+    }
 
+    socket = io({ withCredentials: true, transports: ['websocket', 'polling'] });
     loadChatMessages();
+
+    // Wait for connection before joining the room
+    socket.on('connect', () => {
+      socket.emit('join_group', { group_id: cfg.chatGroupId });
+      loadChatMessages();
+    });
+
+    socket.on('connect_error', (err) => {
+      console.warn('Socket connect error:', err);
+      // Fall back to polling-only load
+      loadChatMessages();
+      if (!window.chatPollTimer) {
+        window.chatPollTimer = setInterval(() => {
+          if (!socket || !socket.connected) loadChatMessages();
+        }, 5000);
+      }
+    });
 
     socket.on('new_message', msg => {
       appendChatMessage(msg);
@@ -181,7 +208,7 @@
     const input = document.getElementById('chat-input');
     if (input) {
       input.addEventListener('input', () => {
-        socket.emit('typing', { group_id: cfg.chatGroupId });
+        if (socket && socket.connected) socket.emit('typing', { group_id: cfg.chatGroupId });
       });
     }
   }
@@ -191,6 +218,10 @@
     if (!box || !cfg.chatGroupId) return;
     const res = await fetch(`/meetup/chat/${cfg.chatGroupId}/messages`);
     const data = await res.json();
+    if (!data.success) {
+      box.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:12px;padding:20px 0">${escapeChatHtml(data.message || 'Could not load messages.')}</div>`;
+      return;
+    }
     box.innerHTML = '';
     (data.messages || []).forEach(appendChatMessage);
     if (socket && cfg.chatGroupId) {
@@ -283,13 +314,38 @@
 
   window.sendChatMessage = function () {
     const input = document.getElementById('chat-input');
-    if (!input || !socket || !input.value.trim()) return;
-    socket.emit('send_message', { group_id: cfg.chatGroupId, body: input.value.trim() });
+    if (!input || !input.value.trim()) return;
+    const body = input.value.trim();
     input.value = '';
+
+    fetch(`/meetup/chat/${cfg.chatGroupId}/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({ body: body })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d && d.success) {
+        if (d.message) appendChatMessage(d.message);
+        else loadChatMessages();
+      } else {
+        input.value = body;
+        if (typeof showToast === 'function') showToast((d && d.message) || 'Could not send message. Try refreshing.');
+      }
+    })
+    .catch(() => {
+      input.value = body;
+      if (typeof showToast === 'function') showToast('Could not send message. Check your connection.');
+    });
   };
 
   document.addEventListener('DOMContentLoaded', () => {
-    if (selectedMeetupId) selectMeetup(selectedMeetupId);
+    // Auto-select first meetup for voting
+    if (selectedMeetupId) {
+      selectMeetup(selectedMeetupId);
+      const sel = document.getElementById('vote-meetup-select');
+      if (sel) sel.value = String(selectedMeetupId);
+    }
     initChat();
   });
 

@@ -251,15 +251,22 @@
 
   <!-- Top bar -->
   <div class="topbar">
-    <div class="topbar-search" style="padding:0 14px">
+    <div style="display:flex;align-items:center;gap:8px;flex:1">
       <span style="font-size:20px">🗺️</span>
-      <span style="font-size:15px;font-weight:700;color:var(--primary);font-family:'Lora',serif;margin-left:8px">Multi-Stop Route Planner</span>
+      <span style="font-size:15px;font-weight:700;color:var(--primary);font-family:'Lora',serif;">Multi-Stop Route Planner</span>
     </div>
     <div class="topbar-controls">
       <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
     </div>
     <button class="sos-btn" onclick="openModal('modal-sos')">&#10033; SOS</button>
-    <button aria-label="Notifications" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px">&#128276;</button>
+    <button aria-label="Notifications" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;position:relative">
+      &#128276;
+      {% if unread_notifications_count > 0 %}
+      <span style="position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
+        {{ unread_notifications_count }}
+      </span>
+      {% endif %}
+    </button>
   </div>
 
   <!-- Main Shell -->
@@ -886,5 +893,77 @@ function shareRoute() {
   window.open(base + path, '_blank');
   showToast('🗺️ Opening in Google Maps for navigation!');
 }
+// ── Auto-populate from spot_detail redirect ──────────────────
+(function autoPopulateFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const toLat  = parseFloat(params.get('to_lat'));
+  const toLng  = parseFloat(params.get('to_lng'));
+  const toName = params.get('to_name') || 'Destination';
+  const fromLat = parseFloat(params.get('from_lat'));
+  const fromLng = parseFloat(params.get('from_lng'));
+
+  if (!isFinite(toLat) || !isFinite(toLng)) return; // nothing to do
+
+  // Wait for the map to be ready, then add stops
+  function populate() {
+    // Step 1 — add destination first so it appears as stop 1 temporarily,
+    // then we'll prepend the origin so the order becomes: origin → destination.
+    if (isFinite(fromLat) && isFinite(fromLng)) {
+      // We have both coordinates from the browser — add origin first
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${fromLat}&lon=${fromLng}&format=json`)
+        .then(r => r.json())
+        .then(d => {
+          const originName = d.display_name
+            ? d.display_name.split(',').slice(0, 2).join(',').trim()
+            : 'My Location';
+          addStop(originName, fromLat, fromLng);
+        })
+        .catch(() => addStop('My Location', fromLat, fromLng))
+        .finally(() => {
+          addStop(toName, toLat, toLng);
+          fitMapToStops();
+          showToast('📍 Route ready — hit Calculate Route to get directions!');
+        });
+    } else {
+      // No origin coords passed — add destination then try geolocation
+      addStop(toName, toLat, toLng);
+      if (navigator.geolocation) {
+        showToast('📡 Detecting your location…');
+        navigator.geolocation.getCurrentPosition(
+          function(pos) {
+            const lat = pos.coords.latitude, lng = pos.coords.longitude;
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+              .then(r => r.json())
+              .then(d => {
+                const name = d.display_name
+                  ? d.display_name.split(',').slice(0, 2).join(',').trim()
+                  : 'My Location';
+                // Insert origin at position 0 so route is: Me → Restaurant
+                stops.unshift({ name, lat, lng });
+                rebuildMarkers();
+                renderStopList();
+                fitMapToStops();
+                showToast('✅ Route ready — hit Calculate Route!');
+              })
+              .catch(() => {
+                stops.unshift({ name: 'My Location', lat, lng });
+                rebuildMarkers();
+                renderStopList();
+                fitMapToStops();
+              });
+          },
+          function() {
+            showToast('⚠️ Could not detect your location. Add your starting point manually.');
+          },
+          { timeout: 8000, maximumAge: 60000 }
+        );
+      }
+    }
+  }
+
+  // Map is already initialised by the time this IIFE runs,
+  // but give Leaflet one tick to finish rendering tiles.
+  setTimeout(populate, 200);
+})();
 </script>
 {% endblock %}

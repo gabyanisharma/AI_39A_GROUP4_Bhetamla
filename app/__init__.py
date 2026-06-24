@@ -24,11 +24,19 @@ def create_app():
     @app.context_processor
     def inject_notifications():
         if session.get('user_id'):
-            from app.models.place import RestaurantOffer
+            from app.models.notification import Notification
             user_id = session.get('user_id')
-            offers = RestaurantOffer.get_saved_by_user(user_id)
-            return dict(header_notifications=[{'title': 'Offer', 'body': 'Check it out'} for o in offers if o.get('remind_me')])
-        return dict(header_notifications=[])
+            db_notifs = Notification.get_by_user(user_id, limit=5)
+            header_notifs = []
+            for n in db_notifs:
+                header_notifs.append({
+                    'title': n['title'],
+                    'body': n['message'],
+                    'time': n['created_at'].strftime('%m-%d %H:%M') if n.get('created_at') else ''
+                })
+            unread_count = Notification.get_unread_count(user_id)
+            return dict(header_notifications=header_notifs, unread_notifications_count=unread_count)
+        return dict(header_notifications=[], unread_notifications_count=0)
 
     with app.app_context():
         initialize_db()

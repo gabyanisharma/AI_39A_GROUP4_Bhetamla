@@ -10,7 +10,8 @@ from app.controllers.place_controller import (
     plan_meetup, create_meetup, view_meetup as view_meetup_ctrl,
     update_location, get_midpoint, add_suggestion,
     respond_meetup, confirm_meetup_plan, delete_meetup_plan,
-    save_plan_preferences, get_plan_preferences, meetup_calendar
+    complete_meetup_plan, save_plan_preferences, get_plan_preferences,
+    meetup_calendar
 )
 from app.controllers.meetup_route_controller import (
     get_meetup_route, save_meetup_route, delete_meetup_route
@@ -69,6 +70,12 @@ def delete_plan(meetup_id):
 @login_required
 def confirm_plan(meetup_id):
     return confirm_meetup_plan(meetup_id)
+
+
+@meetup_bp.route('/complete-plan/<int:meetup_id>', methods=['POST'])
+@login_required
+def complete_plan(meetup_id):
+    return complete_meetup_plan(meetup_id)
 
 
 @meetup_bp.route('/<int:meetup_id>/preferences', methods=['POST'])
@@ -165,6 +172,13 @@ def gallery_privacy_route(photo_id):
 @login_required
 def chat_messages_route(group_id):
     return chat_messages(group_id)
+
+
+@meetup_bp.route('/chat/<int:group_id>/send', methods=['POST'])
+@login_required
+def chat_send_route(group_id):
+    from app.controllers.group_features_controller import send_chat_message
+    return send_chat_message(group_id)
 
 
 @meetup_bp.route('/chat/translate', methods=['POST'])

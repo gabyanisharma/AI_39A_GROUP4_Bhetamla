@@ -17,19 +17,14 @@
       </label>
     </div>
     <div class="topbar-controls" style="display:flex;align-items:center;gap:10px;">
-      {% if meetups %}
-      <button class="ctrl-btn" id="split-bill-btn" onclick="openModal('modal-budget-split')" style="font-size:12px;font-weight:600;">
-        &#128176; Split Bill
-      </button>
-      {% endif %}
       <button class="ctrl-btn" id="theme-toggle" onclick="toggleTheme()">&#127769; <span id="theme-label">Dark</span></button>
       <button class="sos-btn" onclick="openModal('modal-sos')" style="cursor:pointer">&#10033; SOS</button>
       <button aria-label="Notifications" onclick="openNotifPanel()"
               style="background:none;border:none;cursor:pointer;font-size:20px;position:relative">
         &#128276;
-        {% if pending_invites %}
+        {% if unread_notifications_count > 0 %}
         <span style="position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
-          {{ pending_invites|length }}
+          {{ unread_notifications_count }}
         </span>
         {% endif %}
       </button>

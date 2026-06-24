@@ -19,6 +19,12 @@ def saved():
 def restaurants_page():
     return restaurants()
 
+@place_bp.route('/offers')
+@login_required
+def offers_page():
+    from app.controllers.place_controller import offers
+    return offers()
+
 @place_bp.route('/restaurant/<int:restaurant_id>')
 @login_required
 def restaurant_detail_page(restaurant_id):

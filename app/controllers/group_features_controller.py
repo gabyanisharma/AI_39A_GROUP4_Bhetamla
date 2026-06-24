@@ -125,7 +125,9 @@ def start_vote(meetup_id):
     data = request.get_json(silent=True) or {}
     restaurant_ids = data.get('restaurant_ids') or []
     options = []
-    if len(restaurant_ids) >= 3:
+
+    # Use provided restaurant IDs first
+    if len(restaurant_ids) >= 1:
         for rid in restaurant_ids[:3]:
             r = Restaurant.get_by_id(int(rid))
             if r:
@@ -134,8 +136,24 @@ def start_vote(meetup_id):
                     'label': r['name'],
                     'address': r.get('address'),
                 })
+
+    # Fill up from member recommended places
     if len(options) < 3:
-        defaults = Restaurant.get_all(limit=3) or []
+        from app.models.meetup_preference import MeetupPlanPreference
+        prefs = MeetupPlanPreference.get_for_meetup(meetup_id)
+        for p in prefs:
+            if len(options) >= 3:
+                break
+            if p.get('selected_venue') and not any(o.get('label') == p['selected_venue'] for o in options):
+                options.append({
+                    'restaurant_id': None,
+                    'label': p['selected_venue'],
+                    'address': f"{p.get('selected_venue_lat', '')},{p.get('selected_venue_lng', '')}".strip(',') or None
+                })
+
+    # Fill up from DB restaurants if needed
+    if len(options) < 3:
+        defaults = Restaurant.get_all(limit=10) or []
         for r in defaults:
             if len(options) >= 3:
                 break
@@ -146,10 +164,14 @@ def start_vote(meetup_id):
                     'address': r.get('address'),
                 })
 
-    if len(options) < 3:
-        return jsonify({'success': False, 'message': 'Need at least 3 restaurant options.'}), 400
+    # If still not enough, pad with generic placeholder options
+    fallbacks = ['Option A', 'Option B', 'Option C']
+    idx = 0
+    while len(options) < 3:
+        options.append({'restaurant_id': None, 'label': fallbacks[idx % 3], 'address': None})
+        idx += 1
 
-    vote_id = GroupVote.create(meetup_id, user_id, options, hours=24)
+    vote_id = GroupVote.create(meetup_id, user_id, options[:3], hours=24)
     achievement_service.on_vote_created(user_id)
 
     members = execute_query(
@@ -407,6 +429,53 @@ def chat_messages(group_id):
     })
 
 
+def send_chat_message(group_id):
+    if not is_logged_in():
+        return jsonify({'success': False}), 401
+    user_id = get_current_user_id()
+    if not FriendGroup.is_member(group_id, user_id):
+        return jsonify({'success': False, 'message': 'Not a group member.'}), 403
+
+    data = request.get_json(silent=True) or {}
+    body = (data.get('body') or '').strip()
+    if not body:
+        return jsonify({'success': False, 'message': 'Message is empty.'}), 400
+
+    msg_id = GroupChat.post_message(group_id, user_id, body)
+    msg = GroupChat.get_message(msg_id)
+    achievement_service.on_chat_message(user_id)
+
+    # Broadcast to room so active websocket clients receive the message
+    try:
+        from app import socketio
+        payload = {
+            'id': msg_id,
+            'group_id': group_id,
+            'user_id': user_id,
+            'full_name': msg['full_name'],
+            'profile_pic': msg.get('profile_pic'),
+            'body': body,
+            'created_at': msg['created_at'].isoformat() if msg.get('created_at') else None
+        }
+        socketio.emit('new_message', payload, to=f'group_{group_id}')
+    except Exception as e:
+        print(f"Error broadcasting from HTTP fallback: {e}")
+
+    return jsonify({
+        'success': True,
+        'message': {
+            'id': msg_id,
+            'group_id': group_id,
+            'user_id': user_id,
+            'full_name': msg['full_name'],
+            'profile_pic': msg.get('profile_pic'),
+            'body': body,
+            'created_at': msg['created_at'].isoformat() if msg.get('created_at') else None,
+            'read_by': [],
+        }
+    })
+
+
 def record_budget_split(meetup_id):
     if not is_logged_in():
         return jsonify({'success': False}), 401
@@ -421,8 +490,11 @@ def record_budget_split(meetup_id):
     return jsonify({'success': True})
 
 
-# ── Chat message translation, English ⇄ Nepali (US17) ──────────────
-TRANSLATE_LANGS = {'en': 'English', 'ne': 'Nepali'}
+# ── Chat message translation (US17) ──────────────
+TRANSLATE_LANGS = {
+    'en': 'English',
+    'ne': 'Nepali',
+}
 
 
 def _translate_text(text, target):

@@ -29,18 +29,31 @@
   .plan-map-dot.midpoint {
     background: linear-gradient(135deg,var(--gold),var(--green));
   }
+  .plan-map-dot.restaurant-selected {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg,var(--gold),var(--green));
+    border: 4px solid #fff;
+    box-shadow: 0 0 0 5px rgba(200,153,58,.28), 0 12px 28px rgba(8,45,37,.35);
+  }
 </style>
 {% endblock %}
 
 {% block page_content %}
 <div id="page-plan" class="page active" style="flex-direction:column" role="main">
   <div class="topbar">
-    <div class="topbar-search" style="padding:0 14px"><label for="search-plan" style="display:flex;align-items:center;gap:10px;cursor:text;flex:1"><span aria-hidden="true" style="font-size:14px">&#128269;</span><input id="search-plan" type="search" placeholder="Search venues or friends..." aria-label="Search venues or friends" style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
     <div class="topbar-controls">
-    <button class="ctrl-btn" type="button" onclick="openModal('modal-budget-split')" title="Split the bill">&#128176; Split Bill</button>      <button class="ctrl-btn" type="button" onclick="toggleTheme()">&#127769;</button>
+      <button class="ctrl-btn" type="button" onclick="toggleTheme()">&#127769;</button>
     </div>
     <button class="sos-btn" type="button" onclick="openModal('modal-sos')">&#10033; SOS</button>
-    <button aria-label="Notifications" type="button" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px">&#128276;</button>
+    <button aria-label="Notifications" type="button" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;position:relative">
+      &#128276;
+      {% if unread_notifications_count > 0 %}
+      <span style="position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
+        {{ unread_notifications_count }}
+      </span>
+      {% endif %}
+    </button>
   </div>
 
   <div id="plan-phase-create" style="display:{{ 'none' if show_advanced else 'block' }};flex:1;overflow-y:auto;padding:32px;">
@@ -212,23 +225,28 @@ window.PLAN_CONTEXT = {
   meetupId: {{ active_meetup.id if show_advanced else 'null' }},
   currentUserId: {{ current_user_id if current_user_id is defined else 'null' }},
   confirmUrl: "{{ url_for('meetup.confirm_plan', meetup_id=active_meetup.id) if show_advanced else '' }}",
+  completeUrl: "{{ url_for('meetup.complete_plan', meetup_id=active_meetup.id) if show_advanced else '' }}",
+  status: {{ (active_meetup.status if show_advanced else '')|tojson }},
   title: {{ (active_meetup.title if show_advanced else '')|tojson }},
   date: {{ (active_meetup.meetup_date|string if show_advanced and active_meetup.meetup_date else '')|tojson }},
   time: {{ (active_meetup.meetup_time|string if show_advanced and active_meetup.meetup_time else '')|tojson }},
   people: {{ (created_members|length if show_advanced else 1) }},
-  mapPoints: {{ (created_map_points if show_advanced else [])|tojson }},
-  midpoint: {{ (created_midpoint if show_advanced else none)|tojson }},
+  mapPoints: {{ (created_map_points if created_map_points else [])|tojson }},
+  midpoint: {{ (created_midpoint if created_midpoint else none)|tojson }},
   creatorName: {{ session.get('user_name', 'You')|tojson }},
-  members: {{ (created_members|tojson if show_advanced and created_members else '[]') }}
+  members: {{ (created_members|tojson if created_members else '[]') }}
 };
 
 var planLeafletMap = null;
 var planMarkerLayer = null;
 var planRouteLayer = null;
 var planRestaurantLayer = null;
+var planSelectedRestaurantMarker = null;
+var planLatestRestaurants = [];
 var planRouteVersion = 0;
 var serialResponses = {};
 var midpointDirty = false;
+var PLAN_RESTAURANT_RADIUS_KM = 100.0;
 var planRestaurantFilters = {
   cuisines: [],
   ambiences: [],
@@ -237,6 +255,288 @@ var planRestaurantFilters = {
 };
 var planSelectedVenueName = '';
 var FEATURED_OFFER_RESTAURANTS = [];
+// ═══════════════════════════════════════════════════════════════════════════
+// STATIC KATHMANDU RESTAURANT DATA — paste this block into plan.html
+// Location: IMMEDIATELY after the line that reads:
+//     var FEATURED_OFFER_RESTAURANTS = [];
+// ═══════════════════════════════════════════════════════════════════════════
+
+var STATIC_KATHMANDU_RESTAURANTS = [
+  // ── Group 1 : Nepali & Traditional ───────────────────────────────────────
+  {
+    id:'static-1', name:'Jimbu Thakali',
+    cuisine:'Nepali',
+    rating:4.6, avg_cost_per_person:1000,
+    emoji:'🍛', latitude:27.7070, longitude:85.3140,
+    offer:'10% Off on total bill via Fonepay payment',
+    badge:'10% OFF', has_offer:true
+  },
+  {
+    id:'static-2', name:'The Village Café',
+    cuisine:'Nepali, Vegetarian',
+    rating:4.3, avg_cost_per_person:1000,
+    emoji:'🍛', latitude:27.7062, longitude:85.3120,
+    has_offer:false
+  },
+  {
+    id:'static-3', name:'Mantra Thakali',
+    cuisine:'Nepali',
+    rating:4.4, avg_cost_per_person:1000,
+    emoji:'🍛', latitude:27.7050, longitude:85.3095,
+    has_offer:false
+  },
+  {
+    id:'static-4', name:'Honacha',
+    cuisine:'Nepali',
+    rating:4.2, avg_cost_per_person:300,
+    emoji:'🍛', latitude:27.7031, longitude:85.3105,
+    has_offer:false
+  },
+  {
+    id:'static-5', name:'Bhojan Griha',
+    cuisine:'Nepali, Vegetarian',
+    rating:4.5, avg_cost_per_person:2000,
+    emoji:'🍛', latitude:27.7025, longitude:85.3200,
+    offer:'Free local cultural dance showcase with set dinner group bookings (5+ people)',
+    badge:'FREE SHOW', has_offer:true
+  },
+  // ── Group 2 : Café & Breakfast ────────────────────────────────────────────
+  // NOTE: cuisine MUST contain 'coffee' so the "☕ Café" chip matches it.
+  //       cleanFilterLabel("☕ Café") → finds 'caf' → returns 'Coffee'
+  //       cuisinesOk checks: cuisineText.indexOf('coffee') !== -1
+  {
+    id:'static-6', name:'Himalayan Java Coffee',
+    cuisine:'Café, coffee',
+    rating:4.5, avg_cost_per_person:1000,
+    emoji:'☕', latitude:27.7155, longitude:85.3125,
+    offer:'Buy any large coffee, get a bakery item at 50% off (Valid 8 AM – 11 AM)',
+    badge:'50% OFF', has_offer:true
+  },
+  {
+    id:'static-7', name:'Dhokaima Café',
+    cuisine:'Café, coffee, Continental',
+    rating:4.4, avg_cost_per_person:1000,
+    emoji:'☕', latitude:27.6730, longitude:85.3260,
+    has_offer:false
+  },
+  {
+    id:'static-8', name:'The Yellow House',
+    cuisine:'Café, coffee, Continental',
+    rating:4.5, avg_cost_per_person:1000,
+    emoji:'☕', latitude:27.6740, longitude:85.3270,
+    has_offer:false
+  },
+  {
+    id:'static-9', name:'Local Tea Stalls / Chiya Hubs',
+    cuisine:'Café, coffee',
+    rating:4.1, avg_cost_per_person:300,
+    emoji:'☕', latitude:27.7072, longitude:85.3129,
+    has_offer:false
+  },
+  {
+    id:'static-10', name:'Higher Ground Café',
+    cuisine:'Café, coffee, Continental',
+    rating:4.6, avg_cost_per_person:1000,
+    emoji:'☕', latitude:27.7150, longitude:85.3130,
+    has_offer:false
+  },
+  // ── Group 3 : Italian & Pizza ─────────────────────────────────────────────
+  {
+    id:'static-11', name:'Le Sherpa',
+    cuisine:'Italian, Continental',
+    rating:4.7, avg_cost_per_person:2000,
+    emoji:'🍕', latitude:27.7158, longitude:85.3145,
+    has_offer:false
+  },
+  {
+    id:'static-12', name:'Pizzahood',
+    cuisine:'Italian, Vegetarian',
+    rating:4.3, avg_cost_per_person:1000,
+    emoji:'🍕', latitude:27.7080, longitude:85.3135,
+    offer:'Buy 1 Large Firewood Pizza, Get 1 Small Margherita Free (Tuesdays only)',
+    badge:'BUY 1 GET 1', has_offer:true
+  },
+  {
+    id:'static-13', name:'Fire and Ice Pizzeria',
+    cuisine:'Italian',
+    rating:4.6, avg_cost_per_person:1000,
+    emoji:'🍕', latitude:27.7145, longitude:85.3118,
+    has_offer:false
+  },
+  {
+    id:'static-14', name:'Roadhouse Café',
+    cuisine:'Italian',
+    rating:4.5, avg_cost_per_person:1000,
+    emoji:'🍕', latitude:27.7160, longitude:85.3108,
+    offer:'Complimentary chocolate brownie on bills above NPR 3,000',
+    badge:'FREE BROWNIE', has_offer:true
+  },
+  // ── Group 4 : Continental & Multi-Cuisine ─────────────────────────────────
+  {
+    id:'static-15', name:'Evoke Bistro & Cafe',
+    cuisine:'Continental, Café, coffee',
+    rating:4.4, avg_cost_per_person:1000,
+    emoji:'🥗', latitude:27.7165, longitude:85.3150,
+    offer:'15% discount for student ID card holders (Mondays to Thursdays)',
+    badge:'15% OFF', has_offer:true
+  },
+  {
+    id:'static-16', name:'Rusty Garden',
+    cuisine:'Continental, Nepali',
+    rating:4.2, avg_cost_per_person:1000,
+    emoji:'🥗', latitude:27.7042, longitude:85.3155,
+    has_offer:false
+  },
+  {
+    id:'static-17', name:'Trisara',
+    cuisine:'Continental',
+    rating:4.3, avg_cost_per_person:2000,
+    emoji:'🥗', latitude:27.7200, longitude:85.3180,
+    has_offer:false
+  },
+  {
+    id:'static-18', name:'Chicken Station',
+    cuisine:'Continental',
+    rating:3.9, avg_cost_per_person:300,
+    emoji:'🥗', latitude:27.7048, longitude:85.3090,
+    has_offer:false
+  },
+  // ── Group 5 : Health & Vegetarian ─────────────────────────────────────────
+  {
+    id:'static-19', name:'Annamaya',
+    cuisine:'Vegetarian, Continental',
+    rating:4.5, avg_cost_per_person:1000,
+    emoji:'🌱', latitude:27.7020, longitude:85.3175,
+    offer:'10% off on all vegan/vegetarian Buddha Bowls',
+    badge:'10% OFF', has_offer:true
+  },
+  {
+    id:'static-20', name:'Ghangri Café',
+    cuisine:'Vegetarian, Nepali',
+    rating:4.2, avg_cost_per_person:1000,
+    emoji:'🌱', latitude:27.6760, longitude:85.3165,
+    has_offer:false
+  }
+];
+
+// ── Inject static offer-restaurants into FEATURED_OFFER_RESTAURANTS ──────────
+// Runs right away AND after the live DB call (which might return nothing).
+// Restaurants with has_offer:true are merged into the global array so they
+// appear in the Restaurant Offers modal.
+(function injectStaticOffers(){
+  var toAdd = STATIC_KATHMANDU_RESTAURANTS.filter(function(r){ return r.has_offer; })
+    .map(function(r){
+      return {
+        id: r.id, offer_id: null,
+        name: r.name, offer: r.offer || '',
+        badge: r.badge || 'OFFER', emoji: r.emoji || '🍽️',
+        cuisine: r.cuisine, rating: r.rating,
+        avg_cost_per_person: r.avg_cost_per_person,
+        latitude: r.latitude, longitude: r.longitude
+      };
+    });
+  var seen = FEATURED_OFFER_RESTAURANTS.map(function(r){ return (r.name||'').toLowerCase(); });
+  toAdd.forEach(function(r){
+    if(seen.indexOf(r.name.toLowerCase()) === -1){
+      FEATURED_OFFER_RESTAURANTS.push(r);
+      seen.push(r.name.toLowerCase());
+    }
+  });
+  if(!planSelectedVenueName && FEATURED_OFFER_RESTAURANTS.length){
+    planSelectedVenueName = FEATURED_OFFER_RESTAURANTS[0].name;
+  }
+  if(typeof renderFeaturedRestaurantOffers === 'function') renderFeaturedRestaurantOffers();
+})();
+
+// ── Patch fetchMidpointRestaurants to include static restaurants ──────────────
+// Wraps the original function. Static restaurants are filtered by the active
+// cuisine / budget / rating controls, then merged with any API results.
+(function patchFetchMidpointRestaurants(){
+  var _orig = fetchMidpointRestaurants;
+
+  fetchMidpointRestaurants = function(midpoint){
+    if(!midpoint){ return _orig ? _orig(midpoint) : undefined; }
+
+    // Read current filter state
+    collectPlanRestaurantFilters();
+    var filters = planRestaurantFilters;
+
+    // Apply filters to static list
+    var filtered = STATIC_KATHMANDU_RESTAURANTS.filter(function(r){
+      var ct = (r.cuisine || '').toLowerCase();
+
+      // Cuisine: every active chip must match something in the cuisine string
+      var cuisineOk = !filters.cuisines.length ||
+        filters.cuisines.some(function(c){ return ct.indexOf(c.toLowerCase()) !== -1; });
+
+      // Budget: avg_cost_per_person must be ≤ slider value
+      // Budget <300  → avg_cost_per_person = 300
+      // Mid ~1000    → avg_cost_per_person = 1000
+      // Fine 2000+   → avg_cost_per_person = 2000  (slider max, always passes)
+      var budgetOk = !filters.maxBudget ||
+        Number(r.avg_cost_per_person || 0) <= Number(filters.maxBudget);
+
+      // Rating: must be ≥ selected minimum
+      var ratingOk = !filters.minRating ||
+        Number(r.rating || 0) >= Number(filters.minRating);
+
+      return cuisineOk && budgetOk && ratingOk;
+    }).map(function(r){
+      return Object.assign({}, r, {
+        distance_km: planDistanceKm(midpoint, r),
+        is_featured_offer: r.has_offer || false
+      });
+    }).filter(function(r){
+      return Number(r.distance_km || 0) <= PLAN_RESTAURANT_RADIUS_KM;
+    }).sort(function(a, b){ return a.distance_km - b.distance_km; });
+
+    // Run the original API call, then merge static results in
+    var promise = _orig ? _orig(midpoint) : null;
+    if(promise && typeof promise.then === 'function'){
+      return promise.then(function(apiList){
+        var seen = {};
+        (apiList || []).forEach(function(r){ seen[normalizePlanName(r.name)] = true; });
+        var extras = filtered.filter(function(r){ return !seen[normalizePlanName(r.name)]; });
+        if(!extras.length) return apiList;
+        var merged = (apiList || []).concat(extras)
+          .sort(function(a,b){ return Number(a.distance_km||0) - Number(b.distance_km||0); });
+        ensureSelectedRestaurantInList(merged);
+        planLatestRestaurants = merged;
+        displayPlanRestaurantMarkers(merged, midpoint);
+        updateNearbyRestaurantList(merged);
+
+        // Also update offer cards so offer-having restaurants get highlighted
+        var offerPool = merged.filter(function(r){ return r.is_featured_offer || r.has_offer; });
+        var existingNames = FEATURED_OFFER_RESTAURANTS.map(function(r){ return (r.name||'').toLowerCase(); });
+        offerPool.forEach(function(r){
+          var key = (r.name||'').toLowerCase();
+          if(existingNames.indexOf(key) === -1){
+            FEATURED_OFFER_RESTAURANTS.push({
+              id: r.id, offer_id: null,
+              name: r.name, offer: r.offer || '',
+              badge: r.badge || 'OFFER', emoji: r.emoji || '🍽️',
+              cuisine: r.cuisine, rating: r.rating,
+              avg_cost_per_person: r.avg_cost_per_person,
+              latitude: r.latitude, longitude: r.longitude
+            });
+            existingNames.push(key);
+          }
+        });
+        return merged;
+      });
+    }
+
+    // Fallback if original fetch doesn't exist or returns nothing
+    ensureSelectedRestaurantInList(filtered);
+    planLatestRestaurants = filtered;
+    displayPlanRestaurantMarkers(filtered, midpoint);
+    if(filtered.length) updateNearbyRestaurantList(filtered);
+    return Promise.resolve(filtered);
+  };
+})();
+// ═══════════════════════════════════════════════════════════════════════════
+// END OF STATIC RESTAURANT INJECTION
+// ═══════════════════════════════════════════════════════════════════════════
 
 // Load real offers from DB and refresh the offer modal
 (function loadLiveOffers() {
@@ -251,6 +551,7 @@ var FEATURED_OFFER_RESTAURANTS = [];
         var c = (o.cuisine || '').toLowerCase();
         return {
           id: 'offer-' + o.id,
+          offer_id: o.id,
           name: o.restaurant_name,
           offer: o.title + (o.discount_percent ? ' · ' + o.discount_percent + '% off' : ''),
           badge: o.discount_percent ? o.discount_percent + '% OFF' : 'OFFER',
@@ -532,6 +833,13 @@ function restaurantPriceLabel(value){
   return amount ? 'NPR ' + amount.toLocaleString() : 'Budget not listed';
 }
 
+function restaurantDistanceLabel(value){
+  var km = Number(value || 0);
+  if(!Number.isFinite(km) || km <= 0) return 'Distance unknown';
+  if(km < 1) return Math.round(km * 1000) + ' m';
+  return km.toFixed(1) + ' km';
+}
+
 function normalizePlanName(value){
   return String(value || '').trim().toLowerCase();
 }
@@ -570,7 +878,8 @@ function prepareFeaturedOfferRestaurants(midpoint){
     });
     var budgetOk = !planRestaurantFilters.maxBudget || Number(r.avg_cost_per_person || 0) <= Number(planRestaurantFilters.maxBudget);
     var ratingOk = !planRestaurantFilters.minRating || Number(r.rating || 0) >= Number(planRestaurantFilters.minRating);
-    return cuisinesOk && ambiencesOk && budgetOk && ratingOk;
+    var radiusOk = !midpoint || Number(r.distance_km || 0) <= PLAN_RESTAURANT_RADIUS_KM;
+    return cuisinesOk && ambiencesOk && budgetOk && ratingOk && radiusOk;
   });
 }
 
@@ -582,6 +891,7 @@ function mergePlanRestaurants(restaurants, midpoint){
     var key = normalizePlanName(r.name);
     if(seen[key]) return;
     seen[key] = true;
+    if(midpoint && Number(r.distance_km || 0) > PLAN_RESTAURANT_RADIUS_KM) return;
     merged.push(r);
   });
   return merged.sort(function(a, b){
@@ -589,6 +899,20 @@ function mergePlanRestaurants(restaurants, midpoint){
     if(b.name === planSelectedVenueName) return 1;
     return Number(a.distance_km || 0) - Number(b.distance_km || 0);
   });
+}
+
+function ensureSelectedRestaurantInList(restaurants){
+  if(!restaurants || !restaurants.length){
+    planSelectedVenueName = '';
+    return;
+  }
+  var selectedKey = normalizePlanName(planSelectedVenueName);
+  var selectedStillVisible = selectedKey && restaurants.some(function(r){
+    return normalizePlanName(r.name) === selectedKey;
+  });
+  if(!selectedStillVisible){
+    planSelectedVenueName = restaurants[0].name;
+  }
 }
 
 function restaurantMarkerIcon(){
@@ -620,13 +944,87 @@ function restaurantMarkerIconForCuisine(cuisine, isOffer){
   });
 }
 
+function selectedRestaurantMarkerIcon(cuisine, isOffer){
+  var emojiMap = { nepali:'🍛', indian:'🍛', italian:'🍕', cafe:'☕', coffee:'☕',
+    'coffee & cafe':'☕', continental:'🥗', chinese:'🥡', japanese:'🍣', thai:'🍜',
+    asian:'🥡', 'fast food':'🍔', 'bakery & desserts':'🧁', vegetarian:'🌱', burgers:'🍔' };
+  var c = (cuisine || '').toLowerCase();
+  var emoji = emojiMap[c] || '🍽️';
+  return L.divIcon({
+    className: '',
+    html: '<div class="plan-map-dot restaurant-selected" title="Selected restaurant">' + emoji + '</div>',
+    iconSize: [42, 42],
+    iconAnchor: [21, 21],
+    popupAnchor: [0, -24]
+  });
+}
+
+function restaurantPopupHtml(r){
+  var offerBadge = r.is_featured_offer ? '<br><span style="background:var(--green);color:#fff;font-size:10px;padding:2px 6px;border-radius:6px;font-weight:700">' + escapePlanHtml(r.badge || 'OFFER') + '</span>' : '';
+  return '<strong>' + escapePlanHtml(r.name) + '</strong><br>' +
+    escapePlanHtml(r.cuisine || 'Restaurant') + ' · Star ' + Number(r.rating || 0).toFixed(1) + '<br>' +
+    restaurantPriceLabel(r.avg_cost_per_person) + ' · ' + restaurantDistanceLabel(r.distance_km) +
+    offerBadge;
+}
+
+function syncVenueRowsToSelection(){
+  document.querySelectorAll('#modal-nearby-restaurants .venue-row').forEach(function(row){
+    var rowName = row.dataset.restaurantName || (row.querySelector('.venue-name') ? row.querySelector('.venue-name').textContent.trim() : '');
+    row.classList.toggle('selected', normalizePlanName(rowName) === normalizePlanName(planSelectedVenueName));
+  });
+}
+
+function displayPlanRestaurantMarkers(restaurants, midpoint, focusName){
+  if(!planRestaurantLayer || !window.L) return;
+  planRestaurantLayer.clearLayers();
+  planSelectedRestaurantMarker = null;
+  var selectedKey = normalizePlanName(focusName || planSelectedVenueName);
+  var selectedMarker = null;
+
+  (restaurants || []).forEach(function(r){
+    if(r.latitude == null || r.longitude == null) return;
+    var isSelected = selectedKey && normalizePlanName(r.name) === selectedKey;
+    var marker = L.marker([r.latitude, r.longitude], {
+      icon: isSelected ? selectedRestaurantMarkerIcon(r.cuisine, r.is_featured_offer) : restaurantMarkerIconForCuisine(r.cuisine, r.is_featured_offer),
+      zIndexOffset: isSelected ? 1000 : 0
+    }).addTo(planRestaurantLayer).bindPopup(restaurantPopupHtml(r));
+
+    marker.on('click', function(){
+      planSelectedVenueName = r.name;
+      syncVenueRowsToSelection();
+      syncOfferRestaurantHighlight(r.name);
+      displayPlanRestaurantMarkers(planLatestRestaurants, midpoint || getPlanMidpoint(getPlanMapPoints()), r.name);
+    });
+
+    if(isSelected){
+      planSelectedRestaurantMarker = marker;
+      selectedMarker = marker;
+    }
+  });
+
+  if(selectedMarker){
+    selectedMarker.openPopup();
+  }
+}
+
+function focusSelectedRestaurantOnMap(name){
+  if(!name || !planLeafletMap) return;
+  var selected = (planLatestRestaurants || []).find(function(r){
+    return normalizePlanName(r.name) === normalizePlanName(name);
+  });
+  if(!selected || selected.latitude == null || selected.longitude == null) return;
+  displayPlanRestaurantMarkers(planLatestRestaurants, getPlanMidpoint(getPlanMapPoints()), name);
+  planLeafletMap.setView([Number(selected.latitude), Number(selected.longitude)], Math.max(planLeafletMap.getZoom(), 16), {animate:true});
+  if(planSelectedRestaurantMarker) planSelectedRestaurantMarker.openPopup();
+}
+
 function updateNearbyRestaurantList(restaurants){
   var modal = document.getElementById('modal-nearby-restaurants');
   if(!modal) return;
   var list = ensureNearbyRestaurantControls();
   if(!list) return;
   if(!restaurants.length){
-    list.innerHTML = '<div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px">No restaurants match these filters near the midpoint.</div>';
+    list.innerHTML = '<div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px">No restaurants match these filters.</div>';
     return;
   }
   list.innerHTML = restaurants.slice(0, 10).map(function(r, index){
@@ -634,7 +1032,7 @@ function updateNearbyRestaurantList(restaurants){
     return '<div class="venue-row'+selected+'" data-restaurant-id="'+r.id+'" data-restaurant-name="'+escapePlanHtml(r.name)+'" data-lat="'+r.latitude+'" data-lng="'+r.longitude+'" onclick="selectVenueRow(this)">' +
       '<div class="venue-emoji">'+escapePlanHtml(r.emoji || 'R')+'</div>' +
       '<div style="flex:1"><div class="venue-name">'+escapePlanHtml(r.name)+'</div>' +
-      '<div class="venue-rating">Star '+Number(r.rating || 0).toFixed(1)+' · '+escapePlanHtml(r.cuisine || 'Restaurant')+' · '+restaurantPriceLabel(r.avg_cost_per_person)+' · '+Number(r.distance_km || 0).toFixed(1)+' km</div></div>' +
+      '<div class="venue-rating">Star '+Number(r.rating || 0).toFixed(1)+' · '+escapePlanHtml(r.cuisine || 'Restaurant')+' · '+restaurantPriceLabel(r.avg_cost_per_person)+' · '+restaurantDistanceLabel(r.distance_km)+'</div></div>' +
       '</div>';
   }).join('');
 }
@@ -645,7 +1043,7 @@ function fetchMidpointRestaurants(midpoint){
   var params = new URLSearchParams();
   params.set('lat', midpoint.lat);
   params.set('lng', midpoint.lng);
-  params.set('radius', '2');
+  params.set('radius', String(PLAN_RESTAURANT_RADIUS_KM));
   if(planRestaurantFilters.maxBudget) params.set('max_budget', planRestaurantFilters.maxBudget);
   if(planRestaurantFilters.minRating) params.set('min_rating', planRestaurantFilters.minRating);
   planRestaurantFilters.cuisines.forEach(function(c){ params.append('cuisine', c); });
@@ -655,20 +1053,19 @@ function fetchMidpointRestaurants(midpoint){
     .then(function(response){ return response.ok ? response.json() : []; })
     .then(function(restaurants){
       restaurants = mergePlanRestaurants(restaurants, midpoint);
+      ensureSelectedRestaurantInList(restaurants);
+      planLatestRestaurants = restaurants;
       if(!planRestaurantLayer || !window.L) return restaurants;
-      planRestaurantLayer.clearLayers();
+      displayPlanRestaurantMarkers(restaurants, midpoint);
+      var bounds = [];
       restaurants.forEach(function(r){
         if(r.latitude == null || r.longitude == null) return;
-        var offerBadge = r.is_featured_offer ? '<br><span style="background:var(--green);color:#fff;font-size:10px;padding:2px 6px;border-radius:6px;font-weight:700">' + escapePlanHtml(r.badge || 'OFFER') + '</span>' : '';
-        L.marker([r.latitude, r.longitude], {icon: restaurantMarkerIconForCuisine(r.cuisine, r.is_featured_offer)})
-          .addTo(planRestaurantLayer)
-          .bindPopup(
-            '<strong>' + escapePlanHtml(r.name) + '</strong><br>' +
-            escapePlanHtml(r.cuisine || 'Restaurant') + ' · ⭐ ' + Number(r.rating || 0).toFixed(1) + '<br>' +
-            restaurantPriceLabel(r.avg_cost_per_person) + ' · ' + Number(r.distance_km || 0).toFixed(1) + ' km' +
-            offerBadge
-          );
+        bounds.push([r.latitude, r.longitude]);
       });
+      if(bounds.length){
+        bounds.push([midpoint.lat, midpoint.lng]);
+        planLeafletMap.fitBounds(bounds, {padding:[46, 46], maxZoom:15});
+      }
       updateNearbyRestaurantList(restaurants);
       return restaurants;
     })
@@ -692,31 +1089,31 @@ function selectVenueRow(row){
   if(name){
     planSelectedVenueName = name;
     syncOfferRestaurantHighlight(name);
+    focusSelectedRestaurantOnMap(name);
   }
 }
 
 function renderFeaturedRestaurantOffers(){
   var holder = document.getElementById('featured-restaurant-offers');
   if(!holder) return;
+  var saveBtn = document.querySelector('#modal-restaurant-offers .feat-btn-row button.btn-primary');
 
-  // If the user already picked a specific venue (in Nearby Restaurants),
-  // only show that venue's offer here — not every offer in the system.
   var selectedName = readVenueSelection() || planSelectedVenueName;
-  var pool = FEATURED_OFFER_RESTAURANTS;
   if(selectedName){
     var matches = FEATURED_OFFER_RESTAURANTS.filter(function(r){
       return normalizePlanName(r.name) === normalizePlanName(selectedName);
     });
     if(matches.length){
-      pool = matches;
+      renderOfferCards(matches, holder, false);
+      if(saveBtn) saveBtn.style.display = 'inline-block';
     } else {
-      holder.innerHTML = '<div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px;text-align:center;">No current offer for '+escapePlanHtml(selectedName)+'. Showing all offers instead:</div>';
-      pool = FEATURED_OFFER_RESTAURANTS;
-      renderOfferCards(pool, holder, true);
-      return;
+      holder.innerHTML = '<div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px;text-align:center;">There is currently no offers for '+escapePlanHtml(selectedName)+'.</div>';
+      if(saveBtn) saveBtn.style.display = 'none';
     }
+  } else {
+    holder.innerHTML = '<div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px;text-align:center;">Please select a restaurant first to view its offers.</div>';
+    if(saveBtn) saveBtn.style.display = 'none';
   }
-  renderOfferCards(pool, holder, false);
 }
 
 function renderOfferCards(pool, holder, append){
@@ -768,6 +1165,12 @@ function getSelectedFeaturedOffer(){
 
 function saveSelectedOfferRestaurant(){
   var selected = getSelectedFeaturedOffer();
+  if(selected && selected.offer_id){
+    if(window.fetch){
+      fetch('/place/offer/' + selected.offer_id + '/save', {method:'POST'})
+        .catch(function(){});
+    }
+  }
   var payload = selected ? {
     selected_venue: selected.name,
     selected_venue_lat: selected.latitude,
@@ -1386,9 +1789,32 @@ function readRideSelection(){
   return card.dataset.rideOption || (card.querySelector('.rest-name') ? card.querySelector('.rest-name').textContent.trim() : '');
 }
 
+function showCompletionAction(isCompleted){
+  var doneCard = document.getElementById('plan-done-card');
+  var startCard = document.getElementById('plan-start-card');
+  var activeCard = document.getElementById('plan-active-card');
+  var confirmBtn = document.getElementById('plan-confirm-send-btn');
+  var completeBtn = document.getElementById('plan-mark-complete-btn');
+  var resetBtn = document.getElementById('plan-reset-after-done-btn');
+  var doneCopy = document.getElementById('plan-done-copy');
+
+  if(startCard) startCard.style.display = 'none';
+  if(activeCard) activeCard.style.display = 'none';
+  if(doneCard) doneCard.style.display = 'flex';
+  if(confirmBtn) confirmBtn.style.display = 'none';
+  if(completeBtn) completeBtn.style.display = isCompleted ? 'none' : 'block';
+  if(resetBtn) resetBtn.style.display = 'none';
+  if(doneCopy){
+    doneCopy.textContent = isCompleted
+      ? 'This meetup is complete and now appears in History & Analytics.'
+      : 'Invites are sent. When the meetup is done, mark it complete for History & Analytics.';
+  }
+}
+
 function confirmAdvancedPlan(){
   if(!window.PLAN_CONTEXT || !PLAN_CONTEXT.confirmUrl){
     showToast('🎉 Meetup plan confirmed!');
+    showCompletionAction(false);
     return;
   }
   var payload = {};
@@ -1411,8 +1837,49 @@ function confirmAdvancedPlan(){
       }
       var note = data.notified ? ' Invites updated for ' + data.notified + ' friend(s).' : '';
       showToast('🎉 Meetup plan confirmed!' + note);
+      showCompletionAction(false);
     })
-    .catch(function(){ showToast('🎉 Meetup plan confirmed locally.'); });
+    .catch(function(){
+      showToast('🎉 Meetup plan confirmed locally.');
+      showCompletionAction(false);
+    });
+}
+
+function markMeetupComplete(){
+  if(!window.PLAN_CONTEXT || !PLAN_CONTEXT.completeUrl || !window.fetch){
+    showToast('Could not mark this meetup complete.');
+    return;
+  }
+  var btn = document.getElementById('plan-mark-complete-btn');
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = 'Marking complete...';
+  }
+  fetch(PLAN_CONTEXT.completeUrl, {
+    method:'POST',
+    headers:{'X-Requested-With':'XMLHttpRequest'}
+  })
+    .then(function(response){ return response.json(); })
+    .then(function(data){
+      if(!data.success){
+        if(btn){
+          btn.disabled = false;
+          btn.textContent = 'Mark Complete';
+        }
+        showToast(data.message || 'Could not mark this meetup complete.');
+        return;
+      }
+      PLAN_CONTEXT.status = 'completed';
+      showCompletionAction(true);
+      showToast(data.message || 'Meetup marked complete.');
+    })
+    .catch(function(){
+      if(btn){
+        btn.disabled = false;
+        btn.textContent = 'Mark Complete';
+      }
+      showToast('Could not mark this meetup complete.');
+    });
 }
 
 function currentSerialStepId(){
@@ -1547,7 +2014,11 @@ function completeSerialStep(id, value){
           completeSerialStep('modal-nearby-restaurants','venue selected');
         };
       }
-      if(window.showToast) showToast('✅ Meetup created. Continue with smart planning.');
+      if(PLAN_CONTEXT.status === 'completed'){
+        showCompletionAction(true);
+      } else if(window.showToast) {
+        showToast('✅ Meetup created. Continue with smart planning.');
+      }
     };
     if(document.readyState === 'loading'){
       document.addEventListener('DOMContentLoaded', hydratePlanner);

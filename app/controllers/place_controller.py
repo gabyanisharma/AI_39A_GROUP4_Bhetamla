@@ -443,7 +443,7 @@ def restaurants():
         if meetup and meetup.get('midpoint_lat'):
             midpoint_lat = float(meetup['midpoint_lat'])
             midpoint_lng = float(meetup['midpoint_lng'])
-            radius = float(request.args.get('radius', 3.0))
+            radius = float(request.args.get('radius', 100.0))
             restaurant_list = Restaurant.get_near_midpoint(
                 midpoint_lat, midpoint_lng, radius, filters
             )
@@ -472,7 +472,7 @@ def api_filter_restaurants():
     filters = _build_filters(request.args)
     lat = request.args.get('lat', type=float)
     lng = request.args.get('lng', type=float)
-    radius = request.args.get('radius', default=3.0, type=float)
+    radius = request.args.get('radius', default=100.0, type=float)
     if lat is not None and lng is not None:
         rows = Restaurant.get_nearby(lat, lng, radius, filters)
     else:
@@ -511,7 +511,7 @@ def api_nearby_midpoint():
     except (TypeError, ValueError):
         return jsonify({'success': False, 'message': 'Missing or invalid lat/lng.'}), 400
 
-    radius_km = float(request.args.get('radius', 0.5))  # default 500m
+    radius_km = float(request.args.get('radius', 100.0))  # default 100km
 
     rows = Restaurant.get_near_midpoint(lat, lng, radius_km) or []
 
@@ -721,6 +721,40 @@ def delete_meetup_plan(meetup_id):
     flash('Meetup plan deleted.', 'success')
     return redirect(url_for('meetup.plan'))
 
+
+def complete_meetup_plan(meetup_id):
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': 'Login required.'}), 401
+
+    meetup = Meetup.get_by_id(meetup_id)
+    if not meetup:
+        return jsonify({'success': False, 'message': 'Meetup not found.'}), 404
+
+    user_id = get_current_user_id()
+    if meetup['created_by'] != user_id:
+        return jsonify({
+            'success': False,
+            'message': 'Only the meetup creator can mark this complete.'
+        }), 403
+
+    Meetup.update_status(meetup_id, 'completed')
+
+    from app.services import achievement_service
+    members = MeetupMember.get_by_meetup(meetup_id)
+    completed_user_ids = {user_id}
+    completed_user_ids.update(
+        member['user_id']
+        for member in members
+        if member.get('status') == 'accepted'
+    )
+    for completed_user_id in completed_user_ids:
+        achievement_service.on_meetup_completed(completed_user_id)
+
+    return jsonify({
+        'success': True,
+        'message': 'Meetup marked complete. History and analytics are updated.',
+        'analytics_url': url_for('analytics.history')
+    })
 
 # ── Plan popup preferences (cuisine, budget, ambience, venue, ride) ──
 def _can_access_meetup(meetup, user_id):
@@ -1057,7 +1091,7 @@ def api_nearby_restaurants():
         return jsonify({'success': False}), 401
     lat = request.args.get('lat')
     lng = request.args.get('lng')
-    radius = float(request.args.get('radius', 3.0))
+    radius = float(request.args.get('radius', 100.0))
     filters = _build_filters(request.args)
     if lat and lng:
         restaurants = Restaurant.get_nearby(float(lat), float(lng), radius, filters)

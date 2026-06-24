@@ -66,10 +66,11 @@
       <div id="plan-done-card" style="display:none;flex-direction:column;align-items:center;text-align:center;padding:10px 0 4px;">
         <div style="font-size:52px;margin-bottom:10px;">🎉</div>
         <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--green);margin-bottom:6px;">Meetup Fully Planned!</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:18px;">All steps are complete. You can review the plan or notify everyone.</div>
-        <button class="btn-primary" type="button" style="width:100%;padding:13px;font-size:14px;" onclick="openFinalSummary()">📋 View Full Summary</button>
-        <button class="btn-primary" type="button" style="width:100%;padding:13px;font-size:14px;background:linear-gradient(135deg,var(--green),#0B5E30);margin-top:8px;" onclick="confirmAdvancedPlan()">📨 Confirm &amp; Send Invite</button>
-        <button class="btn-sec" type="button" style="width:100%;justify-content:center;margin-top:10px;font-size:13px;" onclick="resetSerialPlan()">🔄 Plan Again</button>
+        <div id="plan-done-copy" style="font-size:12px;color:var(--muted);margin-bottom:18px;">All steps are complete. You can review the plan or notify everyone.</div>
+        <button id="plan-view-summary-btn" class="btn-primary" type="button" style="width:100%;padding:13px;font-size:14px;" onclick="openFinalSummary()">📋 View Full Summary</button>
+        <button id="plan-confirm-send-btn" class="btn-primary" type="button" style="width:100%;padding:13px;font-size:14px;background:linear-gradient(135deg,var(--green),#0B5E30);margin-top:8px;" onclick="confirmAdvancedPlan()">📨 Confirm &amp; Send Invite</button>
+        <button id="plan-mark-complete-btn" class="btn-primary" type="button" style="display:none;width:100%;padding:13px;font-size:14px;background:linear-gradient(135deg,var(--green),#0B5E30);margin-top:8px;" onclick="markMeetupComplete()">Mark Complete</button>
+        <button id="plan-reset-after-done-btn" class="btn-sec" type="button" style="width:100%;justify-content:center;margin-top:10px;font-size:13px;" onclick="resetSerialPlan()">🔄 Plan Again</button>
       </div>
     </div>
   </div>

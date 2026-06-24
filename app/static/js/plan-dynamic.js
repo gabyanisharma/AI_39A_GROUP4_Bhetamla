@@ -206,14 +206,14 @@
     const mid = getMidpoint();
     let url = API.nearby;
     if (mid && mid.lat && mid.lng) {
-      url += `?lat=${mid.lat}&lng=${mid.lng}&radius=3.0`;
+      url += `?lat=${mid.lat}&lng=${mid.lng}&radius=100.0`;
       const sub = document.querySelector('#modal-nearby-restaurants .feat-modal-sub');
-      if (sub) sub.textContent = 'Top picks near ' + (mid.address || 'the midpoint') + '.';
+      if (sub) sub.textContent = 'Nearest picks around ' + (mid.address || 'the midpoint') + '.';
     }
 
     const data = await fetchJSON(url);
     if (!data || !data.success || !data.restaurants || !data.restaurants.length) {
-      container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">No restaurants found nearby. Try adjusting the midpoint first.</div>';
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">No restaurants found. Try adjusting the filters or midpoint.</div>';
       return;
     }
     container.innerHTML = data.restaurants.slice(0, 6).map((r, i) => `
@@ -229,68 +229,6 @@
       </div>`).join('');
   }
 
-  // ── Modal 6: Walking Distance ─────────────────────────────────────
-  // Auto-calculates ride estimate for current user if not yet done,
-  // then shows per-member walking time from their location to midpoint.
-  async function loadWalkingDistance() {
-    const container = document.getElementById('walking-dynamic-list');
-    if (!container) return;
-    const meetupId = getMeetupId();
-
-    if (!meetupId) {
-      container.innerHTML = '<div style="font-size:12px;color:var(--muted)">Create a meetup first to see walking distances.</div>';
-      return;
-    }
-
-    container.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px">Calculating walking distances…</div>';
-
-    // Auto-calculate estimate for current user if missing
-    await ensureRideEstimate();
-
-    const data = await fetchJSON(API.split(meetupId));
-
-    if (!data || !data.success || !data.data || !data.data.members || !data.data.members.length) {
-      // Graceful fallback: compute from PLAN_CONTEXT map points if available
-      const ctx = window.PLAN_CONTEXT || {};
-      const mid = getMidpoint();
-      if (mid && ctx.mapPoints && ctx.mapPoints.length > 0) {
-        const WALK_SPEED = 4.5;
-        container.innerHTML = ctx.mapPoints.map(p => {
-          const dist = haversineKm(p.lat, p.lng, mid.lat, mid.lng);
-          const mins = Math.round((dist / WALK_SPEED) * 60);
-          const isWalkable = dist <= 1.5;
-          return walkRow(p.name || 'Member', dist, mins, isWalkable);
-        }).join('');
-        return;
-      }
-      container.innerHTML = '<div style="font-size:12px;color:var(--muted)">Could not load distances. Make sure your location is set.</div>';
-      return;
-    }
-
-    const WALK_SPEED = 4.5;
-    container.innerHTML = data.data.members.map(m => {
-      const dist = m.distance || 0;
-      const mins = m.walk_mins != null ? m.walk_mins : Math.round((dist / WALK_SPEED) * 60);
-      const isWalkable = dist <= 1.5 && mins <= 20;
-      return walkRow(m.name || 'Member', dist, mins, isWalkable);
-    }).join('');
-  }
-
-  function walkRow(name, dist, mins, isWalkable) {
-    return `
-      <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;
-                  background:${isWalkable ? 'var(--green-light)' : 'var(--input-bg)'};
-                  border-radius:10px;border:1.5px solid ${isWalkable ? 'rgba(46,125,50,.25)' : 'var(--border)'};margin-bottom:8px;">
-        <span style="font-size:20px">${isWalkable ? '🚶' : '🚗'}</span>
-        <div style="flex:1">
-          <div style="font-weight:700;font-size:13px">${escapeHtml(name)}</div>
-          <div style="font-size:12px;color:var(--muted)">${dist.toFixed(1)} km · ~${mins} min walk</div>
-        </div>
-        <span style="font-size:11px;font-weight:700;color:${isWalkable ? 'var(--green)' : 'var(--amber)'}">
-          ${isWalkable ? 'WALKABLE' : 'RIDE'}
-        </span>
-      </div>`;
-  }
 
   // ── Modal 7: Ride Cost Estimation ─────────────────────────────────
   // Auto-calculates estimate for current user if missing,
@@ -363,59 +301,6 @@
       </div>`;
   }
 
-  // ── Modal 8: Dynamic Budget Split ────────────────────────────────
-  async function loadBudgetSplit() {
-    const container = document.getElementById('split-dynamic-members');
-    const summary   = document.getElementById('split-dynamic-summary');
-    const meetupId  = getMeetupId();
-    if (!container) return;
-
-    if (!meetupId) {
-      container.innerHTML = '<div style="font-size:12px;color:var(--muted)">Create a meetup first to calculate splits.</div>';
-      return;
-    }
-
-    container.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px">Loading members…</div>';
-    const data = await fetchJSON(API.split(meetupId));
-
-    const totalEl = document.getElementById('budget-total');
-    const total   = parseFloat(totalEl ? totalEl.value : 3500) || 3500;
-
-    // If no ride estimates yet, still show member split using PLAN_CONTEXT
-    let members = [];
-    if (data && data.success && data.data && data.data.members && data.data.members.length) {
-      members = data.data.members;
-    } else {
-      // Fallback: use map points from PLAN_CONTEXT
-      const ctx = window.PLAN_CONTEXT || {};
-      if (ctx.mapPoints && ctx.mapPoints.length) {
-        members = ctx.mapPoints.map((p, i) => ({ user_id: i, name: p.name || ('Member ' + (i+1)) }));
-      }
-    }
-
-    if (!members.length) {
-      container.innerHTML = '<div style="font-size:12px;color:var(--muted)">No members found. Invite friends first.</div>';
-      return;
-    }
-
-    const count     = members.length;
-    const perPerson = Math.floor(total / count);
-    const remainder = total - perPerson * (count - 1);
-    const colors    = ['var(--primary)', 'var(--blue)', 'var(--amber)', 'var(--green)', '#9c27b0'];
-
-    container.innerHTML = members.map((m, i) => `
-      <div class="split-member-row" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--input-bg);border-radius:10px;margin-bottom:6px;">
-        <div class="avatar" style="width:32px;height:32px;background:${colors[i % colors.length]};font-size:11px;flex-shrink:0;color:#fff;display:flex;align-items:center;justify-content:center;border-radius:50%;">
-          ${escapeHtml(m.name || 'M').slice(0, 2).toUpperCase()}
-        </div>
-        <div style="flex:1;font-weight:600;font-size:13px;">${escapeHtml(m.name || 'Member')}</div>
-        <span class="split-amount" style="font-weight:700;font-size:14px;color:var(--primary);">
-          NPR ${(i === count - 1 ? remainder : perPerson).toLocaleString()}
-        </span>
-      </div>`).join('');
-
-    if (summary) summary.textContent = `Equal split: NPR ${perPerson.toLocaleString()} / person · ${count} member${count !== 1 ? 's' : ''}`;
-  }
 
   // ── Ride option selection ─────────────────────────────────────────
   window.selectRideOption = function(card) {
@@ -471,12 +356,13 @@
 
         if (hasLocation) {
           // Member already has a location
-          var addr = m.address || (m.full_name + ''s location');
+          var addr = m.address || (m.full_name + "'s location");
           input.value = addr;
           input.dataset.lat = m.latitude;
           input.dataset.lng = m.longitude;
           input.dataset.name = m.full_name;
           input.dataset.address = addr;
+          input.dataset.sourceValue = addr;
         } else {
           // Member invited but hasn't shared location yet
           input.value = '';
@@ -524,9 +410,7 @@
     'modal-cuisine-preference': loadCuisines,
     'modal-budget-filter':      loadBudgetRange,
     'modal-nearby-restaurants': loadNearby,
-    'modal-walking-distance':   loadWalkingDistance,
     'modal-ride-cost':          loadRideCost,
-    'modal-budget-split':       loadBudgetSplit,
   };
 
   function loadModalData(modalId) {
@@ -562,9 +446,7 @@
 
   // ── Public API ────────────────────────────────────────────────────
   window.loadModalData        = loadModalData;
-  window.loadBudgetSplit      = loadBudgetSplit;
   window.loadRideCost         = loadRideCost;
-  window.loadWalkingDistance  = loadWalkingDistance;
   window.loadNearby           = loadNearby;
   window.loadOffers           = loadOffers;
 

@@ -57,17 +57,16 @@ document.querySelectorAll('.nav-btn[data-page]').forEach(btn=>{
   btn.addEventListener('click',()=>navTo(btn.dataset.page));
 });
  
-var THEME_KEY = 'bhetamla_theme';
+var THEME_KEY = 'bhetamla-theme';
 function applyTheme(t){
   currentTheme=t;
   document.documentElement.setAttribute('data-theme',t);
   document.getElementById('theme-label') && (document.getElementById('theme-label').textContent = t==='dark'?'Light':'Dark');
-  try { localStorage.setItem('bhetamla-theme', t); } catch(e) {}
+  try { localStorage.setItem(THEME_KEY, t); } catch(e) {}
 }
 // setTheme = an explicit user choice → persisted across sessions.
 function setTheme(t){
   applyTheme(t);
-  try { localStorage.setItem(THEME_KEY, t); } catch(e) {}
 }
 function toggleTheme(){setTheme(currentTheme==='light'?'dark':'light');}
 // On load: use the saved choice, else follow the OS (auto mode). Auto mode is
@@ -99,7 +98,8 @@ function applyLang(lang){
   if(lbl)lbl.textContent=lang==='ne'?'नेपाली':'English';
   showToast(lang==='ne'?'नेपाली भाषामा परिवर्तन गरियो':'Switched to English');
 }
-function toggleLang(){applyLang(currentLang==='en'?'ne':'en');}\r\n 
+function toggleLang(){applyLang(currentLang==='en'?'ne':'en');}
+
 function selectVenue(n){
   var all = document.querySelectorAll('#nearby-dynamic-list .venue-row, #modal-nearby-restaurants .venue-row');
   all.forEach(function(v, i){
@@ -634,11 +634,11 @@ function loadNearbyRestaurants(){
   }
   list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">Loading nearby places...</div>';
 
-  fetch('/place/api/nearby-midpoint?lat=' + mid.lat + '&lng=' + mid.lng + '&radius=0.5')
+  fetch('/place/api/nearby-midpoint?lat=' + mid.lat + '&lng=' + mid.lng + '&radius=100.0')
     .then(function(r){ return r.json(); })
     .then(function(data){
       if(!data.success || !data.restaurants.length){
-        list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">No restaurants found within 500m.</div>';
+        list.innerHTML = '<div style="font-size:13px;color:var(--muted);text-align:center;padding:14px 0;">No restaurants found.</div>';
         return;
       }
       selectedNearbyVenue = data.restaurants[0];
@@ -775,16 +775,12 @@ document.addEventListener('click', function(e){
 //  SERIAL PLANNER — clean rewrite
 // ═══════════════════════════════════════
 var STEPS = [
-
   { id:'modal-midpoint',           label:'Midpoint Meeting Calculator'     },
   { id:'modal-cuisine-preference', label:'Cuisine Preference Selection'     },
-  { id:'modal-nearby-restaurants', label:'Nearby Restaurant Recommendations'},
   { id:'modal-budget-filter',      label:'Budget-Based Restaurant Filter'   },
+  { id:'modal-nearby-restaurants', label:'Nearby Restaurant Recommendations'},
   { id:'modal-restaurant-offers',  label:'Restaurant Offers Check'          }, 
-  { id:'modal-walking-distance',   label:'Walking Distance Calculator'      }, 
-  { id:'modal-ride-cost',          label:'Ride Cost Estimation'             }, 
-  { id:'modal-budget-split',       label:'Dynamic Budget Split'             },
-  { id:'modal-multistop-route',    label:'Multi-Stop Route Planning'        }
+  { id:'modal-ride-cost',          label:'Ride Cost Estimation'             }
 ];
 var stepIdx = -1; // -1 = not started
 

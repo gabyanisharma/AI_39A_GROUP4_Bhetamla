@@ -81,6 +81,15 @@ class Meetup:
             WHERE id = %s
         """
         return execute_query(query, (lat, lng, address, meetup_id))
+
+    @staticmethod
+    def update_status(meetup_id, status):
+        query = """
+            UPDATE meetups
+            SET status = %s
+            WHERE id = %s
+        """
+        return execute_query(query, (status, meetup_id))
     
     @staticmethod
     def hide_from_groups(meetup_id, user_id):

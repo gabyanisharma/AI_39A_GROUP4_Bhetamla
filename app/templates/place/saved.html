@@ -5,10 +5,16 @@
 {% block page_content %}
 <div id="page-saved" class="page active" style="flex-direction:column" role="main">
   <div class="topbar">
-    <div class="topbar-search" style="padding:0 14px"><label for="search-saved" style="display:flex;align-items:center;gap:10px;cursor:text;flex:1"><span style="font-size:14px">&#128269;</span><input id="search-saved" type="search" placeholder="Search saved places..." oninput="filterSaved(this.value)" style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
     <div class="topbar-controls"><button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button></div>
     <button class="sos-btn" onclick="openModal('modal-sos')">&#10033; SOS</button>
-    <button aria-label="Notifications" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px">&#128276;</button>
+    <button aria-label="Notifications" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;position:relative">
+      &#128276;
+      {% if unread_notifications_count > 0 %}
+      <span style="position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
+        {{ unread_notifications_count }}
+      </span>
+      {% endif %}
+    </button>
   </div>
 
   <div style="padding:28px;overflow-y:auto;flex:1">
@@ -81,7 +87,7 @@
         <div style="font-size:28px;margin-bottom:10px">🏷️</div>
         <div style="font-size:14px;font-weight:600;margin-bottom:4px">No saved offers yet</div>
         <div style="font-size:12px;margin-bottom:12px">Explore restaurants to find and save active discounts.</div>
-        <a href="{{ url_for('place.restaurants_page') }}" class="btn-sec" style="display:inline-flex;width:auto;padding:8px 16px;font-size:12px;text-decoration:none">Browse Offers →</a>
+        <a href="{{ url_for('place.restaurants_page') }}" class="btn-sec" style="display:inline-flex;width:auto;padding:8px 16px;font-size:12px;text-decoration:none">Browse Restaurants →</a>
       </div>
       {% endfor %}
     </div>

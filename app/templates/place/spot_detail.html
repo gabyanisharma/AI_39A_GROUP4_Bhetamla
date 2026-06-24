@@ -5,7 +5,6 @@
 {% block page_content %}
 <div class="page active" style="flex-direction:column" role="main">
   <div class="topbar">
-    <div class="topbar-search" style="padding:0 14px"><label style="display:flex;align-items:center;gap:10px;flex:1"><span style="font-size:14px">&#128269;</span><input type="search" placeholder="Search..." style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0"></label></div>
     <div class="topbar-controls"><button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button></div>
     <button class="sos-btn" onclick="openModal('modal-sos')">&#10033; SOS</button>
   </div>
@@ -69,8 +68,12 @@
       <div class="card">
         <div style="font-weight:700;font-size:15px;margin-bottom:12px">Location</div>
         <div style="font-size:13px;color:var(--muted)">📍 {{ spot.latitude }}, {{ spot.longitude }}</div>
-        <a href="https://www.google.com/maps/search/?api=1&query={{ spot.latitude }},{{ spot.longitude }}" target="_blank" rel="noopener"
-           style="display:inline-block;margin-top:10px;color:var(--blue);font-size:13px;font-weight:700;text-decoration:none">Open in Google Maps →</a>
+          <button onclick="goToRoutePlanner({{ spot.latitude }}, {{ spot.longitude }}, '{{ spot.name | replace("'", "\\'") }}')"
+            style="display:inline-flex;align-items:center;gap:8px;margin-top:12px;background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer">
+            🧭 Get Directions from My Location
+          </button>
+          <div id="directions-status" style="margin-top:8px;font-size:12px;color:var(--muted)"></div>
+        </div>
       </div>
       {% endif %}
     </div>
@@ -113,5 +116,45 @@ function toggleSpot(btn) {
   })
   .catch(() => {});
 }
+function goToRoutePlanner(destLat, destLng, destName) {
+  const status = document.getElementById('directions-status');
+  if (!navigator.geolocation) {
+    // No geolocation — go to planner with just the destination pre-filled
+    const params = new URLSearchParams({
+      to_lat:  destLat,
+      to_lng:  destLng,
+      to_name: destName
+    });
+    window.location.href = '/ride/planner?' + params.toString();
+    return;
+  }
+  status.textContent = '📡 Detecting your location…';
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      const params = new URLSearchParams({
+        from_lat:  pos.coords.latitude,
+        from_lng:  pos.coords.longitude,
+        to_lat:    destLat,
+        to_lng:    destLng,
+        to_name:   destName
+      });
+      window.location.href = '/ride/planner?' + params.toString();
+    },
+    function() {
+      // User denied or error — still go, planner will handle it
+      status.textContent = '⚠️ Could not detect location. Opening planner anyway…';
+      const params = new URLSearchParams({
+        to_lat:  destLat,
+        to_lng:  destLng,
+        to_name: destName
+      });
+      setTimeout(function() {
+        window.location.href = '/ride/planner?' + params.toString();
+      }, 1200);
+    },
+    { timeout: 8000, maximumAge: 60000 }
+  );
+}
+
 </script>
 {% endblock %}

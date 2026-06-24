@@ -109,38 +109,6 @@
   </div>
 </div>
 
-<div id="modal-budget-split" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Budget Split">
-  <div class="modal-box" style="max-width:480px;">
-    <button class="modal-close" onclick="closeModal('modal-budget-split')" aria-label="Close">&#10005;</button>
-    <div style="font-size:36px;text-align:center;margin-bottom:8px;">💰</div>
-    <div class="modal-title" style="text-align:center;">Dynamic Budget Split</div>
-    <div class="modal-sub" style="text-align:center;">Split the bill fairly among group members.</div>
-    <label class="field-label">Total Bill (NPR)</label>
-    <input class="field-input" id="budget-total" type="number" oninput="calcSplit(); loadBudgetSplit();" value="3500" style="margin-bottom:14px"/>
-    <div id="split-dynamic-members" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
-      <div class="split-member-row" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--input-bg);border-radius:10px;">
-        <div class="avatar" style="width:32px;height:32px;background:var(--primary);font-size:11px;flex-shrink:0;">Y</div>
-        <div style="flex:1;font-weight:600;font-size:13px;">You</div>
-        <span class="split-amount" style="font-weight:700;font-size:14px;color:var(--primary);">NPR 1,167</span>
-      </div>
-      <div class="split-member-row" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--input-bg);border-radius:10px;">
-        <div class="avatar" style="width:32px;height:32px;background:var(--blue);font-size:11px;flex-shrink:0;">F1</div>
-        <div style="flex:1;font-weight:600;font-size:13px;">Friend 1</div>
-        <span class="split-amount" style="font-weight:700;font-size:14px;color:var(--primary);">NPR 1,167</span>
-      </div>
-      <div class="split-member-row" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--input-bg);border-radius:10px;">
-        <div class="avatar" style="width:32px;height:32px;background:var(--amber);font-size:11px;flex-shrink:0;color:#333">F2</div>
-        <div style="flex:1;font-weight:600;font-size:13px;">Friend 2</div>
-        <span class="split-amount" style="font-weight:700;font-size:14px;color:var(--primary);">NPR 1,166</span>
-      </div>
-    </div>
-    <div style="background:var(--green-light);border:1px solid rgba(27,107,58,.2);border-radius:10px;padding:11px 14px;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
-      <span style="font-size:16px;">✅</span>
-      <div id="split-dynamic-summary" style="font-size:12.5px;color:var(--green);font-weight:600;">Equal split: NPR 1,167 / person</div>
-    </div>
-    <button class="btn-primary" type="button" style="width:100%;padding:13px;" onclick="showToast('💰 Budget split sent to group chat!');completeSerialStep('modal-budget-split','split sent')">Split &amp; Continue →</button>
-  </div>
-</div>
 
 <div id="modal-ride-cost" class="feat-modal-overlay" role="dialog" aria-modal="true" aria-label="Ride Cost Estimation">
   <div class="feat-modal">
@@ -159,41 +127,6 @@
   </div>
 </div>
 
-<div id="modal-walking-distance" class="feat-modal-overlay" role="dialog" aria-modal="true" aria-label="Walking Distance Calculator">
-  <div class="feat-modal">
-    <button class="feat-modal-close" onclick="closeFeatModal('modal-walking-distance')" aria-label="Close">&#10005;</button>
-    <div class="feat-modal-icon">🚶</div>
-    <div class="feat-modal-title">Walking Distance</div>
-    <div class="feat-modal-sub">Check what is walkable near the venue.</div>
-    <div style="display:flex;flex-direction:column;gap:8px;" id="walking-dynamic-list">
-      <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--green-light);border-radius:10px;border:1.5px solid rgba(46,125,50,.25)"><span style="font-size:20px">☕</span><div style="flex:1"><div style="font-weight:700;font-size:13px">Café de Patan</div><div style="font-size:12px;color:var(--muted)">320m · ~4 min walk</div></div><span style="font-size:11px;font-weight:700;color:var(--green)">WALKABLE</span></div>
-      <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--input-bg);border-radius:10px;border:1.5px solid var(--border)"><span style="font-size:20px">🏔️</span><div style="flex:1"><div style="font-weight:700;font-size:13px">Himalayan Java Coffee</div><div style="font-size:12px;color:var(--muted)">2.4km · ride recommended</div></div><span style="font-size:11px;font-weight:700;color:var(--amber)">RIDE</span></div>
-    </div>
-    <div class="feat-btn-row">
-      <button class="btn-primary" type="button" onclick="showToast('Walking route saved!');completeSerialStep('modal-walking-distance','walking saved')">Save Route</button>
-      <button class="btn-sec" type="button" onclick="completeSerialStep('modal-walking-distance','walking skipped')">Skip →</button>
-    </div>
-  </div>
-</div>
-
-<div id="modal-multistop-route" class="feat-modal-overlay" role="dialog" aria-modal="true" aria-label="Multi-Stop Route Planning">
-  <div class="feat-modal">
-    <button class="feat-modal-close" onclick="closeFeatModal('modal-multistop-route')" aria-label="Close">&#10005;</button>
-    <div class="feat-modal-icon">🗺️</div>
-    <div class="feat-modal-title">Multi-Stop Route</div>
-    <div class="feat-modal-sub">Plan the full evening in one smart route.</div>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;" id="multistop-route-rows">
-      <div class="summary-row"><span class="summary-icon">A</span><div><div class="summary-key">START</div><div class="summary-val" id="ms-start">Your Location</div></div></div>
-      <div class="summary-row"><span class="summary-icon">1</span><div><div class="summary-key">MIDPOINT</div><div class="summary-val" id="ms-stop1">Calculating…</div></div></div>
-      <div class="summary-row"><span class="summary-icon">2</span><div><div class="summary-key">VENUE</div><div class="summary-val" id="ms-stop2">Calculating…</div></div></div>
-    </div>
-    <div style="background:var(--blue-light);border-radius:10px;padding:12px;font-size:12.5px;margin-bottom:4px;" id="multistop-route-summary">Route summary: calculating…</div>
-    <div class="feat-btn-row">
-      <button class="btn-primary" type="button" onclick="completeSerialStep('modal-multistop-route','route confirmed')">Confirm Full Plan</button>
-      <button class="btn-sec" type="button" onclick="showToast('Route shared with group!');completeSerialStep('modal-multistop-route','route shared')">Share Route</button>
-    </div>
-  </div>
-</div>
 
 <div id="modal-final-summary" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Meetup Summary">
   <div class="modal-box" style="max-width:500px;max-height:88vh;overflow-y:auto;">

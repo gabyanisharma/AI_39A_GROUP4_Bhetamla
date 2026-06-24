@@ -4,7 +4,7 @@
 <!-- APP SHELL -->
 <div id="app" class="screen active" style="flex-direction:row">
   <nav class="sidebar" aria-label="Main navigation">
-    <div class="sidebar-brand">
+    <a href="{{ url_for('user.dashboard') }}" class="sidebar-brand" style="text-decoration:none;cursor:pointer">
       <div class="sidebar-brand-icon" style="background:transparent;padding:0;overflow:hidden;border-radius:10px">
         <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Bhetam" style="width:40px;height:40px;object-fit:contain">
       </div>
@@ -12,7 +12,7 @@
         <div class="sidebar-brand-name" style="color:#14322A"><strong style="font-weight:800;letter-spacing:-0.5px">Bhetam</strong><sup style="font-size:10px;color:var(--gold);font-weight:700">&#2354;</sup></div>
         <div class="sidebar-brand-sub">Verified Member</div>
       </div>
-    </div>
+    </a>
 
     <a class="nav-btn {% if active_page == 'dashboard' %}active{% endif %}" href="{{ url_for('user.dashboard') }}" style="text-decoration:none" {% if active_page == 'dashboard' %}aria-current="page"{% endif %}><span class="nav-icon">&#8861;</span><span>Dashboard</span></a>
     <a class="nav-btn {% if active_page == 'plan' %}active{% endif %}" href="{{ url_for('meetup.plan') }}" style="text-decoration:none" {% if active_page == 'plan' %}aria-current="page"{% endif %}><span class="nav-icon">&#65291;</span><span>Plan Meetup</span></a>
@@ -69,16 +69,22 @@
     </div>
     {% if header_notifications %}
       {% for n in header_notifications %}
-      <div class="notif-item" style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
-        <div class="notif-dot" style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0"></div>
-        <div>
-          <div style="font-weight:600;font-size:13px">{{ n.title }}</div>
-          <div style="font-size:11px;color:var(--muted)">{{ n.body }} · {{ n.time }}</div>
+      <div class="notif-item" style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0;margin-top:5px"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ n.title }}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ (n.body or '')[:60] }}{% if (n.body or '')|length > 60 %}…{% endif %}</div>
+          {% if n.time %}<div style="font-size:10px;color:var(--muted);margin-top:2px;opacity:.7">{{ n.time }}</div>{% endif %}
         </div>
       </div>
       {% endfor %}
+      <a href="{{ url_for('user.notifications_page') }}" onclick="closeNotifPanel()"
+         style="display:block;text-align:center;font-size:12px;font-weight:700;color:var(--blue);padding:12px 0;text-decoration:none">
+        View all notifications →
+      </a>
     {% else %}
     <div style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0">No new notifications yet.</div>
     {% endif %}
   </div>
 {% endblock %}
+

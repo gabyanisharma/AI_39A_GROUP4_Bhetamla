@@ -1,6 +1,6 @@
 """Flask-SocketIO event handlers for group chat."""
 
-from flask import request, session
+from flask import session
 from flask_socketio import emit, join_room, leave_room
 
 from app.models.group_chat import FriendGroup, GroupChat

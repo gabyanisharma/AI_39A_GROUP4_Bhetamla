@@ -2,7 +2,7 @@ import unittest
 from datetime import date
 
 from app.models.analytics import (
-    split_upcoming_past, build_monthly_activity, summarize, _is_past, _as_date,
+    split_upcoming_past, build_monthly_activity, summarize, _is_past,
 )
 
 
