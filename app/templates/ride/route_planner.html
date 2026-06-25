@@ -1,0 +1,1034 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'route_planner' %}
+{% block title %}Route Planner — Bhetamल{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  /* ── Route Planner Layout ── */
+  #rp-shell {
+    display: flex; height: 100%; overflow: hidden;
+  }
+
+  /* ── Left Panel ── */
+  #rp-panel {
+    width: 380px; flex-shrink: 0;
+    display: flex; flex-direction: column;
+    background: var(--white);
+    border-right: 1.5px solid var(--border);
+    overflow: hidden;
+  }
+  #rp-panel-inner {
+    flex: 1; overflow-y: auto; padding: 22px;
+  }
+
+  /* ── Map ── */
+  #rp-map {
+    flex: 1; min-height: 0;
+  }
+
+  /* ── Stop item ── */
+  .stop-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: var(--input-bg);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    cursor: grab;
+    transition: box-shadow .15s, border-color .15s;
+    position: relative;
+  }
+  .stop-item:active { cursor: grabbing; box-shadow: 0 4px 18px rgba(0,0,0,.12); }
+  .stop-item.drag-over { border-color: var(--blue); background: var(--blue-light); }
+
+  .stop-handle { color: var(--muted); font-size: 18px; cursor: grab; user-select: none; }
+  .stop-badge {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .stop-name {
+    flex: 1; font-size: 13px; font-weight: 500; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .stop-remove {
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); font-size: 16px; padding: 2px 4px;
+    border-radius: 6px; transition: color .12s, background .12s;
+    flex-shrink: 0;
+  }
+  .stop-remove:hover { color: var(--red); background: rgba(220,38,38,.08); }
+
+  /* ── Connector line ── */
+  .stop-connector {
+    width: 2px; height: 16px;
+    background: var(--border);
+    margin: 0 auto 8px;
+    margin-left: 46px;
+  }
+
+  /* ── Stats bar (enhanced) ── */
+  #rp-stats {
+    display: flex; gap: 10px;
+    padding: 14px 22px;
+    background: var(--input-bg);
+    border-top: 1.5px solid var(--border);
+  }
+  .rp-stat {
+    flex: 1; text-align: center;
+    background: var(--white);
+    border-radius: 10px; padding: 12px 6px;
+    border: 1px solid var(--border);
+  }
+  .rp-stat-val {
+    font-size: 1.5rem; font-weight: 800;
+    color: var(--primary); font-family: 'Playfair Display', serif;
+  }
+  .rp-stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Transport mode selector ── */
+  .rp-mode-bar {
+    display: flex; gap: 6px; margin-bottom: 14px;
+  }
+  .rp-mode-btn {
+    flex: 1; padding: 10px 6px; border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: var(--input-bg);
+    color: var(--muted); font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all .15s;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .rp-mode-btn.active {
+    background: var(--primary); color: #fff; border-color: var(--primary);
+  }
+  .rp-mode-icon { font-size: 18px; line-height: 1; }
+
+  /* ── Multi-ETA panel ── */
+  #rp-eta-panel {
+    padding: 12px 22px;
+    background: var(--input-bg);
+    border-top: 1px solid var(--border);
+    display: none;
+  }
+  #rp-eta-panel.visible { display: block; }
+  .eta-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .eta-row:last-child { margin-bottom: 0; }
+  .eta-mode-icon { font-size: 18px; flex-shrink: 0; }
+  .eta-mode-label { flex: 1; font-weight: 600; color: var(--text); }
+  .eta-mode-time { font-weight: 800; color: var(--primary); font-family: 'Playfair Display', serif; font-size: 15px; }
+  .eta-mode-dist { font-size: 11px; color: var(--muted); margin-left: 4px; }
+  .eta-active-badge {
+    font-size: 9px; font-weight: 700; color: #fff;
+    background: var(--blue); border-radius: 20px;
+    padding: 2px 7px; margin-left: 6px;
+  }
+
+  /* ── Optimize toggle ── */
+  .opt-tab {
+    flex: 1; padding: 8px; border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--input-bg);
+    color: var(--muted); font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all .15s;
+  }
+  .opt-tab.active {
+    background: var(--primary); color: #fff; border-color: var(--primary);
+  }
+
+  /* ── Saved routes list ── */
+  .saved-route-card {
+    padding: 12px; border-radius: 12px;
+    border: 1.5px solid var(--border);
+    margin-bottom: 10px;
+    transition: border-color .15s;
+    cursor: pointer;
+  }
+  .saved-route-card:hover { border-color: var(--blue); }
+
+  /* ── Loading spinner ── */
+  #rp-loading {
+    display: none; position: absolute;
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    z-index: 1000;
+    background: var(--white);
+    border-radius: 14px;
+    padding: 20px 30px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.15);
+    font-size: 14px; font-weight: 600; color: var(--primary);
+    pointer-events: none;
+  }
+
+  /* ── Section headers ── */
+  .rp-section-head {
+    font-family: 'Lora', serif;
+    font-size: 13px; font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    margin: 18px 0 10px;
+  }
+
+  /* ── Step-by-step guide ── */
+  .rp-stepper {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 4px; margin-bottom: 16px;
+  }
+  .rp-step {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10px; color: var(--muted); font-weight: 500;
+  }
+  .rp-step-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--border); color: var(--muted);
+    font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .rp-step-line {
+    flex: 1; height: 1.5px; background: var(--border);
+    margin: 0 4px; min-width: 12px;
+  }
+
+  /* ── Empty state ── */
+  .rp-empty-state {
+    text-align: center; padding: 28px 16px;
+  }
+  .rp-empty-icon {
+    font-size: 40px; margin-bottom: 10px; display: block;
+  }
+  .rp-empty-title {
+    font-size: 15px; font-weight: 700; color: var(--text);
+    margin-bottom: 6px;
+  }
+  .rp-empty-desc {
+    font-size: 12px; color: var(--muted); line-height: 1.5;
+  }
+
+  /* ── Collapsible how-to ── */
+  .rp-howto-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; background: var(--input-bg);
+    border: 1.5px solid var(--border); border-radius: 10px;
+    cursor: pointer; font-size: 13px; font-weight: 600;
+    color: var(--text); margin-top: 16px;
+    transition: background .15s;
+    user-select: none;
+  }
+  .rp-howto-header:hover { background: var(--border); }
+  .rp-howto-arrow {
+    transition: transform .2s; font-size: 12px;
+  }
+  .rp-howto-arrow.open { transform: rotate(180deg); }
+  .rp-howto-body {
+    max-height: 0; overflow: hidden;
+    transition: max-height .25s ease, padding .25s ease;
+    padding: 0 12px;
+  }
+  .rp-howto-body.open {
+    max-height: 300px;
+    padding: 12px;
+  }
+  .rp-howto-body ul {
+    margin: 0; padding-left: 18px;
+    font-size: 12px; color: var(--muted); line-height: 1.8;
+  }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div id="page-rp" class="page active" style="flex-direction:column" role="main">
+
+  <!-- Top bar -->
+  {% include '_topbar.html' %}
+
+  <!-- Main Shell -->
+  <div id="rp-shell" style="flex:1;position:relative;">
+
+    <!-- Loading overlay -->
+    <div id="rp-loading">⏳ Calculating route…</div>
+
+    <!-- ══ LEFT PANEL ══ -->
+    <div id="rp-panel">
+      <div id="rp-panel-inner">
+
+        <!-- Add Stop -->
+        <div class="rp-section-head">Add a Stop</div>
+        <div style="display:flex;gap:8px;margin-bottom:6px;">
+          <input id="rp-stop-input" class="field-input" placeholder="Search location or paste coords…"
+                 style="flex:1;padding:10px 14px;font-size:13px"
+                 onkeydown="if(event.key==='Enter'){addStopBySearch()}" />
+          <button onclick="addStopBySearch()" class="btn-primary" style="width:auto;padding:10px 14px;font-size:13px">＋ Add</button>
+        </div>
+        <button onclick="addCurrentLocation()" class="btn-sec" style="width:100%;justify-content:center;font-size:12px;padding:9px;margin-bottom:4px">
+          📍 Use My Current Location
+        </button>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:12px;text-align:center">Or click anywhere on the map to add a stop</div>
+
+        <!-- Stop list -->
+        <div class="rp-section-head">Stops <span id="rp-stop-count" style="color:var(--blue)">(0)</span></div>
+        <div id="rp-stop-list"></div>
+        <div id="rp-empty-msg" style="text-align:center;padding:20px 0;color:var(--muted);font-size:13px">
+          No stops yet.<br>Add at least 2 to calculate a route.
+        </div>
+
+        <!-- Transport mode -->
+        <div class="rp-section-head">Travel Mode</div>
+        <div class="rp-mode-bar">
+          <button id="mode-driving" class="rp-mode-btn active" onclick="setTravelMode('driving')">
+            <span class="rp-mode-icon">🚗</span>Driving
+          </button>
+          <button id="mode-walking" class="rp-mode-btn" onclick="setTravelMode('walking')">
+            <span class="rp-mode-icon">🚶</span>Walking
+          </button>
+          <button id="mode-cycling" class="rp-mode-btn" onclick="setTravelMode('cycling')">
+            <span class="rp-mode-icon">🚴</span>Cycling
+          </button>
+        </div>
+
+        <!-- Optimization mode -->
+        <div class="rp-section-head">Optimise By</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <button id="opt-time" class="opt-tab active" onclick="setOptMode('time')">⏱️ Fastest (Time)</button>
+          <button id="opt-distance" class="opt-tab" onclick="setOptMode('distance')">📏 Shortest (Distance)</button>
+        </div>
+
+        <!-- Action buttons -->
+        <button onclick="calculateRoute()" class="btn-primary" style="width:100%;padding:13px;font-size:14px;margin-bottom:10px;border-radius:12px">
+          🧭 Calculate Route
+        </button>
+        <button onclick="optimiseRoute()" class="btn-sec" style="width:100%;justify-content:center;padding:13px;font-size:14px;margin-bottom:10px">
+          ⚡ Optimise Stop Order
+        </button>
+        <button onclick="openSaveModal()" class="btn-sec" style="width:100%;justify-content:center;padding:11px;font-size:13px;margin-bottom:8px">
+          💾 Save Route
+        </button>
+        <button onclick="shareRoute()" class="btn-sec" style="width:100%;justify-content:center;padding:11px;font-size:13px;margin-bottom:8px">
+          🔗 Share / Open in Google Maps
+        </button>
+        <button onclick="clearRoute()" style="width:100%;padding:9px;font-size:12px;background:none;border:1.5px solid var(--border);border-radius:10px;color:var(--muted);cursor:pointer;margin-bottom:14px">
+          ✕ Clear All Stops
+        </button>
+
+        <!-- Saved Routes -->
+        {% if saved_routes %}
+        <div class="rp-section-head">Saved Routes</div>
+        <div id="saved-routes-list">
+          {% for r in saved_routes %}
+          <div class="saved-route-card" onclick="loadSavedRoute({{ r.waypoints|tojson }})">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <div style="font-weight:700;font-size:13px;color:var(--text)">🗺️ {{ r.route_name }}</div>
+              <button onclick="event.stopPropagation();deleteSavedRoute({{ r.id }}, this)"
+                      style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:6px"
+                      title="Delete">✕</button>
+            </div>
+            <div style="font-size:11px;color:var(--muted)">
+              {{ r.waypoints|length }} stops ·
+              {{ r.total_distance_km }} km ·
+              {% if r.total_duration_min >= 60 %}{{ (r.total_duration_min // 60) }}h {{ r.total_duration_min % 60 }}m{% else %}{{ r.total_duration_min }} min{% endif %}
+              · optimised by {{ r.optimize_by }}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+      </div><!-- /rp-panel-inner -->
+
+      <!-- Multi-ETA comparison panel -->
+      <div id="rp-eta-panel">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">ETA Comparison</div>
+        <div id="eta-rows"></div>
+      </div>
+
+      <!-- Stats bar pinned to bottom of panel -->
+      <div id="rp-stats">
+        <div class="rp-stat">
+          <div class="rp-stat-val" id="stat-stops">0</div>
+          <div class="rp-stat-lbl">Stops</div>
+        </div>
+        <div class="rp-stat">
+          <div class="rp-stat-val" id="stat-dist">—</div>
+          <div class="rp-stat-lbl">Distance</div>
+        </div>
+        <div class="rp-stat">
+          <div class="rp-stat-val" id="stat-eta">—</div>
+          <div class="rp-stat-lbl">ETA</div>
+        </div>
+      </div>
+    </div><!-- /rp-panel -->
+
+    <!-- ══ MAP ══ -->
+    <div id="rp-map"></div>
+
+  </div><!-- /rp-shell -->
+</div>
+
+<!-- Save Route Modal -->
+<div class="modal-overlay" id="modal-save-route" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:380px">
+    <button class="modal-close" onclick="closeModal('modal-save-route')">✕</button>
+    <div class="modal-title">💾 Save Route</div>
+    <div class="modal-sub">Give this route a name to find it later.</div>
+    <input id="route-name-input" class="field-input" placeholder="e.g. Saturday Pickup Route" style="margin-bottom:18px" />
+    <button class="btn-primary" onclick="confirmSaveRoute()" style="width:100%">Save</button>
+  </div>
+</div>
+
+<!-- SOS Modal -->
+<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
+  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
+    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
+    <div style="font-size:48px;margin-bottom:10px">🆘</div>
+    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
+    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
+    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
+    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ══════════════════════════════════════════════════════════════
+//  ROUTE PLANNER — Full JS
+// ══════════════════════════════════════════════════════════════
+
+const KTM = [27.7172, 85.3240];
+// OSRM public demo servers — one per profile
+const OSRM_DRIVING  = 'https://router.project-osrm.org';
+const OSRM_FOOT     = 'https://routing.openstreetmap.de/routed-foot';
+const OSRM_BIKE     = 'https://routing.openstreetmap.de/routed-bike';
+
+function osrmBase(profile) {
+  if (profile === 'foot')    return OSRM_FOOT;
+  if (profile === 'cycling') return OSRM_BIKE;
+  return OSRM_DRIVING;
+}
+
+// Average speeds used for fallback estimation (km/h)
+const MODE_SPEED = { driving: 40, foot: 5, cycling: 15 };
+
+// ── State ────────────────────────────────────────────────────
+let stops = [];          // [{name, lat, lng}]
+let markers = [];        // Leaflet markers
+let routeLayer = null;   // Leaflet polyline layer
+let optMode = 'time';    // 'time' | 'distance'
+let travelMode = 'driving'; // 'driving' | 'walking' | 'cycling'
+let routeStats = { distance: 0, duration: 0 };
+let dragSrcIdx = null;
+let multiETA = {};       // { driving: {dist, dur, geometry}, walking: {...}, cycling: {...} }
+
+// ── Map Init ─────────────────────────────────────────────────
+const map = L.map('rp-map').setView(KTM, 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors', maxZoom: 19
+}).addTo(map);
+
+// Click on map → add stop
+map.on('click', function(e) {
+  const { lat, lng } = e.latlng;
+  setLoading(true);
+  fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+    .then(r => r.json())
+    .then(d => {
+      const name = d.display_name
+        ? d.display_name.split(',').slice(0, 2).join(',').trim()
+        : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      addStop(name, lat, lng);
+    })
+    .catch(() => addStop(`${lat.toFixed(4)}, ${lng.toFixed(4)}`, lat, lng))
+    .finally(() => setLoading(false));
+});
+
+// ── Loading helper ───────────────────────────────────────────
+function setLoading(on) {
+  document.getElementById('rp-loading').style.display = on ? 'block' : 'none';
+}
+
+// ── Add stop by search box ───────────────────────────────────
+function addStopBySearch() {
+  const q = document.getElementById('rp-stop-input').value.trim();
+  if (!q) { showToast('Please enter a location name.'); return; }
+
+  // Check if user entered lat,lng directly
+  const coordMatch = q.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+  if (coordMatch) {
+    const lat = parseFloat(coordMatch[1]);
+    const lng = parseFloat(coordMatch[2]);
+    addStop(q, lat, lng);
+    document.getElementById('rp-stop-input').value = '';
+    return;
+  }
+
+  setLoading(true);
+  fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=np`)
+    .then(r => r.json())
+    .then(results => {
+      if (!results.length) {
+        showToast('Location not found. Try a more specific name.');
+        return;
+      }
+      const r = results[0];
+      const name = r.display_name.split(',').slice(0, 2).join(',').trim();
+      addStop(name, parseFloat(r.lat), parseFloat(r.lon));
+      document.getElementById('rp-stop-input').value = '';
+    })
+    .catch(() => showToast('Search failed. Try clicking the map.'))
+    .finally(() => setLoading(false));
+}
+
+// ── Use current location ─────────────────────────────────────
+function addCurrentLocation() {
+  if (!navigator.geolocation) { showToast('Geolocation not supported.'); return; }
+  setLoading(true);
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+        .then(r => r.json())
+        .then(d => {
+          const name = d.display_name
+            ? d.display_name.split(',').slice(0, 2).join(',').trim()
+            : 'My Location';
+          addStop(name, lat, lng);
+        })
+        .catch(() => addStop('My Location', lat, lng))
+        .finally(() => setLoading(false));
+    },
+    () => { showToast('Could not get location.'); setLoading(false); }
+  );
+}
+
+// ── Core: add a stop ─────────────────────────────────────────
+function addStop(name, lat, lng) {
+  stops.push({ name, lat, lng });
+  renderStopList();
+  addMarker(lat, lng, stops.length);
+  if (stops.length >= 2) fitMapToStops();
+  updateStats(null);
+}
+
+// ── Remove a stop ────────────────────────────────────────────
+function removeStop(idx) {
+  stops.splice(idx, 1);
+  rebuildMarkers();
+  renderStopList();
+  updateStats(null);
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+}
+
+// ── Marker helpers ───────────────────────────────────────────
+function addMarker(lat, lng, num) {
+  const icon = L.divIcon({
+    className: '',
+    html: `<div style="
+      background:var(--primary,#14322A);color:#fff;
+      width:30px;height:30px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-size:12px;font-weight:700;
+      border:2.5px solid #fff;
+      box-shadow:0 2px 8px rgba(0,0,0,.25);
+    ">${num}</div>`,
+    iconSize: [30, 30], iconAnchor: [15, 15]
+  });
+  const m = L.marker([lat, lng], { icon }).addTo(map);
+  m.bindPopup(`<strong>Stop ${num}</strong><br>${stops[num-1]?.name || ''}`);
+  markers.push(m);
+}
+
+function rebuildMarkers() {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  stops.forEach((s, i) => addMarker(s.lat, s.lng, i + 1));
+}
+
+function fitMapToStops() {
+  if (!stops.length) return;
+  const bounds = L.latLngBounds(stops.map(s => [s.lat, s.lng]));
+  map.fitBounds(bounds, { padding: [50, 50] });
+}
+
+// ── Render the stop list ─────────────────────────────────────
+function renderStopList() {
+  const list = document.getElementById('rp-stop-list');
+  const empty = document.getElementById('rp-empty-msg');
+  const count = document.getElementById('rp-stop-count');
+  const statStops = document.getElementById('stat-stops');
+
+  count.textContent = `(${stops.length})`;
+  statStops.textContent = stops.length;
+  empty.style.display = stops.length ? 'none' : 'block';
+
+  list.innerHTML = '';
+  stops.forEach((s, i) => {
+    if (i > 0) {
+      const conn = document.createElement('div');
+      conn.className = 'stop-connector';
+      list.appendChild(conn);
+    }
+    const item = document.createElement('div');
+    item.className = 'stop-item';
+    item.draggable = true;
+    item.dataset.idx = i;
+    item.innerHTML = `
+      <span class="stop-handle" title="Drag to reorder">⠿</span>
+      <div class="stop-badge">${i + 1}</div>
+      <div class="stop-name" title="${s.name}">${s.name}</div>
+      <button class="stop-remove" onclick="removeStop(${i})" title="Remove stop">✕</button>
+    `;
+    // Drag-and-drop
+    item.addEventListener('dragstart', onDragStart);
+    item.addEventListener('dragover',  onDragOver);
+    item.addEventListener('drop',      onDrop);
+    item.addEventListener('dragend',   onDragEnd);
+    list.appendChild(item);
+  });
+}
+
+// ── Drag-and-drop reordering ─────────────────────────────────
+function onDragStart(e) {
+  dragSrcIdx = parseInt(this.dataset.idx);
+  this.style.opacity = '0.5';
+  e.dataTransfer.effectAllowed = 'move';
+}
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.stop-item').forEach(el => el.classList.remove('drag-over'));
+  this.classList.add('drag-over');
+}
+function onDrop(e) {
+  e.stopPropagation();
+  const destIdx = parseInt(this.dataset.idx);
+  if (dragSrcIdx === destIdx) return;
+  const moved = stops.splice(dragSrcIdx, 1)[0];
+  stops.splice(destIdx, 0, moved);
+  rebuildMarkers();
+  renderStopList();
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; updateStats(null); }
+}
+function onDragEnd() {
+  document.querySelectorAll('.stop-item').forEach(el => {
+    el.classList.remove('drag-over');
+    el.style.opacity = '1';
+  });
+  dragSrcIdx = null;
+}
+
+// ── Optimise mode ────────────────────────────────────────────
+function setOptMode(mode) {
+  optMode = mode;
+  document.getElementById('opt-time').classList.toggle('active', mode === 'time');
+  document.getElementById('opt-distance').classList.toggle('active', mode === 'distance');
+}
+
+// ── Travel mode selector ─────────────────────────────────────────
+function setTravelMode(mode) {
+  travelMode = mode;
+  ['driving','walking','cycling'].forEach(function(m) {
+    var btn = document.getElementById('mode-' + m);
+    if (btn) btn.classList.toggle('active', m === mode);
+  });
+  // If we already have data for this mode, update stats and redraw the route
+  if (multiETA[mode]) {
+    updateStats({ distance: multiETA[mode].dist, duration: multiETA[mode].dur });
+    renderETAPanel();
+    // Redraw the actual geometry for this mode if we have it
+    if (multiETA[mode].geometry) {
+      drawRoute(multiETA[mode].geometry, mode);
+    } else if (routeLayer) {
+      // No geometry stored (estimated fallback) — just recolour the existing line
+      routeLayer.setStyle({
+        color: ROUTE_COLORS[mode] || '#14322A',
+        dashArray: mode === 'walking' ? '8, 8' : null
+      });
+    }
+  } else if (routeLayer) {
+    // Route drawn but no ETA data yet — just recolour
+    routeLayer.setStyle({
+      color: ROUTE_COLORS[mode] || '#14322A',
+      dashArray: mode === 'walking' ? '8, 8' : null
+    });
+  }
+}
+
+// ── Calculate Route via OSRM ─────────────────────────────────
+function calculateRoute() {
+  if (stops.length < 2) { showToast('Add at least 2 stops first!'); return; }
+  setLoading(true);
+
+  // Reset all stored ETAs so stale values don't bleed through
+  multiETA = {};
+
+  const coords = stops.map(s => `${s.lng},${s.lat}`).join(';');
+  // OSRM public API uses: 'driving', 'foot', 'cycling'
+  const osrmProfile = travelMode === 'walking' ? 'foot' : travelMode;
+  const base = osrmBase(osrmProfile);
+  const url = `${base}/route/v1/${osrmProfile}/${coords}?overview=full&geometries=geojson&steps=false`;
+
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      if (data.code !== 'Ok') { showToast('Routing failed. Try again.'); return; }
+      const route = data.routes[0];
+      drawRoute(route.geometry.coordinates, travelMode);
+      const mainDist = route.distance / 1000;
+      const mainDur = Math.round(route.duration / 60);
+      routeStats = { distance: mainDist, duration: mainDur };
+      multiETA[travelMode] = { dist: mainDist, dur: mainDur, geometry: route.geometry.coordinates };
+      updateStats(routeStats);
+      // Fetch other modes for comparison
+      fetchMultiETA(coords);
+      showToast('✅ Route calculated for ' + travelMode + '!');
+    })
+    .catch(() => showToast('Network error — could not reach routing server.'))
+    .finally(() => setLoading(false));
+}
+
+// ── Fetch ETA for all travel modes (comparison) ──────────────
+function fetchMultiETA(coords) {
+  const modes = [
+    { key: 'driving', profile: 'driving' },
+    { key: 'walking', profile: 'foot' },
+    { key: 'cycling', profile: 'cycling' }
+  ];
+  const otherModes = modes.filter(m => m.key !== travelMode);
+  let pending = otherModes.length;
+  if (pending === 0) { renderETAPanel(); return; }
+
+  // Get the straight-line distance (km) to use for fallback estimation
+  const drivingDist = multiETA[travelMode] ? multiETA[travelMode].dist : null;
+
+  otherModes.forEach(function(m) {
+    const base = osrmBase(m.profile);
+    const url = `${base}/route/v1/${m.profile}/${coords}?overview=full&geometries=geojson&steps=false`;
+    fetch(url)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.code === 'Ok' && data.routes && data.routes.length) {
+          var route = data.routes[0];
+          multiETA[m.key] = {
+            dist: route.distance / 1000,
+            dur:  Math.round(route.duration / 60),
+            geometry: route.geometry.coordinates
+          };
+        } else {
+          // API failed — estimate from driving distance using average speeds
+          if (drivingDist) {
+            var speed = MODE_SPEED[m.profile] || MODE_SPEED[m.key] || 5;
+            multiETA[m.key] = {
+              dist: drivingDist,
+              dur:  Math.round((drivingDist / speed) * 60),
+              geometry: null,
+              estimated: true
+            };
+          } else {
+            multiETA[m.key] = null;
+          }
+        }
+      })
+      .catch(function() {
+        // Network error — fall back to speed-based estimate
+        if (drivingDist) {
+          var speed = MODE_SPEED[m.profile] || MODE_SPEED[m.key] || 5;
+          multiETA[m.key] = {
+            dist: drivingDist,
+            dur:  Math.round((drivingDist / speed) * 60),
+            geometry: null,
+            estimated: true
+          };
+        } else {
+          multiETA[m.key] = null;
+        }
+      })
+      .finally(function() {
+        pending--;
+        if (pending <= 0) renderETAPanel();
+      });
+  });
+}
+
+// ── Render multi-ETA comparison panel ─────────────────────────
+function renderETAPanel() {
+  var panel = document.getElementById('rp-eta-panel');
+  var rows = document.getElementById('eta-rows');
+  if (!panel || !rows) return;
+
+  var modeInfo = {
+    driving: { icon: '🚗', label: 'Driving' },
+    walking: { icon: '🚶', label: 'Walking' },
+    cycling: { icon: '🚴', label: 'Cycling' }
+  };
+
+  var html = '';
+  ['driving', 'walking', 'cycling'].forEach(function(key) {
+    var info = modeInfo[key];
+    var data = multiETA[key];
+    if (!data) return;
+    var isActive = key === travelMode;
+    var h = Math.floor(data.dur / 60);
+    var m = data.dur % 60;
+    var timeStr = (data.estimated ? '~' : '') + (h > 0 ? h + 'h ' + m + 'm' : m + ' min');
+    var distStr = (data.estimated ? '~' : '') + data.dist.toFixed(1) + ' km';
+    html += '<div class="eta-row" onclick="setTravelMode(\'' + key + '\')" '
+      + 'style="cursor:pointer;' + (isActive ? 'border-color:var(--blue);background:var(--blue-light)' : '') + '">'
+      + '<span class="eta-mode-icon">' + info.icon + '</span>'
+      + '<span class="eta-mode-label">' + info.label
+      + (isActive ? '<span class="eta-active-badge">SELECTED</span>' : '')
+      + (data.estimated ? '<span style="font-size:9px;color:var(--muted);margin-left:4px">est.</span>' : '')
+      + '</span>'
+      + '<span class="eta-mode-time">' + timeStr + '</span>'
+      + '<span class="eta-mode-dist">' + distStr + '</span>'
+      + '</div>';
+  });
+
+  rows.innerHTML = html;
+  panel.classList.add('visible');
+}
+
+// ── Optimise Stop Order via OSRM trip API ────────────────────
+function optimiseRoute() {
+  if (stops.length < 2) { showToast('Add at least 2 stops first!'); return; }
+  if (stops.length > 10) { showToast('Optimisation supports up to 10 stops.'); return; }
+  setLoading(true);
+  multiETA = {}; // clear stale values
+
+  const coords = stops.map(s => `${s.lng},${s.lat}`).join(';');
+  // OSRM public API uses: 'driving', 'foot', 'cycling'
+  const osrmProfile = travelMode === 'walking' ? 'foot' : travelMode;
+  const base = osrmBase(osrmProfile);
+  const url = `${base}/trip/v1/${osrmProfile}/${coords}?overview=full&geometries=geojson&source=first&roundtrip=false`;
+
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      if (data.code !== 'Ok') { showToast('Optimisation failed. Try Calculate instead.'); return; }
+
+      // Re-order stops according to OSRM waypoint order
+      const waypoints = data.waypoints.sort((a, b) => a.trips_index !== b.trips_index
+        ? a.trips_index - b.trips_index
+        : a.waypoint_index - b.waypoint_index);
+      const newOrder = waypoints.map(w => w.waypoint_index);
+      stops = newOrder.map(i => stops[i]);
+
+      rebuildMarkers();
+      renderStopList();
+
+      const trip = data.trips[0];
+      drawRoute(trip.geometry.coordinates, travelMode);
+      const tripDist = trip.distance / 1000;
+      const tripDur  = Math.round(trip.duration / 60);
+      routeStats = { distance: tripDist, duration: tripDur };
+      multiETA[travelMode] = { dist: tripDist, dur: tripDur };
+      updateStats(routeStats);
+      fetchMultiETA(coords);
+      showToast('⚡ Stops optimised for ' + (optMode === 'time' ? 'fastest time' : 'shortest distance') + '!');
+    })
+    .catch(() => showToast('Network error during optimisation.'))
+    .finally(() => setLoading(false));
+}
+
+// ── Draw route polyline on map ───────────────────────────────
+const ROUTE_COLORS = {
+  driving: '#14322A',   // dark green
+  walking: '#E11D48',   // vivid red/rose — highly visible on map
+  cycling: '#2563EB',   // blue
+};
+
+function drawRoute(coords, mode) {
+  if (routeLayer) map.removeLayer(routeLayer);
+  const latlngs = coords.map(c => [c[1], c[0]]);
+  const activeMode = mode || travelMode;
+  const color = ROUTE_COLORS[activeMode] || '#14322A';
+  const isDashed = activeMode === 'walking';
+  routeLayer = L.polyline(latlngs, {
+    color: color,
+    weight: isDashed ? 6 : 5,       // slightly thicker dashes for visibility
+    opacity: isDashed ? 0.95 : 0.85,
+    dashArray: isDashed ? '10, 8' : null,
+    lineJoin: 'round',
+    lineCap: 'round'
+  }).addTo(map);
+  map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+}
+
+// ── Update stats panel ───────────────────────────────────────
+function updateStats(data) {
+  if (data) {
+    routeStats = data;
+    document.getElementById('stat-dist').textContent = data.distance.toFixed(1) + ' km';
+    const h = Math.floor(data.duration / 60);
+    const m = data.duration % 60;
+    document.getElementById('stat-eta').textContent = h > 0 ? `${h}h ${m}m` : `${m} min`;
+    // Update ETA label to show active mode
+    var etaLbl = document.querySelector('#rp-stats .rp-stat:nth-child(3) .rp-stat-lbl');
+    if (etaLbl) {
+      var modeIcons = { driving: '🚗', walking: '🚶', cycling: '🚴' };
+      etaLbl.textContent = 'ETA (' + (modeIcons[travelMode] || '') + ' ' + travelMode + ')';
+    }
+  } else {
+    document.getElementById('stat-dist').textContent = '—';
+    document.getElementById('stat-eta').textContent = '—';
+    // Hide ETA panel
+    var etaPanel = document.getElementById('rp-eta-panel');
+    if (etaPanel) etaPanel.classList.remove('visible');
+    multiETA = {};
+  }
+}
+
+// ── Clear everything ─────────────────────────────────────────
+function clearRoute() {
+  stops = [];
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  renderStopList();
+  updateStats(null);
+  showToast('Route cleared.');
+}
+
+// ── Save route ───────────────────────────────────────────────
+function openSaveModal() {
+  if (stops.length < 2) { showToast('Add at least 2 stops before saving.'); return; }
+  document.getElementById('route-name-input').value = '';
+  openModal('modal-save-route');
+}
+
+function confirmSaveRoute() {
+  const name = document.getElementById('route-name-input').value.trim() || 'My Route';
+  closeModal('modal-save-route');
+
+  fetch('{{ url_for("ride.planner_save") }}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      route_name: name,
+      waypoints: stops,
+      optimize_by: optMode,
+      total_distance_km: routeStats.distance || 0,
+      total_duration_min: routeStats.duration || 0
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    showToast(d.message || '✅ Route saved!');
+    if (d.success) setTimeout(() => location.reload(), 1500);
+  })
+  .catch(() => showToast('Failed to save route.'));
+}
+
+// ── Delete saved route ───────────────────────────────────────
+function deleteSavedRoute(routeId, btn) {
+  if (!confirm('Delete this saved route?')) return;
+  fetch(`/ride/planner/delete/${routeId}`, { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        btn.closest('.saved-route-card').remove();
+        showToast('Route deleted.');
+      }
+    });
+}
+
+// ── Load a saved route onto the map ─────────────────────────
+function loadSavedRoute(waypoints) {
+  clearRoute();
+  waypoints.forEach(w => addStop(w.name, w.lat, w.lng));
+  fitMapToStops();
+  showToast(`📍 Route loaded with ${waypoints.length} stops. Hit Calculate to draw the path.`);
+}
+
+// ── Share via Google Maps ─────────────────────────────────────
+function shareRoute() {
+  if (stops.length < 2) { showToast('Add at least 2 stops first!'); return; }
+  const base = 'https://www.google.com/maps/dir/';
+  const path = stops.map(s => encodeURIComponent(s.name)).join('/');
+  window.open(base + path, '_blank');
+  showToast('🗺️ Opening in Google Maps for navigation!');
+}
+// ── Auto-populate from spot_detail redirect ──────────────────
+(function autoPopulateFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const toLat  = parseFloat(params.get('to_lat'));
+  const toLng  = parseFloat(params.get('to_lng'));
+  const toName = params.get('to_name') || 'Destination';
+  const fromLat = parseFloat(params.get('from_lat'));
+  const fromLng = parseFloat(params.get('from_lng'));
+
+  if (!isFinite(toLat) || !isFinite(toLng)) return; // nothing to do
+
+  // Wait for the map to be ready, then add stops
+  function populate() {
+    // Step 1 — add destination first so it appears as stop 1 temporarily,
+    // then we'll prepend the origin so the order becomes: origin → destination.
+    if (isFinite(fromLat) && isFinite(fromLng)) {
+      // We have both coordinates from the browser — add origin first
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${fromLat}&lon=${fromLng}&format=json`)
+        .then(r => r.json())
+        .then(d => {
+          const originName = d.display_name
+            ? d.display_name.split(',').slice(0, 2).join(',').trim()
+            : 'My Location';
+          addStop(originName, fromLat, fromLng);
+        })
+        .catch(() => addStop('My Location', fromLat, fromLng))
+        .finally(() => {
+          addStop(toName, toLat, toLng);
+          fitMapToStops();
+          showToast('📍 Route ready — hit Calculate Route to get directions!');
+        });
+    } else {
+      // No origin coords passed — add destination then try geolocation
+      addStop(toName, toLat, toLng);
+      if (navigator.geolocation) {
+        showToast('📡 Detecting your location…');
+        navigator.geolocation.getCurrentPosition(
+          function(pos) {
+            const lat = pos.coords.latitude, lng = pos.coords.longitude;
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+              .then(r => r.json())
+              .then(d => {
+                const name = d.display_name
+                  ? d.display_name.split(',').slice(0, 2).join(',').trim()
+                  : 'My Location';
+                // Insert origin at position 0 so route is: Me → Restaurant
+                stops.unshift({ name, lat, lng });
+                rebuildMarkers();
+                renderStopList();
+                fitMapToStops();
+                showToast('✅ Route ready — hit Calculate Route!');
+              })
+              .catch(() => {
+                stops.unshift({ name: 'My Location', lat, lng });
+                rebuildMarkers();
+                renderStopList();
+                fitMapToStops();
+              });
+          },
+          function() {
+            showToast('⚠️ Could not detect your location. Add your starting point manually.');
+          },
+          { timeout: 8000, maximumAge: 60000 }
+        );
+      }
+    }
+  }
+
+  // Map is already initialised by the time this IIFE runs,
+  // but give Leaflet one tick to finish rendering tiles.
+  setTimeout(populate, 200);
+})();
+</script>
+{% endblock %}

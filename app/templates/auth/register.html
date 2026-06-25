@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Create Account — Bhetamल{% endblock %}
+
+{% block extra_css %}
+<style>
+.auth-shell { min-height:100vh; display:flex; background:#0a1a12; }
+.auth-left { flex:0 0 44%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:60px 48px; position:relative; overflow:hidden; background:linear-gradient(160deg,#0d2318 0%,#12302A 40%,#0d2448 100%); }
+.auth-blob { position:absolute; border-radius:50%; filter:blur(60px); opacity:.35; pointer-events:none; animation:blobDrift 8s ease-in-out infinite alternate; }
+.auth-blob-1 { width:340px;height:340px;background:#1B6BDB;top:-80px;right:-60px;animation-delay:0s; }
+.auth-blob-2 { width:260px;height:260px;background:#1A5C35;bottom:40px;left:-60px;animation-delay:2s; }
+.auth-blob-3 { width:180px;height:180px;background:#C4922E;bottom:160px;right:40px;animation-delay:4s; }
+@keyframes blobDrift { 0%{transform:translate(0,0) scale(1);} 100%{transform:translate(20px,30px) scale(1.08);} }
+.auth-left-content { position:relative;z-index:1;text-align:center;max-width:340px; }
+.auth-logo { height:72px;width:auto;object-fit:contain;margin-bottom:20px;filter:drop-shadow(0 4px 24px rgba(27,107,58,.4)); }
+.auth-brand-name { font-family:'Playfair Display',serif;font-size:40px;font-weight:800;color:#fff;letter-spacing:-1px;line-height:1;margin-bottom:8px; }
+.auth-brand-sup { font-size:14px;color:#C4922E;font-weight:700;vertical-align:super; }
+.auth-tagline { font-size:14px;color:rgba(255,255,255,.6);font-family:'Lora',serif;font-style:italic;margin-bottom:40px; }
+.auth-steps { display:flex;flex-direction:column;gap:14px;text-align:left;width:100%; }
+.auth-step { display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 18px;backdrop-filter:blur(8px); }
+.auth-step-num { width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1B6BDB,#12302A);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+.auth-step-title { font-size:13px;font-weight:700;color:#fff;margin-bottom:2px; }
+.auth-step-sub { font-size:11.5px;color:rgba(255,255,255,.5);line-height:1.4; }
+.auth-right { flex:1;display:flex;align-items:center;justify-content:center;padding:48px 40px;background:#f5f9f7;overflow-y:auto; }
+[data-theme="dark"] .auth-right { background:#0b1811; }
+.auth-form-wrap { width:100%;max-width:440px; }
+.auth-form-title { font-family:'Playfair Display',serif;font-size:28px;font-weight:800;color:var(--primary);margin-bottom:6px; }
+.auth-form-sub { font-size:14px;color:var(--muted);margin-bottom:28px; }
+.float-group { position:relative;margin-bottom:18px; }
+.float-group input { width:100%;padding:16px 14px 8px;background:#fff;border:1.5px solid var(--border);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s; }
+[data-theme="dark"] .float-group input { background:#122018; }
+.float-group input:focus { border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,107,219,.12); }
+.float-group label { position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--muted);pointer-events:none;transition:all .18s;background:transparent;padding:0 2px; }
+.float-group input:focus ~ label, .float-group input:not(:placeholder-shown) ~ label { top:8px;transform:none;font-size:10px;font-weight:700;color:var(--blue);letter-spacing:.5px;text-transform:uppercase; }
+.float-group .pw-toggle { position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;display:flex;align-items:center; }
+.form-row-2 { display:grid;grid-template-columns:1fr 1fr;gap:14px; }
+.auth-btn { width:100%;padding:15px;background:linear-gradient(135deg,#12302A 0%,#1C4838 100%);color:#fff;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .18s;box-shadow:0 4px 16px rgba(18,48,42,.28);letter-spacing:.3px;display:flex;align-items:center;justify-content:center;gap:8px; }
+.auth-btn:hover { background:linear-gradient(135deg,#1C4838,#1B6BDB);transform:translateY(-1px);box-shadow:0 6px 22px rgba(18,48,42,.32); }
+.auth-foot { text-align:center;margin-top:20px;font-size:13px;color:var(--muted); }
+.auth-foot a { color:var(--blue);font-weight:700;text-decoration:none; }
+/* Password strength */
+.pw-strength { height:4px;border-radius:2px;margin-top:6px;transition:all .3s;background:var(--border); }
+.pw-strength-text { font-size:10px;color:var(--muted);margin-top:3px; }
+@media (max-width:768px) { .auth-left{display:none;} .auth-right{padding:32px 20px;} .form-row-2{grid-template-columns:1fr;} }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="auth-shell">
+  <div class="auth-left">
+    <div class="auth-blob auth-blob-1"></div>
+    <div class="auth-blob auth-blob-2"></div>
+    <div class="auth-blob auth-blob-3"></div>
+    <div class="auth-left-content">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Bhetam" class="auth-logo">
+      <div class="auth-brand-name">Bhetam<span class="auth-brand-sup">ल</span></div>
+      <div class="auth-tagline">Your meetups, perfectly coordinated</div>
+      <div class="auth-steps">
+        <div class="auth-step">
+          <div class="auth-step-num">1</div>
+          <div><div class="auth-step-title">Create your account</div><div class="auth-step-sub">Takes less than a minute.</div></div>
+        </div>
+        <div class="auth-step">
+          <div class="auth-step-num">2</div>
+          <div><div class="auth-step-title">Add your friends</div><div class="auth-step-sub">Invite people you want to meet up with.</div></div>
+        </div>
+        <div class="auth-step">
+          <div class="auth-step-num">3</div>
+          <div><div class="auth-step-title">Plan your first meetup</div><div class="auth-step-sub">Find the perfect midpoint and venue.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-form-wrap">
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+          <div style="padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:13px;font-weight:600;background:{{ '#FDECEC' if category=='error' else '#E8F6EE' }};color:{{ '#B42318' if category=='error' else '#067647' }};border:1px solid {{ '#F3B4B0' if category=='error' else '#A6E2C0' }};">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <div class="auth-form-title">Create your account ✨</div>
+      <div class="auth-form-sub">Join thousands planning smarter meetups in Kathmandu.</div>
+
+      <form method="POST" action="{{ url_for('auth.register') }}" onsubmit="return validateRegister(this)">
+
+        <div class="float-group">
+          <input id="reg-name" name="full_name" type="text" placeholder=" " autocomplete="name" required
+                 value="{{ request.form.get('full_name', '') }}">
+          <label for="reg-name">Full Name</label>
+        </div>
+
+        <div class="float-group">
+          <input id="reg-email" name="email" type="email" placeholder=" " autocomplete="email" required
+                 value="{{ request.form.get('email', '') }}">
+          <label for="reg-email">Email Address</label>
+        </div>
+
+        <div class="float-group">
+          <input id="reg-phone" name="phone" type="tel" placeholder=" " autocomplete="tel" required
+                 value="{{ request.form.get('phone', '') }}">
+          <label for="reg-phone">Phone Number</label>
+        </div>
+
+        <div class="form-row-2">
+          <div class="float-group">
+            <input id="reg-password" name="password" type="password" placeholder=" "
+                   autocomplete="new-password" required minlength="6"
+                   oninput="checkStrength(this.value)">
+            <label for="reg-password">Password</label>
+            <button type="button" class="pw-toggle" onclick="togglePassword('reg-password', this)" aria-label="Toggle">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <div class="pw-strength" id="pw-strength-bar"></div>
+            <div class="pw-strength-text" id="pw-strength-text"></div>
+          </div>
+
+          <div class="float-group">
+            <input id="reg-confirm" name="confirm_password" type="password" placeholder=" "
+                   autocomplete="new-password" required minlength="6">
+            <label for="reg-confirm">Confirm Password</label>
+            <button type="button" class="pw-toggle" onclick="togglePassword('reg-confirm', this)" aria-label="Toggle">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <button class="auth-btn" type="submit" style="margin-top:8px;">
+          <span>Create Account</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </form>
+
+      <div class="auth-foot">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function checkStrength(pw) {
+  var bar = document.getElementById('pw-strength-bar');
+  var txt = document.getElementById('pw-strength-text');
+  if (!bar) return;
+  var score = 0;
+  if (pw.length >= 6) score++;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  var colors = ['#dc2626','#f97316','#eab308','#22c55e','#16a34a'];
+  var labels = ['Too short','Weak','Fair','Good','Strong'];
+  var widths = ['20%','40%','60%','80%','100%'];
+  if (pw.length === 0) { bar.style.width='0'; txt.textContent=''; return; }
+  bar.style.background = colors[score-1] || colors[0];
+  bar.style.width = widths[score-1] || widths[0];
+  txt.textContent = labels[score-1] || labels[0];
+  txt.style.color = colors[score-1] || colors[0];
+}
+
+function validateRegister(form) {
+  var pw = document.getElementById('reg-password').value;
+  var cf = document.getElementById('reg-confirm').value;
+  if (pw !== cf) {
+    alert('Passwords do not match.');
+    return false;
+  }
+  return handleAuthSubmit(form);
+}
+</script>
+{% endblock %}

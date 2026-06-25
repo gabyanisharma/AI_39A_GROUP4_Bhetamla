@@ -1,0 +1,224 @@
+﻿{% extends "base_dashboard.html" %}
+{% set active_page = 'saved' %}
+{% block title %}Saved Places — Bhetamल{% endblock %}
+
+{% block page_content %}
+<div id="page-saved" class="page active" style="flex-direction:column" role="main">
+  {% include '_topbar.html' %}
+
+  <div style="padding:28px;overflow-y:auto;flex:1">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--primary);margin-bottom:6px">Saved Places</h1>
+        <p style="color:var(--muted);font-size:13.5px">Your personal collection of favourite meetup spots.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+        <button class="btn-primary" type="button" style="width:auto;padding:10px 18px;font-size:13px" onclick="openModal('modal-save-place')">＋ Save a Place</button>
+        <a href="{{ url_for('place.restaurants_page') }}" class="btn-sec" style="text-decoration:none;padding:9px 16px;font-size:13px;font-weight:600;">🍽️ Browse Restaurants</a>
+      </div>
+    </div>
+
+    <div id="saved-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+      {% for p in places %}
+      <div class="card saved-item" data-name="{{ p.place_name|lower }}" style="position:relative">
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px">
+          <div style="width:48px;height:48px;border-radius:12px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">📍</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:14px;margin-bottom:3px">{{ p.place_name }}</div>
+            {% if p.address %}<div style="font-size:12px;color:var(--muted)">{{ p.address }}</div>{% endif %}
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Saved {{ p.created_at }}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          {% if p.latitude and p.longitude %}
+          <a href="https://www.google.com/maps?q={{ p.latitude }},{{ p.longitude }}" target="_blank" class="btn-sec" style="flex:1;justify-content:center;font-size:12px;padding:8px;text-decoration:none">📍 Map</a>
+          {% endif %}
+          <a href="{{ url_for('meetup.plan') }}" class="btn-sec" style="flex:1;justify-content:center;font-size:12px;padding:8px;text-decoration:none">📅 Plan</a>
+          <a href="{{ url_for('place.remove', place_id=p.id) }}" class="btn-sec" style="flex:1;justify-content:center;font-size:12px;padding:8px;text-decoration:none;color:var(--red)" onclick="return confirm('Remove this saved place?')">✕ Remove</a>
+        </div>
+      </div>
+      {% else %}
+      <div class="card" style="text-align:center;padding:40px;color:var(--muted);grid-column:1/-1">
+        <div style="font-size:36px;margin-bottom:14px">📍</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px">No saved places yet</div>
+        <div style="font-size:13px;margin-bottom:16px">Save restaurants, cafés, or any spot you love for quick access.</div>
+        <a href="{{ url_for('place.restaurants_page') }}" class="btn-primary" style="display:inline-flex;width:auto;padding:10px 20px;font-size:13px;text-decoration:none">Browse Restaurants →</a>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- SAVED EXPLORE SPOTS SECTION -->
+    {% if saved_spots %}
+    <div style="margin-top:40px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div>
+        <h2 style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--primary);margin-bottom:6px">🔖 Saved Trending Spots</h2>
+        <p style="color:var(--muted);font-size:13.5px">Trending spots you've bookmarked from Explore.</p>
+      </div>
+      <a href="{{ url_for('explore.feed') }}" class="btn-sec" style="text-decoration:none;padding:9px 16px;font-size:13px;font-weight:600;">🔥 Explore Spots</a>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:40px;">
+      {% for spot in saved_spots %}
+      <div class="card" style="position:relative;overflow:hidden;border:1.5px solid var(--border);border-radius:14px;padding:0;">
+        {% if spot.thumbnail_url or spot.image_url %}
+        <div style="height:130px;overflow:hidden;position:relative;">
+          <img src="{{ spot.thumbnail_url or spot.image_url }}" alt="{{ spot.name }}"
+               style="width:100%;height:100%;object-fit:cover;"
+               onerror="this.style.display='none'">
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.55) 100%)"></div>
+          {% if spot.category %}
+          <span style="position:absolute;top:10px;left:10px;background:var(--primary);color:#fff;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:.5px;">
+            {{ spot.category|upper }}
+          </span>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div style="padding:14px 16px;">
+          <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px;">{{ spot.name }}</div>
+          {% if spot.address %}
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">📍 {{ spot.address }}</div>
+          {% endif %}
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+            {% if spot.rating %}
+            <span style="font-size:12px;color:var(--amber);">★ {{ spot.rating }}</span>
+            {% endif %}
+            {% if spot.cuisine %}
+            <span style="font-size:11px;color:var(--muted);background:var(--input-bg);padding:2px 8px;border-radius:20px;">{{ spot.cuisine }}</span>
+            {% endif %}
+            {% if spot.avg_cost_per_person %}
+            <span style="font-size:11px;color:var(--muted);">NPR {{ spot.avg_cost_per_person|int }}/person</span>
+            {% endif %}
+          </div>
+          <div style="display:flex;gap:8px;">
+            <a href="{{ url_for('explore.spot', spot_id=spot.id) }}"
+               class="btn-sec" style="flex:1;justify-content:center;font-size:12px;padding:8px;text-decoration:none;">
+              👁 View
+            </a>
+            {% if spot.latitude and spot.longitude %}
+            <a href="https://www.google.com/maps?q={{ spot.latitude }},{{ spot.longitude }}"
+               target="_blank"
+               class="btn-sec" style="flex:1;justify-content:center;font-size:12px;padding:8px;text-decoration:none;">
+              📍 Map
+            </a>
+            {% endif %}
+            <button type="button"
+                    onclick="unsaveSpot({{ spot.id }}, this)"
+                    class="btn-sec" style="flex:1;justify-content:center;font-size:12px;padding:8px;color:var(--red);border-color:var(--red);">
+              ✕ Remove
+            </button>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- SAVED OFFERS SECTION -->
+    <div style="margin-top:40px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div>
+        <h2 style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--primary);margin-bottom:6px">Saved Offers</h2>
+        <p style="color:var(--muted);font-size:13.5px">Active deals you've saved for later.</p>
+      </div>
+      <a href="{{ url_for('place.offers_page') }}" class="btn-sec" style="text-decoration:none;padding:9px 16px;font-size:13px;font-weight:600;">🏷️ Browse More Offers</a>
+    </div>
+    
+    <div id="offers-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding-bottom:40px;">
+      {% for o in offers %}
+      {% set badge = (o.discount_percent|string + '% OFF') if o.discount_percent and o.discount_percent > 0 else 'DEAL' %}
+      {% set badge_color = 'rgba(30,130,76,.1)' if o.discount_percent and o.discount_percent > 0 else 'rgba(200,130,0,.1)' %}
+      {% set badge_text = 'var(--green)' if o.discount_percent and o.discount_percent > 0 else 'var(--amber)' %}
+      <div class="card" style="border:1.5px solid var(--border);border-radius:12px;padding:16px;background:var(--input-bg);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div style="flex:1;min-width:0;margin-right:8px;">
+            <div style="font-weight:700;font-size:15px;color:var(--text)">🏷️ {{ o.title }}</div>
+            <div style="font-size:12px;color:var(--muted)">@ {{ o.restaurant_name }}</div>
+          </div>
+          <span style="background:{{ badge_color }};color:{{ badge_text }};font-weight:700;font-size:11px;padding:4px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;">{{ badge }}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text);margin-bottom:12px">Valid until: <strong style="color:var(--amber)">{{ o.valid_until }}</strong></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <a href="{{ url_for('place.restaurant_detail_page', restaurant_id=o.restaurant_id) }}" class="btn-primary" style="flex:1;text-align:center;padding:10px;font-size:12px;text-decoration:none">View Restaurant</a>
+          <form method="POST" action="{{ url_for('place.toggle_reminder_route', offer_id=o.id) }}" style="flex:1;">
+            <input type="hidden" name="remind_me" value="{{ '0' if o.remind_me else '1' }}">
+            <button type="submit" class="btn-sec" style="width:100%;padding:10px;font-size:12px;cursor:pointer">
+              {{ '🔕 Disable Reminder' if o.remind_me else '🔔 Notify Me' }}
+            </button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <div class="card" style="text-align:center;padding:30px;color:var(--muted);grid-column:1/-1">
+        <div style="font-size:28px;margin-bottom:10px">🏷️</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">No saved offers yet</div>
+        <div style="font-size:12px;margin-bottom:12px">Browse active deals and save discounts for later.</div>
+        <a href="{{ url_for('place.offers_page') }}" class="btn-sec" style="display:inline-flex;width:auto;padding:8px 16px;font-size:12px;text-decoration:none">Browse Offers →</a>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</div>
+
+<!-- Save place modal -->
+<div class="modal-overlay" id="modal-save-place" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:420px">
+    <button class="modal-close" type="button" onclick="closeModal('modal-save-place')">✕</button>
+    <div class="modal-title">Save a Place</div>
+    <div class="modal-sub">Manually add any spot to your saved places.</div>
+    <form method="POST" action="{{ url_for('place.save') }}">
+      <div style="margin-bottom:14px"><label class="field-label" for="sp-name">Place Name</label><input class="field-input" id="sp-name" name="place_name" placeholder="e.g. Himalayan Java, Thamel" required /></div>
+      <div style="margin-bottom:14px"><label class="field-label" for="sp-addr">Address (optional)</label><input class="field-input" id="sp-addr" name="address" placeholder="Street, Area, City" /></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+        <div><label class="field-label" for="sp-lat">Latitude</label><input class="field-input" id="sp-lat" name="latitude" type="number" step="any" placeholder="27.7172" /></div>
+        <div><label class="field-label" for="sp-lng">Longitude</label><input class="field-input" id="sp-lng" name="longitude" type="number" step="any" placeholder="85.3240" /></div>
+      </div>
+      <button class="btn-primary" type="submit">Save Place</button>
+    </form>
+  </div>
+</div>
+
+<!-- SOS Modal -->
+<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
+  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
+    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
+    <div style="font-size:48px;margin-bottom:10px">🆘</div>
+    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
+    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
+    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
+    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterSaved(q) {
+  document.querySelectorAll('.saved-item').forEach(el => {
+    el.style.display = el.dataset.name.includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+// Remove a saved explore spot (toggles the save interaction off)
+function unsaveSpot(spotId, btn) {
+  fetch('/explore/spot/' + spotId + '/interact', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'save' })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      // Remove the card from the page
+      var card = btn.closest('.card');
+      if (card) {
+        card.style.transition = 'opacity .25s';
+        card.style.opacity = '0';
+        setTimeout(function() { card.remove(); showToast('Spot removed from saved.'); }, 250);
+      }
+    } else {
+      showToast('Could not remove spot.');
+    }
+  })
+  .catch(function() { showToast('Network error.'); });
+}
+</script>
+{% endblock %}

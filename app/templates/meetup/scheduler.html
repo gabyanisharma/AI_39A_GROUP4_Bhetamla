@@ -1,0 +1,301 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'plan' %}
+{% block title %}Scheduler — Bhetamल{% endblock %}
+
+{% block page_content %}
+<div id="page-scheduler" class="page active" style="flex-direction:column" role="main">
+  <div class="topbar">
+    <div class="topbar-controls">
+      <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
+    </div>
+    <button class="sos-btn" onclick="openModal('modal-sos')">&#10033; SOS</button>
+  </div>
+
+  <!-- User search results dropdown -->
+  <div id="search-results" style="display:none;position:fixed;top:60px;left:220px;right:20px;max-width:480px;background:var(--white);border:1.5px solid var(--border);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:500;padding:8px"></div>
+
+  <div style="padding:28px;overflow-y:auto;flex:1">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px">
+      <span style="font-size:22px">📅</span>
+      <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--primary)">Meetup Scheduler</h1>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:flex-start">
+
+      <!-- LEFT COLUMN -->
+      <div>
+
+        <!-- Pending friend requests -->
+        {% if pending_requests %}
+        <div class="card" style="margin-bottom:20px;border:1.5px solid rgba(200,153,58,.3)">
+          <div style="font-weight:700;font-size:15px;margin-bottom:14px;color:var(--primary)">👋 Friend Requests ({{ pending_requests|length }})</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            {% for req in pending_requests %}
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--input-bg);border-radius:10px">
+              <div class="avatar" style="width:36px;height:36px;background:var(--purple);font-size:12px;flex-shrink:0">{{ req.full_name[:2]|upper }}</div>
+              <div style="flex:1">
+                <div style="font-weight:600;font-size:13px">{{ req.full_name }}</div>
+                <div style="font-size:11px;color:var(--muted)">{{ req.email }}</div>
+              </div>
+              <form method="POST" action="{{ url_for('meetup.respond_friend_request_route', request_id=req.request_id) }}" style="display:flex;gap:6px">
+                <button name="action" value="accept" class="invite-btn" style="background:#E8F5E9;color:var(--green)" aria-label="Accept">✓</button>
+                <button name="action" value="reject" class="invite-btn" style="background:#FFEBEE;color:var(--red)" aria-label="Decline">✕</button>
+              </form>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Schedule invites -->
+        {% if invites %}
+        <div class="card" style="margin-bottom:20px;border:1.5px solid rgba(26,86,196,.25)">
+          <div style="font-weight:700;font-size:15px;margin-bottom:14px;color:var(--primary)">✉️ Schedule Invites ({{ invites|length }})</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            {% for inv in invites %}
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--input-bg);border-radius:10px">
+              <div class="avatar" style="width:36px;height:36px;background:var(--blue);font-size:12px;flex-shrink:0">{{ inv.title[:2]|upper }}</div>
+              <div style="flex:1">
+                <div style="font-weight:600;font-size:13px">{{ inv.title }}</div>
+                <div style="font-size:11px;color:var(--muted)">{{ inv.proposed_date }} · {{ inv.proposed_time }}</div>
+                <div style="font-size:11px;color:var(--muted)">from {{ inv.organiser_name }}</div>
+              </div>
+              <form method="POST" action="{{ url_for('meetup.respond_invite_route', invite_id=inv.invite_id) }}" style="display:flex;gap:6px">
+                <button name="action" value="accepted" class="invite-btn" style="background:#E8F5E9;color:var(--green)" aria-label="Accept">✓</button>
+                <button name="action" value="declined" class="invite-btn" style="background:#FFEBEE;color:var(--red)" aria-label="Decline">✕</button>
+              </form>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Create schedule -->
+        <div class="card" style="margin-bottom:20px">
+          <div style="font-weight:700;font-size:15px;margin-bottom:16px;color:var(--primary)">🗓️ Create a Schedule</div>
+          <form method="POST" action="{{ url_for('meetup.create_schedule_route') }}">
+            <div style="margin-bottom:14px"><label class="field-label" for="sc-title">TITLE</label><input class="field-input" id="sc-title" name="title" placeholder="e.g. Team Lunch" required /></div>
+            <div style="margin-bottom:14px"><label class="field-label" for="sc-desc">DESCRIPTION (OPTIONAL)</label><textarea class="field-input" id="sc-desc" name="description" placeholder="What's the plan?" style="resize:vertical;min-height:70px;font-family:'DM Sans',sans-serif;"></textarea></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+              <div><label class="field-label" for="sc-date">DATE</label><input class="field-input" id="sc-date" name="proposed_date" type="date" required /></div>
+              <div><label class="field-label" for="sc-time">TIME</label><input class="field-input" id="sc-time" name="proposed_time" type="time" required /></div>
+            </div>
+            {% if friends %}
+            <div style="margin-bottom:18px">
+              <label class="field-label">INVITE FRIENDS</label>
+              <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+                {% for f in friends %}
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px;border-radius:10px;border:1.5px solid var(--border)">
+                  <input type="checkbox" name="invite_friends" value="{{ f.id }}" style="width:16px;height:16px;accent-color:var(--blue);cursor:pointer" />
+                  <div class="avatar" style="width:30px;height:30px;background:var(--blue);font-size:11px;flex-shrink:0">{{ f.full_name[:2]|upper }}</div>
+                  <div style="font-size:13px;font-weight:600">{{ f.full_name }}</div>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+            <button class="btn-primary" type="submit" style="width:100%;padding:13px">🚀 Create Schedule</button>
+          </form>
+        </div>
+
+        <!-- My schedules -->
+        <div class="card" style="margin-bottom:20px">
+          <div style="font-weight:700;font-size:15px;margin-bottom:16px;color:var(--primary)">📋 My Schedules ({{ schedules|length }})</div>
+          {% for s in schedules %}
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:var(--input-bg);border:1.5px solid var(--border);margin-bottom:10px">
+            <div style="width:42px;height:42px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">📅</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.title }}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">{{ s.proposed_date }} · {{ s.proposed_time }}</div>
+              {% if s.description %}<div style="font-size:11px;color:var(--muted);margin-top:1px">{{ s.description }}</div>{% endif %}
+            </div>
+            <span style="background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;flex-shrink:0">{{ s.status|capitalize if s.status else 'Planned' }}</span>
+          </div>
+          {% else %}
+          <div style="text-align:center;color:var(--muted);font-size:13px;padding:14px 0">No schedules yet. Create one above!</div>
+          {% endfor %}
+        </div>
+
+        <!-- My availability -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div style="font-weight:700;font-size:15px;color:var(--primary)">⏰ My Availability</div>
+            <button class="btn-sec" type="button" style="font-size:12px;padding:7px 14px" onclick="openModal('modal-add-slot')">+ Add Slot</button>
+          </div>
+          {% if slots %}
+          <div style="display:flex;flex-direction:column;gap:8px">
+            {% for slot in slots %}
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--input-bg);border-radius:10px">
+              <div style="flex:1">
+                <div style="font-weight:600;font-size:13px">{{ slot.date }}</div>
+                <div style="font-size:11px;color:var(--muted)">{{ slot.start_time }} – {{ slot.end_time }}{% if slot.label %} · {{ slot.label }}{% endif %}</div>
+              </div>
+              <a href="{{ url_for('meetup.delete_availability_route', slot_id=slot.id) }}" style="color:var(--muted);text-decoration:none;font-size:14px" aria-label="Delete">✕</a>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div style="text-align:center;color:var(--muted);font-size:13px;padding:14px 0">No availability slots added yet.</div>
+          {% endif %}
+        </div>
+
+        <!-- Import calendar (.ics) -->
+        <div class="card" style="margin-top:16px">
+          <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:6px">📥 Import Calendar (.ics)</div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Upload a calendar file (Google, Apple, Outlook). Events become availability slots — any that clash with your meetups or existing slots are flagged and skipped.</p>
+          <form method="POST" action="{{ url_for('meetup.import_calendar_route') }}" enctype="multipart/form-data" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <input type="file" name="ics_file" accept=".ics" required style="font-size:12px;flex:1;min-width:160px">
+            <button type="submit" class="btn-primary" style="width:auto;padding:8px 16px;font-size:13px">Import</button>
+          </form>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div>
+
+        <!-- Friends list -->
+        <div class="card" style="margin-bottom:16px">
+          <div style="font-weight:700;font-size:15px;margin-bottom:14px;color:var(--primary)">👥 My Friends ({{ friends|length }})</div>
+          {% for f in friends %}
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div class="avatar" style="width:32px;height:32px;background:var(--blue);font-size:11px;flex-shrink:0">{{ f.full_name[:2]|upper }}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ f.full_name }}</div>
+              <div style="font-size:11px;color:var(--muted)">{{ f.email }}</div>
+            </div>
+          </div>
+          {% else %}
+          <div style="font-size:13px;color:var(--muted)">No friends yet. Search for people using the search bar above.</div>
+          {% endfor %}
+        </div>
+
+        <!-- Sent requests -->
+        {% if sent_requests %}
+        <div class="card" style="margin-bottom:16px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:12px;color:var(--primary)">📤 Sent Requests</div>
+          {% for req in sent_requests %}
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div class="avatar" style="width:30px;height:30px;background:var(--muted);font-size:10px;flex-shrink:0">{{ req.full_name[:2]|upper }}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:12px">{{ req.full_name }}</div>
+            </div>
+            <span style="font-size:10px;color:var(--muted);font-weight:700">PENDING</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Common availability finder -->
+        {% if friends %}
+        <div class="card">
+          <div style="font-weight:700;font-size:14px;margin-bottom:12px;color:var(--primary)">🔍 Find Common Availability</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Select friends to find slots when everyone's free.</div>
+          <div id="common-friend-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+            {% for f in friends %}
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px">
+              <input type="checkbox" class="common-friend-cb" value="{{ f.id }}" style="accent-color:var(--blue);cursor:pointer" />
+              {{ f.full_name }}
+            </label>
+            {% endfor %}
+          </div>
+          <button class="btn-sec" type="button" style="width:100%;justify-content:center;font-size:12.5px" onclick="findCommonSlots()">Find Common Slots</button>
+          <div id="common-results" style="margin-top:12px;font-size:12.5px;color:var(--muted)"></div>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add availability modal -->
+<div class="modal-overlay" id="modal-add-slot" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:400px">
+    <button class="modal-close" type="button" onclick="closeModal('modal-add-slot')">✕</button>
+    <div class="modal-title">Add Availability Slot</div>
+    <div class="modal-sub">Tell friends when you're free to meet up.</div>
+    <form method="POST" action="{{ url_for('meetup.add_availability_route') }}">
+      <div style="margin-bottom:14px"><label class="field-label" for="av-date">DATE</label><input class="field-input" id="av-date" name="date" type="date" required /></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div><label class="field-label" for="av-start">FROM</label><input class="field-input" id="av-start" name="start_time" type="time" required /></div>
+        <div><label class="field-label" for="av-end">TO</label><input class="field-input" id="av-end" name="end_time" type="time" required /></div>
+      </div>
+      <div style="margin-bottom:20px"><label class="field-label" for="av-label">LABEL (OPTIONAL)</label><input class="field-input" id="av-label" name="label" placeholder="e.g. Morning, After work" /></div>
+      <button class="btn-primary" type="submit">Save Slot</button>
+    </form>
+  </div>
+</div>
+
+<!-- SOS Modal -->
+<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
+  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
+    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
+    <div style="font-size:48px;margin-bottom:10px">🆘</div>
+    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
+    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
+    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
+    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// User search with live results dropdown
+let searchTimeout;
+function searchUsers(q) {
+  clearTimeout(searchTimeout);
+  const box = document.getElementById('search-results');
+  if (q.length < 2) { box.style.display = 'none'; return; }
+  searchTimeout = setTimeout(() => {
+    fetch(`{{ url_for('meetup.search_users_route') }}?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(users => {
+        if (!users.length) { box.style.display = 'none'; return; }
+        box.innerHTML = users.map(u => `
+          <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--input-bg);margin-bottom:6px">
+            <div class="avatar" style="width:32px;height:32px;background:var(--blue);font-size:11px;flex-shrink:0">${u.name.slice(0,2).toUpperCase()}</div>
+            <div style="flex:1"><div style="font-weight:600;font-size:13px">${u.name}</div><div style="font-size:11px;color:var(--muted)">${u.email}</div></div>
+            <form method="POST" action="{{ url_for('meetup.send_friend_request_route') }}">
+              <input type="hidden" name="friend_id" value="${u.id}" />
+              <button class="btn-primary" type="submit" style="padding:6px 14px;font-size:12px;margin-top:0">Add Friend</button>
+            </form>
+          </div>
+        `).join('');
+        box.style.display = 'block';
+      });
+  }, 300);
+}
+
+// Hide search results on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('#search-results') && !e.target.closest('#search-sched')) {
+    document.getElementById('search-results').style.display = 'none';
+  }
+});
+
+// Find common availability slots
+function findCommonSlots() {
+  const checked = [...document.querySelectorAll('.common-friend-cb:checked')].map(c => c.value);
+  const results = document.getElementById('common-results');
+  if (!checked.length) { results.textContent = 'Select at least one friend.'; return; }
+  results.textContent = 'Searching...';
+  const params = checked.map(id => `friends[]=${id}`).join('&');
+  fetch(`{{ url_for('meetup.common_availability') }}?${params}`)
+    .then(r => r.json())
+    .then(slots => {
+      if (!slots.length) {
+        results.innerHTML = '<span style="color:var(--red)">No common slots found. Try adding more availability.</span>';
+        return;
+      }
+      results.innerHTML = slots.map(s =>
+        `<div style="padding:8px;background:var(--input-bg);border-radius:8px;margin-bottom:6px">
+          <strong>${s.date}</strong> · ${s.start_time} – ${s.end_time}
+          <span style="color:var(--green);font-size:11px;margin-left:6px">${s.count} available</span>
+        </div>`
+      ).join('');
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,191 @@
+<div id="modal-midpoint" class="feat-modal-overlay" role="dialog" aria-modal="true" aria-label="Midpoint Meeting Calculator">
+  <div class="feat-modal">
+    <button class="feat-modal-close" onclick="closeFeatModal('modal-midpoint')" aria-label="Close">&#10005;</button>
+    <div class="feat-modal-icon">📍</div>
+    <div class="feat-modal-title">Midpoint Calculator</div>
+    <div class="feat-modal-sub">Find the fairest meeting point for everyone.</div>
+    <div class="feat-section">
+      <div class="feat-section-label">Locations</div>
+      <div id="midpoint-location-list" style="display:flex;flex-direction:column;gap:10px;">
+        <input class="field-input mp-location-input" id="mp-loc1" value="Thamel, Kathmandu" />
+        <input class="field-input mp-location-input" id="mp-loc2" value="Patan, Lalitpur" />
+      </div>
+      <button class="btn-sec" type="button" onclick="addMidpointInput()" style="margin-top:10px;font-size:12px;padding:8px 12px;">+ Add Location</button>
+    </div>
+    <div class="midpoint-result-box" id="midpoint-result">
+      <div style="font-size:30px;margin-bottom:8px">🏛️</div>
+      <h3>Patan Durbar Square</h3>
+      <p>~18 min avg travel · Best match for all</p>
+    </div>
+    <div class="feat-btn-row">
+      <button class="btn-primary" type="button" onclick="calcMidpoint()">🔄 Recalculate</button>
+      <button class="btn-sec" type="button" onclick="acceptMidpointStep()">Use This →</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-restaurant-offers" class="feat-modal-overlay" role="dialog" aria-modal="true" aria-label="Restaurant Offers Check">
+  <div class="feat-modal">
+    <button class="feat-modal-close" onclick="closeFeatModal('modal-restaurant-offers')" aria-label="Close">&#10005;</button>
+    <div class="feat-modal-icon">🏷️</div>
+    <div class="feat-modal-title">Restaurant Offers</div>
+    <div class="feat-modal-sub">Latest deals near your meetup midpoint.</div>
+    <div id="featured-restaurant-offers"></div>
+    <div class="feat-btn-row">
+      <button class="btn-primary" type="button" onclick="saveSelectedOfferRestaurant()">Save Offer</button>
+      <button class="btn-sec" type="button" onclick="completeSerialStep('modal-restaurant-offers','offer skipped')">Skip →</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-cuisine-preference" class="feat-modal-overlay" role="dialog" aria-modal="true" aria-label="Cuisine Preference Selection">
+  <div class="feat-modal">
+    <button class="feat-modal-close" onclick="closeFeatModal('modal-cuisine-preference')" aria-label="Close">&#10005;</button>
+    <div class="feat-modal-icon">🍜</div>
+    <div class="feat-modal-title">Cuisine Preference</div>
+    <div class="feat-modal-sub">Pick the food mood for the group.</div>
+    <div class="filter-chips" id="cuisine-dynamic-chips">
+      <div class="filter-chip active" onclick="toggleChip(this)">🍛 Nepali</div>
+      <div class="filter-chip" onclick="toggleChip(this)">☕ Café</div>
+      <div class="filter-chip" onclick="toggleChip(this)">🍕 Italian</div>
+      <div class="filter-chip" onclick="toggleChip(this)">🥗 Continental</div>
+      <div class="filter-chip" onclick="toggleChip(this)">🌱 Vegetarian</div>
+    </div>
+    <div class="feat-btn-row">
+      <button class="btn-primary" type="button" onclick="savePlanPreferences({cuisine: readCuisineSelection()});showToast('Preferences saved!');completeSerialStep('modal-cuisine-preference','preferences applied')">Apply</button>
+      <button class="btn-sec" type="button" onclick="completeSerialStep('modal-cuisine-preference','preferences skipped')">Skip →</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-budget-filter" class="feat-modal-overlay" role="dialog" aria-modal="true" aria-label="Budget-Based Restaurant Filter">
+  <div class="feat-modal">
+    <button class="feat-modal-close" onclick="closeFeatModal('modal-budget-filter')" aria-label="Close">&#10005;</button>
+    <div class="feat-modal-icon">💰</div>
+    <div class="feat-modal-title">Budget Filter</div>
+    <div class="feat-modal-sub">Set your per-person budget and filter places.</div>
+    <div class="budget-slider-wrap">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:13px;color:var(--muted)">Min</span>
+        <span id="budget-display" style="font-size:20px;font-weight:800;color:var(--primary)">NPR 1,000</span>
+        <span style="font-size:13px;color:var(--muted)">Max</span>
+      </div>
+      <input type="range" min="200" max="5000" step="100" value="1000" oninput="updateBudget(this.value)" style="width:100%;accent-color:var(--blue);" />
+      <div class="budget-label"><span>NPR 200</span><span>NPR 5,000+</span></div>
+    </div>
+    <div class="filter-chips">
+      <div class="filter-chip" onclick="setBudgetPreset(this,300)">Budget &lt;300</div>
+      <div class="filter-chip active" onclick="setBudgetPreset(this,1000)">Mid 1000</div>
+      <div class="filter-chip" onclick="setBudgetPreset(this,2000)">Fine 2000+</div>
+    </div>
+    <div class="feat-btn-row">
+      <button class="btn-primary" type="button" onclick="savePlanPreferences({budget_min: 200, budget_max: readBudgetSelection()});showToast('Budget applied!');completeSerialStep('modal-budget-filter','budget applied')">Apply</button>
+      <button class="btn-sec" type="button" onclick="completeSerialStep('modal-budget-filter','budget skipped')">Skip →</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-nearby-restaurants" class="feat-modal-overlay" role="dialog" aria-modal="true" aria-label="Nearby Restaurant Recommendations">
+  <div class="feat-modal">
+    <button class="feat-modal-close" onclick="closeFeatModal('modal-nearby-restaurants')" aria-label="Close">&#10005;</button>
+    <div class="feat-modal-icon">🍽️</div>
+    <div class="feat-modal-title">Nearby Restaurants</div>
+    <div class="feat-modal-sub" id="nearby-modal-sub">Restaurants sorted by distance from your group's midpoint.</div>
+
+    <!-- Midpoint context pill -->
+    <div id="nearby-midpoint-info" style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(21,101,192,.08),rgba(27,107,58,.08));border:1px solid rgba(21,101,192,.18);border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:12px;">
+      <span style="font-size:16px;flex-shrink:0;">📍</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;color:var(--text);" id="nearby-midpoint-label">Calculating midpoint…</div>
+        <div style="color:var(--muted);font-size:11px;margin-top:1px;">Restaurants are sorted by distance from here</div>
+      </div>
+    </div>
+
+    <!-- Active filters summary — shows cuisine + budget set in earlier steps -->
+    <div id="nearby-active-filters" style="display:none;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin-bottom:6px;">ACTIVE FILTERS</div>
+      <div id="nearby-filter-pills" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+    </div>
+
+    <!-- Radius + Rating controls -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+      <div style="background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;">
+        <label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;">📏 RADIUS</label>
+        <select id="nearby-radius-select" class="field-input" onchange="updateNearbyRadius(this.value)" style="padding:6px 8px;font-size:12px;width:100%;">
+          <option value="2">Within 2 km</option>
+          <option value="5" selected>Within 5 km</option>
+          <option value="10">Within 10 km</option>
+          <option value="25">Within 25 km</option>
+          <option value="100">Any distance</option>
+        </select>
+      </div>
+      <div style="background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;">
+        <label for="restaurant-min-rating" style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;">⭐ MIN RATING</label>
+        <select id="restaurant-min-rating" class="field-input" onchange="refreshMidpointRestaurants()" style="padding:6px 8px;font-size:12px;width:100%;">
+          <option value="0">Any rating</option>
+          <option value="4">4.0+ stars</option>
+          <option value="4.5">4.5+ stars</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="nearby-restaurant-results" style="margin-bottom:12px;">
+      <div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px;">Recommendations load around the calculated midpoint.</div>
+    </div>
+
+    <div class="feat-btn-row">
+      <button class="btn-primary" type="button" onclick="setNearbyVenue();">Set Venue</button>
+      <button class="btn-sec" type="button" onclick="completeSerialStep('modal-nearby-restaurants','venue skipped')">Skip →</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="modal-ride-cost" class="feat-modal-overlay" role="dialog" aria-modal="true" aria-label="Ride Cost Estimation">
+  <div class="feat-modal">
+    <button class="feat-modal-close" onclick="closeFeatModal('modal-ride-cost')" aria-label="Close">&#10005;</button>
+    <div class="feat-modal-icon">🚗</div>
+    <div class="feat-modal-title">Ride Cost Estimation</div>
+    <div class="feat-modal-sub">Compare ride options to the meetup point.</div>
+    <div id="ride-dynamic-list">
+      <div class="restaurant-card"><div class="rest-emoji">🛵</div><div style="flex:1"><div class="rest-name">Pathao Bike</div><div class="rest-meta">~12 mins · NPR 85–110 · Fastest option</div></div></div>
+      <div class="restaurant-card"><div class="rest-emoji">🚕</div><div style="flex:1"><div class="rest-name">Tootle Car</div><div class="rest-meta">~18 mins · NPR 200–260 · Comfortable</div></div></div>
+    </div>
+    <div class="feat-btn-row">
+      <button class="btn-primary" type="button" onclick="savePlanPreferences({ride_option: readRideSelection()});showToast('Ride option saved!');completeSerialStep('modal-ride-cost','ride saved')">Save Ride</button>
+      <button class="btn-sec" type="button" onclick="completeSerialStep('modal-ride-cost','ride skipped')">Skip →</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="modal-final-summary" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Meetup Summary">
+  <div class="modal-box" style="max-width:500px;max-height:88vh;overflow-y:auto;">
+    <button class="modal-close" onclick="closeModal('modal-final-summary')" aria-label="Close">&#10005;</button>
+    <div style="text-align:center;margin-bottom:22px;">
+      <div style="font-size:48px;margin-bottom:8px;">🗺️</div>
+      <div class="modal-title" style="text-align:center;">Your Meetup is Ready!</div>
+      <div class="modal-sub" style="text-align:center;">Everything planned, all in one place.</div>
+    </div>
+    <div id="fsum-banner" style="background:linear-gradient(135deg,var(--primary),var(--blue));border-radius:14px;padding:18px 20px;margin-bottom:18px;color:#fff;text-align:center;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;opacity:.75;margin-bottom:4px;">MEETUP NAME</div>
+      <div id="fsum-title" style="font-family:'Playfair Display',serif;font-size:20px;font-weight:800;">Kathmandu Hangout</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      <div class="summary-row" style="flex-direction:column;gap:4px;align-items:flex-start;"><div class="summary-key">VENUE</div><div class="summary-val" id="fsum-venue">Café de Patan</div></div>
+      <div class="summary-row" style="flex-direction:column;gap:4px;align-items:flex-start;"><div class="summary-key">MIDPOINT</div><div class="summary-val" id="fsum-mid" style="color:var(--blue);">Patan Durbar Square</div></div>
+      <div class="summary-row" style="flex-direction:column;gap:4px;align-items:flex-start;"><div class="summary-key">DATE & TIME</div><div class="summary-val" id="fsum-dt">Date not set</div></div>
+      <div class="summary-row" style="flex-direction:column;gap:4px;align-items:flex-start;"><div class="summary-key">GROUP SIZE</div><div class="summary-val" id="fsum-people">1 people</div></div>
+      <div class="summary-row" style="flex-direction:column;gap:4px;align-items:flex-start;"><div class="summary-key">MEETUP TYPE</div><div class="summary-val" id="fsum-type">Coffee</div></div>
+      <div class="summary-row" style="flex-direction:column;gap:4px;align-items:flex-start;"><div class="summary-key">BUDGET/PERSON</div><div class="summary-val" id="fsum-budget">NPR 500-800</div></div>
+    </div>
+    <div style="margin-bottom:18px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">PLANNING STEPS COMPLETED</div>
+      <div id="fsum-steps" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-sec" type="button" style="flex:1;justify-content:center;font-size:13px;" onclick="closeModal('modal-final-summary');showToast('Summary saved!')">Save</button>
+      <button class="btn-primary" type="button" style="flex:2;padding:13px;font-size:14px;" onclick="closeModal('modal-final-summary');confirmAdvancedPlan()">Confirm &amp; Send Invite</button>
+    </div>
+  </div>
+</div>

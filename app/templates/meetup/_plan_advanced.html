@@ -1,0 +1,76 @@
+<div id="plan-phase-advanced" style="display:{{ 'flex' if show_advanced else 'none' }};flex:1;flex-direction:column;overflow:hidden;">
+  <div class="stats-bar">
+    <div class="stat-cell accent">
+      <div class="stat-label">MEETUP</div>
+      <div class="stat-val">{{ active_meetup.title if show_advanced else 'New Meetup' }}</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">DATE</div>
+      <div class="stat-val">{{ active_meetup.meetup_date if show_advanced and active_meetup.meetup_date else 'Not set' }}</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">TIME</div>
+      <div class="stat-val">{{ active_meetup.meetup_time if show_advanced and active_meetup.meetup_time else 'Not set' }}</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">GROUP</div>
+      <div class="stat-val">{{ created_members|length if show_advanced else 1 }} people</div>
+    </div>
+    <div class="stat-cell" style="margin-left:auto;border-left:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="btn-sec" type="button" onclick="resetSerialPlan()" style="font-size:12px;padding:8px 14px;">Start Over</button>
+        {% if show_advanced and active_meetup.created_by == current_user_id %}
+        <form method="POST" action="{{ url_for('meetup.delete_plan', meetup_id=active_meetup.id) }}" onsubmit="return confirm('Delete this meetup plan?');" style="margin:0;">
+          <button class="btn-sec" type="submit" style="font-size:12px;padding:8px 14px;color:var(--red);border-color:rgba(192,57,43,.35);">Delete Plan</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <span id="sum-mid" hidden>{{ active_meetup.midpoint_address if show_advanced and active_meetup.midpoint_address else 'Patan Durbar Square' }}</span>
+  <span id="sum-people" hidden>{{ created_members|length if show_advanced else 1 }} people</span>
+  <span id="sum-type" hidden>Coffee</span>
+
+  <div class="map-shell">
+    <div class="map-area">
+      <div id="plan-leaflet-map" style="position:absolute;inset:0;width:100%;height:100%;z-index:1;"></div>
+      <div id="plan-map-fallback" style="display:none;position:absolute;inset:0;z-index:2;align-items:center;justify-content:center;text-align:center;padding:28px;background:var(--input-bg);">
+        <div>
+          <div style="font-size:34px;margin-bottom:10px;">📍</div>
+          <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:800;color:var(--primary);margin-bottom:6px;">Map could not load</div>
+          <div style="font-size:12.5px;color:var(--muted);line-height:1.6;max-width:320px;">Leaflet needs the map library and OpenStreetMap tiles to load. Check your internet connection, then refresh this page.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="map-panel" id="map-panel-right">
+      <div id="plan-start-card" style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:10px 0 4px;">
+        <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--primary));display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:14px;box-shadow:0 4px 20px rgba(21,101,192,.3);cursor:pointer;" onclick="startSerialPlan()" id="plan-big-icon">📍</div>
+        <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--primary);margin-bottom:6px;">Let's Start Your<br>Meetup Planning!</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:18px;">Smart tools will guide you step by step, one popup at a time.</div>
+        <button class="btn-primary" type="button" style="width:100%;padding:14px;font-size:14px;border-radius:12px;" onclick="startSerialPlan()">🚀 Start Planning</button>
+      </div>
+
+      <div id="plan-active-card" style="display:none;flex-direction:column;gap:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);">✦ PLANNING</span>
+          <span id="serial-step-badge" style="font-size:10px;color:var(--blue);font-weight:600;background:var(--blue-light);padding:2px 9px;border-radius:20px;">Step 1 of 10</span>
+        </div>
+        <div style="height:5px;background:var(--border);border-radius:3px;margin-bottom:14px;overflow:hidden;">
+          <div id="serial-progress" style="height:100%;background:var(--blue);border-radius:3px;width:0%;transition:width .5s ease;"></div>
+        </div>
+        <div id="serial-steps-list" style="display:flex;flex-direction:column;gap:5px;overflow-y:auto;max-height:380px;padding-right:2px;"></div>
+      </div>
+
+      <div id="plan-done-card" style="display:none;flex-direction:column;align-items:center;text-align:center;padding:10px 0 4px;">
+        <div style="font-size:52px;margin-bottom:10px;">🎉</div>
+        <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--green);margin-bottom:6px;">Meetup Fully Planned!</div>
+        <div id="plan-done-copy" style="font-size:12px;color:var(--muted);margin-bottom:18px;">All steps are complete. You can review the plan or notify everyone.</div>
+        <button id="plan-view-summary-btn" class="btn-primary" type="button" style="width:100%;padding:13px;font-size:14px;" onclick="openFinalSummary()">📋 View Full Summary</button>
+        <button id="plan-confirm-send-btn" class="btn-primary" type="button" style="width:100%;padding:13px;font-size:14px;background:linear-gradient(135deg,var(--green),#0B5E30);margin-top:8px;" onclick="confirmAdvancedPlan()">📨 Confirm &amp; Send Invite</button>
+        <button id="plan-reset-after-done-btn" class="btn-sec" type="button" style="width:100%;justify-content:center;margin-top:10px;font-size:13px;" onclick="resetSerialPlan()">🔄 Plan Again</button>
+      </div>
+    </div>
+  </div>
+</div>

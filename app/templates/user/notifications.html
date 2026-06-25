@@ -1,0 +1,90 @@
+﻿{% extends "base_dashboard.html" %}
+{% set active_page = 'notifications' %}
+{% block title %}Notifications — Bhetamल{% endblock %}
+
+{% block page_content %}
+<div id="page-notifications" class="page active" style="flex-direction:column" role="main">
+  {% set topbar_show_sos = false %}
+  {% include '_topbar.html' %}
+
+  <div style="padding:28px;max-width:640px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+      <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--primary)">Notifications</h1>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="btn-sec" style="font-size:12px;padding:7px 14px" onclick="togglePrefs()">⚙️ Smart Alerts</button>
+        {% if notifications %}
+        <a class="btn-sec" style="font-size:12px;padding:7px 14px;text-decoration:none" href="{{ url_for('notification.clear_all') }}">Clear all</a>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Smart Alert Preferences ── #}
+    {% if prefs %}
+    <form id="prefs-panel" method="POST" action="{{ url_for('notification.update_preferences') }}"
+          style="display:none;margin-bottom:24px">
+      <div class="card" style="padding:18px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:4px">Smart Alert Preferences</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Choose which timely alerts Bhetam should generate for you.</div>
+
+        <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;cursor:pointer">
+          <input type="checkbox" name="smart_alerts_enabled" {% if prefs.smart_alerts_enabled %}checked{% endif %}>
+          <span style="font-weight:600;font-size:13px">Enable smart alerts</span>
+        </label>
+        <div style="display:flex;flex-direction:column;gap:10px;padding-left:6px;border-left:2px solid var(--border);margin-bottom:14px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px">
+            <input type="checkbox" name="meetup_reminders" {% if prefs.meetup_reminders %}checked{% endif %}> ⏰ Meetup reminders
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px">
+            <input type="checkbox" name="invite_alerts" {% if prefs.invite_alerts %}checked{% endif %}> ✉️ Pending invite alerts
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px">
+            <input type="checkbox" name="trending_alerts" {% if prefs.trending_alerts %}checked{% endif %}> 🔥 Weekly trending digest
+          </label>
+        </div>
+
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+          <div>
+            <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Remind me (hours before)</label>
+            <input type="number" name="reminder_lead_hours" min="1" max="168" value="{{ prefs.reminder_lead_hours or 24 }}"
+                   class="field-input" style="width:120px;padding:8px 12px;font-size:13px">
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Quiet from (hour)</label>
+            <input type="number" name="quiet_hours_start" min="0" max="23" value="{{ prefs.quiet_hours_start if prefs.quiet_hours_start is not none else '' }}"
+                   placeholder="—" class="field-input" style="width:100px;padding:8px 12px;font-size:13px">
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Quiet until (hour)</label>
+            <input type="number" name="quiet_hours_end" min="0" max="23" value="{{ prefs.quiet_hours_end if prefs.quiet_hours_end is not none else '' }}"
+                   placeholder="—" class="field-input" style="width:100px;padding:8px 12px;font-size:13px">
+          </div>
+          <button type="submit" class="btn-primary" style="padding:9px 18px;font-size:13px">Save</button>
+        </div>
+      </div>
+    </form>
+    {% endif %}
+    <div style="display:flex;flex-direction:column;gap:10px">
+      {% for n in notifications %}
+      <div class="notif-item card" style="padding:14px;{% if n.is_read %}opacity:.6{% endif %}">
+        <div class="notif-dot" style="{% if n.is_read %}background:var(--border){% elif n.type == 'success' %}background:var(--green){% elif n.type == 'error' %}background:var(--red){% else %}background:var(--blue){% endif %}"></div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:13px">{{ n.title }}</div>
+          <div style="font-size:12px;color:var(--text);margin-top:2px">{{ n.message }}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">{{ n.created_at }}</div>
+        </div>
+        {% if n.link %}<a href="{{ n.link }}" style="font-size:12px;color:var(--blue);font-weight:600;text-decoration:none;align-self:center">View</a>{% endif %}
+        <a href="{{ url_for('notification.delete_notification', notification_id=n.id) }}" style="font-size:14px;color:var(--muted);text-decoration:none;align-self:center;margin-left:8px" aria-label="Delete">✕</a>
+      </div>
+      {% else %}
+      <div class="card" style="text-align:center;color:var(--muted);padding:32px">No notifications yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+<script>
+function togglePrefs() {
+  var p = document.getElementById('prefs-panel');
+  if (p) p.style.display = (p.style.display === 'none' || !p.style.display) ? 'block' : 'none';
+}
+</script>
+{% endblock %}

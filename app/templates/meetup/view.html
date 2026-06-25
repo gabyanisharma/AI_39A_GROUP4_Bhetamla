@@ -1,0 +1,604 @@
+﻿{% extends "base_dashboard.html" %}
+{% set active_page = 'plan' %}
+{% block title %}{{ meetup.title }} — Bhetamla{% endblock %}
+
+{% block page_content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  /* ── Layout ── */
+  .view-root {
+    padding: 32px 28px;
+    max-width: 1320px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 32px;
+    align-items: start;
+  }
+  .view-left { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+
+  /* ── Cards ── */
+  .v-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+  }
+  .v-card-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  /* ── Header card ── */
+  .meetup-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--primary);
+    margin: 0 0 10px;
+    line-height: 1.2;
+  }
+  .meetup-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .meetup-meta span { display: flex; align-items: center; gap: 5px; }
+  .meetup-desc {
+    font-size: 13.5px;
+    color: var(--text);
+    line-height: 1.6;
+    margin-top: 10px;
+  }
+  .header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .header-actions .btn-primary,
+  .header-actions .btn-sec { flex: 1; min-width: 140px; padding: 11px; text-align: center; }
+  .header-actions a { text-decoration: none; justify-content: center; }
+
+  /* ── Status badge ── */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    flex-shrink: 0;
+  }
+  .status-active   { background: rgba(37,99,235,.1);  color: var(--blue);  border: 1px solid rgba(37,99,235,.2); }
+  .status-complete { background: rgba(5,150,105,.1);  color: var(--green); border: 1px solid rgba(5,150,105,.2); }
+  .status-planned  { background: var(--input-bg);     color: var(--muted); border: 1px solid var(--border); }
+
+  /* ── Map ── */
+  #meetup-map {
+    width: 100%;
+    height: 340px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    z-index: 1;
+  }
+
+  /* ── Suggestions ── */
+  .suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    transition: border-color .15s;
+  }
+  .suggestion-item:hover { border-color: var(--blue); }
+  .suggestion-icon {
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    background: var(--blue-light);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .suggestion-name  { font-weight: 600; font-size: 13px; }
+  .suggestion-addr  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .suggestion-rating{ font-size: 11px; color: var(--amber); margin-top: 2px; }
+  .empty-state { text-align: center; color: var(--muted); font-size: 13px; padding: 24px 0; }
+
+  /* ── RIGHT SIDEBAR ── */
+  .summary-sidebar {
+    position: sticky;
+    top: 24px;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid rgba(21,101,192,.18);
+    background: var(--white);
+    box-shadow: 0 4px 24px rgba(21,101,192,.07);
+  }
+
+  /* Banner */
+  .summary-banner {
+    background: linear-gradient(135deg, #1565C0 0%, #1976D2 60%, #1B6B3A 100%);
+    padding: 28px 24px 24px;
+    text-align: center;
+  }
+  .summary-banner-icon  { font-size: 38px; margin-bottom: 8px; }
+  .summary-banner-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 800; color: #fff; letter-spacing: .3px; }
+  .summary-banner-sub   { font-size: 12px; color: rgba(255,255,255,.65); margin-top: 4px; }
+
+  /* Meetup name */
+  .summary-name-block {
+    margin: 20px 20px 0;
+    background: linear-gradient(135deg, rgba(21,101,192,.06), rgba(27,107,58,.04));
+    border: 1px solid rgba(21,101,192,.12);
+    border-radius: 14px;
+    padding: 16px 20px;
+    text-align: center;
+  }
+  .summary-name-label { font-size: 9px; font-weight: 700; letter-spacing: 2px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
+  .summary-name-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px; font-weight: 800;
+    color: var(--primary);
+    word-break: break-word;
+    line-height: 1.2;
+  }
+
+  /* Detail rows */
+  .summary-details { margin: 20px 20px 0; }
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label {
+    color: var(--muted);
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 12px;
+    padding-top: 1px;
+  }
+  .detail-value { color: var(--text); font-weight: 700; text-align: right; word-break: break-word; line-height: 1.4; }
+  .detail-value.blue { color: var(--blue); }
+
+  /* Status */
+  .summary-status { margin: 20px 20px 0; text-align: center; }
+
+  /* Completed steps */
+  .summary-steps { margin: 20px 20px 0; }
+  .steps-label { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; }
+  .steps-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .step-chip {
+    background: rgba(5,150,105,.08);
+    color: var(--green);
+    font-size: 11px; font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(5,150,105,.2);
+  }
+
+  /* Notes */
+  .summary-notes {
+    margin: 20px 20px 0;
+    background: var(--input-bg);
+    border-radius: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+  }
+  .summary-notes-label { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
+  .summary-notes-text  { font-size: 13px; color: var(--text); line-height: 1.6; }
+
+  /* Members */
+  .summary-members { margin: 20px 20px 0; }
+  .members-label { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; }
+  .member-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .member-row:last-child { border-bottom: none; }
+  .member-info { flex: 1; min-width: 0; }
+  .member-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .member-dist { color: var(--muted); font-size: 11.5px; margin-top: 1px; }
+
+  /* Quick actions */
+  .summary-actions {
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 10px;
+    border-top: 1px solid var(--border);
+    margin-top: 20px;
+    background: rgba(21,101,192,.02);
+  }
+  .summary-actions .btn-primary,
+  .summary-actions .btn-sec { text-align: center; padding: 12px; font-size: 13px; text-decoration: none; justify-content: center; border-radius: 12px; font-weight: 700; }
+
+  /* Invite response banners */
+  .invite-accept  { padding: 10px 14px; background: #E8F5E9; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--green); margin-bottom: 16px; }
+  .invite-decline { padding: 10px 14px; background: #FFF3E0; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--amber); margin-bottom: 16px; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .view-root { grid-template-columns: 1fr; }
+    .summary-sidebar { position: static; }
+  }
+</style>
+
+<div class="page active" style="flex-direction:column" role="main">
+  <div class="topbar">
+    <div class="topbar-controls">
+      <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
+    </div>
+    <button class="sos-btn" onclick="openModal('modal-sos')">&#10033; SOS</button>
+    <button aria-label="Notifications" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;position:relative">
+      &#128276;
+      {% if unread_notifications_count > 0 %}
+      <span style="position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">{{ unread_notifications_count }}</span>
+      {% endif %}
+    </button>
+  </div>
+
+  <div class="view-root">
+    <!-- ══ LEFT COLUMN ══ -->
+    <div class="view-left">
+      <a href="{{ url_for('meetup.plan') }}" style="display:inline-flex;align-items:center;gap:6px;color:var(--blue);font-size:13px;font-weight:700;text-decoration:none;">← Back to Plan</a>
+
+      <!-- Header card -->
+      <div class="v-card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+          <div style="flex:1;min-width:0">
+            <h1 class="meetup-title">{{ meetup.title }}</h1>
+            <div class="meetup-meta">
+              {% if meetup.meetup_date %}
+              <span>📅 {{ meetup.meetup_date }}{% if meetup.meetup_time %} · {{ meetup.meetup_time }}{% endif %}</span>
+              {% endif %}
+              {% if meetup.midpoint_address %}
+              <span>📍 {{ meetup.midpoint_address }}</span>
+              {% endif %}
+            </div>
+            {% if meetup.description %}<div class="meetup-desc">{{ meetup.description }}</div>{% endif %}
+          </div>
+          <div>
+            {% if meetup.status == 'completed' %}
+            <span class="status-pill status-complete">✅ Completed</span>
+            {% elif meetup.status == 'active' %}
+            <span class="status-pill status-active">● Active</span>
+            {% else %}
+            <span class="status-pill status-planned">Planned</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Invite response -->
+        {% if is_member and not is_creator %}
+          {% for m in members %}
+            {% if m.user_id == user_id %}
+              {% if m.status == 'invited' %}
+              <form method="POST" action="{{ url_for('meetup.respond', meetup_id=meetup.id) }}" style="display:flex;gap:10px;margin-top:16px">
+                <button name="action" value="accept" class="btn-primary" style="flex:1;padding:11px">✓ Accept Invite</button>
+                <button name="action" value="decline" class="btn-sec" style="flex:1;justify-content:center;padding:11px">✕ Decline</button>
+              </form>
+              {% elif m.status == 'accepted' %}
+              <div class="invite-accept" style="margin-top:16px">✓ You have accepted this meetup</div>
+              {% elif m.status == 'declined' %}
+              <div class="invite-decline" style="margin-top:16px">You declined this meetup</div>
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+
+        {% if can_edit_route %}
+        <div class="header-actions">
+          <button class="btn-primary" onclick="openModal('modal-suggest')">📍 Suggest a Place</button>
+          <a href="{{ url_for('place.restaurants_page') }}?meetup_id={{ meetup.id }}" class="btn-sec">🍽️ Browse Restaurants</a>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Map card -->
+      <div class="v-card">
+        <div class="v-card-title">🗺️ Map</div>
+        <div id="meetup-map"></div>
+        <div id="meetup-map-fallback" style="display:none;padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px;text-align:center;">
+          Map could not load. Check your internet connection.
+        </div>
+      </div>
+
+      <!-- Place suggestions card -->
+      <div class="v-card">
+        <div class="v-card-title">💡 Place Suggestions ({{ suggestions|length }})</div>
+        {% for s in suggestions %}
+        <div class="suggestion-item">
+          <div class="suggestion-icon">🍽️</div>
+          <div style="flex:1">
+            <div class="suggestion-name">{{ s.place_name }}</div>
+            {% if s.address %}<div class="suggestion-addr">📍 {{ s.address }}</div>{% endif %}
+            {% if s.rating %}<div class="suggestion-rating">★ {{ s.rating }}</div>{% endif %}
+          </div>
+          {% if s.latitude and s.longitude %}
+          <a href="https://www.google.com/maps?q={{ s.latitude }},{{ s.longitude }}" target="_blank" style="font-size:12px;color:var(--blue);font-weight:700;text-decoration:none;white-space:nowrap">Map →</a>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <div style="font-size:32px;margin-bottom:8px">📍</div>
+          No place suggestions yet. Be the first to suggest a spot!
+        </div>
+        {% endfor %}
+      </div>
+    </div><!-- end left -->
+
+    <!-- ══ RIGHT SIDEBAR ══ -->
+    <div class="summary-sidebar">
+      <div class="summary-banner">
+        <div class="summary-banner-icon">🗺️</div>
+        <div class="summary-banner-title">Meeting Summary</div>
+        <div class="summary-banner-sub">Everything at a glance</div>
+      </div>
+
+      <div class="summary-name-block">
+        <div class="summary-name-label">MEETUP NAME</div>
+        <div class="summary-name-value">{{ meetup.title }}</div>
+      </div>
+
+      <!-- Detail rows — clean and readable -->
+      <div class="summary-details">
+        {% set venue_val = plan_prefs.selected_venue if plan_prefs and plan_prefs.selected_venue else (suggestions[0].place_name if suggestions else '—') %}
+        <div class="detail-row">
+          <span class="detail-label">Venue</span>
+          <span class="detail-value">{{ venue_val }}</span>
+        </div>
+
+        {% if meetup.midpoint_address %}
+        <div class="detail-row">
+          <span class="detail-label">Midpoint</span>
+          <span class="detail-value blue">{{ meetup.midpoint_address }}</span>
+        </div>
+        {% endif %}
+
+        <div class="detail-row">
+          <span class="detail-label">Date & Time</span>
+          <span class="detail-value">
+            {% if meetup.meetup_date %}
+              {{ meetup.meetup_date }}{% if meetup.meetup_time %}<br><span style="color:var(--muted);font-weight:400">{{ meetup.meetup_time }}</span>{% endif %}
+            {% else %}Not set{% endif %}
+          </span>
+        </div>
+
+        <div class="detail-row">
+          <span class="detail-label">Group Size</span>
+          <span class="detail-value">{{ members|length }} person{{ 's' if members|length != 1 else '' }}</span>
+        </div>
+
+        {% if plan_prefs and (plan_prefs.budget_min or plan_prefs.budget_max) %}
+        <div class="detail-row">
+          <span class="detail-label">Budget/Person</span>
+          <span class="detail-value">
+            {% set bmin = plan_prefs.budget_min or 0 %}
+            {% set bmax = plan_prefs.budget_max or 0 %}
+            {% if bmin and bmax %}NPR {{ bmin }}–{{ bmax }}
+            {% elif bmax %}≤ NPR {{ bmax }}
+            {% else %}NPR {{ bmin }}+{% endif %}
+          </span>
+        </div>
+        {% endif %}
+
+        {% if plan_prefs and plan_prefs.cuisine %}
+        <div class="detail-row">
+          <span class="detail-label">Cuisine</span>
+          <span class="detail-value">{{ plan_prefs.cuisine }}</span>
+        </div>
+        {% endif %}
+
+        {% if plan_prefs and plan_prefs.ride_option %}
+        <div class="detail-row">
+          <span class="detail-label">Ride</span>
+          <span class="detail-value">{{ plan_prefs.ride_option }}</span>
+        </div>
+        {% endif %}
+
+        {% if plan_prefs and plan_prefs.ambience %}
+        <div class="detail-row">
+          <span class="detail-label">Vibe</span>
+          <span class="detail-value">{{ plan_prefs.ambience|title }}</span>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Status -->
+      <div class="summary-status">
+        <div style="height:1px;background:var(--border);margin:0 20px 16px;"></div>
+        {% if meetup.status == 'completed' %}
+        <span class="status-pill status-complete" style="padding:8px 22px;font-size:12.5px">✅ Completed</span>
+        {% elif meetup.status == 'active' %}
+        <span class="status-pill status-active" style="padding:8px 22px;font-size:12.5px">● Active</span>
+        {% else %}
+        <span class="status-pill status-planned" style="padding:8px 22px;font-size:12.5px">Planned</span>
+        {% endif %}
+      </div>
+
+      <!-- Planning steps -->
+      {% if plan_prefs %}
+      <div class="summary-steps">
+        <div class="steps-label">PLANNING PROGRESS</div>
+        <div class="steps-chips">
+          <span class="step-chip">✓ Midpoint</span>
+          {% if plan_prefs.cuisine %}<span class="step-chip">✓ Cuisine</span>{% endif %}
+          {% if plan_prefs.budget_max %}<span class="step-chip">✓ Budget</span>{% endif %}
+          {% if plan_prefs.selected_venue %}<span class="step-chip">✓ Venue</span>{% endif %}
+          {% if plan_prefs.ride_option %}<span class="step-chip">✓ Ride</span>{% endif %}
+          {% if plan_prefs.ambience %}<span class="step-chip">✓ Ambience</span>{% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Notes -->
+      {% if plan_prefs and plan_prefs.notes %}
+      <div class="summary-notes">
+        <div class="summary-notes-label">NOTES</div>
+        <div class="summary-notes-text">{{ plan_prefs.notes }}</div>
+      </div>
+      {% endif %}
+
+      <!-- Members -->
+      {% if locations %}
+      <div class="summary-members">
+        <div class="members-label">MEMBERS ({{ members|length }})</div>
+        {% for loc in locations %}
+        <div class="member-row">
+          <div class="avatar" style="width:34px;height:34px;background:var(--blue);font-size:12px;flex-shrink:0;">{{ loc.full_name[:2]|upper }}</div>
+          <div class="member-info">
+            <div class="member-name">{{ loc.full_name }}</div>
+            {% if loc.distance_to_mid is defined %}<div class="member-dist">{{ loc.distance_to_mid }} km from midpoint</div>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Quick actions -->
+      <div class="summary-actions">
+        {% if can_edit_route and meetup.status != 'completed' %}
+        <a href="{{ url_for('meetup.plan', meetup_id=meetup.id) }}" class="btn-primary">✏️ Continue Planning</a>
+        {% endif %}
+        {% if meetup.meetup_date %}
+        <a href="{{ url_for('meetup.calendar_ics', meetup_id=meetup.id) }}" class="btn-sec">📅 Add to Calendar</a>
+        {% endif %}
+        {% if is_creator and meetup.status != 'completed' %}
+        <button type="button" onclick="completeMeetup({{ meetup.id }})" id="complete-meetup-btn"
+                style="width:100%;padding:12px;font-size:13px;font-weight:700;background:linear-gradient(135deg,var(--green),#0B5E30);color:#fff;border:none;border-radius:12px;cursor:pointer;letter-spacing:.3px;">
+          🎉 Mark as Complete
+        </button>
+        {% endif %}
+        {% if meetup.status == 'completed' %}
+        <a href="{{ url_for('analytics.history') }}" class="btn-sec">📊 View in Analytics</a>
+        {% endif %}
+      </div>
+    </div><!-- end sidebar -->
+  </div><!-- end grid -->
+</div>
+
+<!-- ── Suggest place modal ── -->
+<div class="modal-overlay" id="modal-suggest" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:440px">
+    <button class="modal-close" type="button" onclick="closeModal('modal-suggest')">✕</button>
+    <div class="modal-title">Suggest a Place</div>
+    <div class="modal-sub">Recommend a venue for this meetup.</div>
+    <form method="POST" action="{{ url_for('meetup.suggest', meetup_id=meetup.id) }}">
+      <div style="margin-bottom:14px"><label class="field-label" for="sg-name">Place Name</label><input class="field-input" id="sg-name" name="place_name" placeholder="e.g. Himalayan Java, Thamel" required /></div>
+      <div style="margin-bottom:14px"><label class="field-label" for="sg-addr">Address (optional)</label><input class="field-input" id="sg-addr" name="address" placeholder="Street, Area, City" /></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div><label class="field-label" for="sg-lat">Latitude</label><input class="field-input" id="sg-lat" name="latitude" type="number" step="any" placeholder="27.7172" /></div>
+        <div><label class="field-label" for="sg-lng">Longitude</label><input class="field-input" id="sg-lng" name="longitude" type="number" step="any" placeholder="85.3240" /></div>
+      </div>
+      <div style="margin-bottom:20px"><label class="field-label" for="sg-rating">Rating (optional)</label><input class="field-input" id="sg-rating" name="rating" type="number" min="0" max="5" step="0.1" placeholder="e.g. 4.5" /></div>
+      <button class="btn-primary" type="submit">Add Suggestion</button>
+    </form>
+  </div>
+</div>
+
+<!-- ── SOS modal ── -->
+<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
+  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
+    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
+    <div style="font-size:48px;margin-bottom:10px">🆘</div>
+    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
+    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
+    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
+    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  var mapEl = document.getElementById('meetup-map');
+  var fallback = document.getElementById('meetup-map-fallback');
+  if(!mapEl) return;
+  if(!window.L){ mapEl.style.display='none'; if(fallback) fallback.style.display='block'; return; }
+
+  var locations = {{ map_points|tojson if map_points else '[]' }};
+  var midLat = {{ midpoint_lat|tojson if midpoint_lat is not none else 'null' }};
+  var midLng = {{ midpoint_lng|tojson if midpoint_lng is not none else 'null' }};
+  var ktmCenter = [27.7172, 85.3240];
+  var pins = locations.filter(function(l){ return l.latitude != null && l.longitude != null; });
+  var center = pins.length ? [parseFloat(pins[0].latitude), parseFloat(pins[0].longitude)] : ktmCenter;
+
+  var map = L.map(mapEl, { zoomControl: true, scrollWheelZoom: true }).setView(center, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors', maxZoom: 19
+  }).addTo(map);
+
+  var bounds = [];
+  pins.forEach(function(l){
+    var lat = parseFloat(l.latitude), lng = parseFloat(l.longitude);
+    L.marker([lat, lng]).addTo(map).bindPopup(
+      '<strong>' + (l.full_name || 'Member') + '</strong>' +
+      (l.distance_to_mid != null ? '<br>' + l.distance_to_mid + ' km from midpoint' : '')
+    );
+    bounds.push([lat, lng]);
+  });
+
+  if(midLat != null && midLng != null){
+    L.marker([midLat, midLng], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div style="background:#1976D2;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)">📍</div>',
+        iconSize:[28,28], iconAnchor:[14,14]
+      })
+    }).addTo(map).bindPopup('<strong>Smart Midpoint</strong>');
+    bounds.push([midLat, midLng]);
+  }
+
+  if(bounds.length > 1) map.fitBounds(bounds, { padding:[30,30] });
+  else if(bounds.length === 1) map.setView(bounds[0], 14);
+})();
+
+function completeMeetup(meetupId) {
+  if (!confirm('Mark this meetup as complete? This will update History & Analytics for all members.')) return;
+  var btn = document.getElementById('complete-meetup-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Completing…'; }
+  fetch('/meetup/complete-plan/' + meetupId, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if (d.success) {
+      showToast('🎉 ' + d.message);
+      if (btn) {
+        btn.outerHTML = '<div style="padding:10px 14px;background:#E8F5E9;border-radius:10px;font-size:13px;font-weight:600;color:var(--green);text-align:center;">✅ Meetup Completed<div style="font-size:11px;font-weight:400;margin-top:4px;"><a href="' + d.analytics_url + '" style="color:var(--green);text-decoration:underline;">View in History & Analytics →</a></div></div>';
+      }
+      setTimeout(function(){ window.location.href = d.analytics_url; }, 2000);
+    } else {
+      showToast(d.message || 'Could not complete meetup.');
+      if (btn) { btn.disabled = false; btn.textContent = '🎉 Mark as Complete'; }
+    }
+  })
+  .catch(function(){
+    showToast('Network error. Please try again.');
+    if (btn) { btn.disabled = false; btn.textContent = '🎉 Mark as Complete'; }
+  });
+}
+</script>
+{% endblock %}

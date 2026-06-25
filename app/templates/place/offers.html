@@ -1,0 +1,102 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'offers' %}
+{% block title %}Restaurant Offers — Bhetamल{% endblock %}
+
+{% block page_content %}
+<div class="page active" style="flex-direction:column" role="main">
+  {% include '_topbar.html' %}
+
+  <div style="padding:28px;overflow-y:auto;flex:1">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--primary);margin-bottom:6px">Active Offers &amp; Deals</h1>
+        <p style="color:var(--muted);font-size:13.5px">
+          {{ offers|length }} deal{{ 's' if offers|length != 1 else '' }} available · Browse the latest discounts at Kathmandu restaurants.
+        </p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <a href="{{ url_for('place.restaurants_page') }}" class="btn-sec" style="text-decoration:none;">Browse Restaurants</a>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px;">
+      <form method="GET" action="{{ url_for('place.offers_page') }}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <input name="q" type="search" value="{{ search_q or '' }}" placeholder="Search offers..." style="background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);outline:none;min-width:200px;" />
+        <select name="cuisine" style="background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:'DM Sans',sans-serif;" onchange="this.form.submit()">
+          <option value="">🍽️ All Cuisines</option>
+          {% for c in cuisines %}
+          <option value="{{ c }}" {% if (request.args.get('cuisine') or '') == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+        {% if request.args.get('q') or request.args.get('cuisine') %}
+        <a href="{{ url_for('place.offers_page') }}" style="font-size:12px;color:var(--red);font-weight:600;text-decoration:none;">✕ Clear</a>
+        {% endif %}
+      </form>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;">
+      {% for o in offers %}
+      {% set badge = (o.discount_percent|string + '% OFF') if o.discount_percent and o.discount_percent > 0 else 'DEAL' %}
+      {% set badge_color = 'rgba(30,130,76,.12)' if o.discount_percent and o.discount_percent > 0 else 'rgba(200,130,0,.12)' %}
+      {% set badge_text = 'var(--green)' if o.discount_percent and o.discount_percent > 0 else 'var(--amber)' %}
+      <div class="card" style="padding:0;display:flex;flex-direction:column;overflow:hidden;transition:transform .15s,box-shadow .15s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 28px rgba(20,50,42,.13)';" onmouseout="this.style.transform='';this.style.boxShadow='';">
+        <!-- Top accent bar coloured by discount size -->
+        <div style="height:4px;background:{% if o.discount_percent and o.discount_percent >= 20 %}linear-gradient(90deg,var(--green),var(--blue)){% elif o.discount_percent and o.discount_percent > 0 %}linear-gradient(90deg,var(--amber),var(--green)){% else %}linear-gradient(90deg,var(--blue),var(--primary)){% endif %};"></div>
+
+        <div style="padding:16px;flex:1;display:flex;flex-direction:column;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div style="flex:1;min-width:0;margin-right:10px;">
+              <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:3px;">🏷️ {{ o.title }}</div>
+              <div style="font-size:12.5px;color:var(--blue);font-weight:600;">@ {{ o.restaurant_name }}</div>
+              {% if o.cuisine %}<div style="font-size:11px;color:var(--muted);margin-top:2px;">{{ o.cuisine }}</div>{% endif %}
+            </div>
+            <span style="background:{{ badge_color }};color:{{ badge_text }};font-weight:800;font-size:11px;padding:4px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;">{{ badge }}</span>
+          </div>
+
+          {% if o.description %}
+          <div style="font-size:12.5px;color:var(--text);background:var(--input-bg);border-radius:8px;padding:9px 12px;margin-bottom:10px;line-height:1.5;">{{ o.description }}</div>
+          {% endif %}
+
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+            {% if o.rating and o.rating > 0 %}
+            <span style="font-size:12px;color:var(--amber);">★ {{ '%.1f'|format(o.rating) }}</span>
+            {% endif %}
+            {% if o.avg_cost_per_person and o.avg_cost_per_person > 0 %}
+            <span style="font-size:12px;color:var(--muted);">NPR {{ o.avg_cost_per_person|int }}/person</span>
+            {% endif %}
+            <span style="font-size:12px;color:var(--muted);margin-left:auto;">Valid until: <strong style="color:var(--amber);">{{ o.valid_until }}</strong></span>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px;margin-top:auto;">
+            <a href="{{ url_for('place.restaurant_detail_page', restaurant_id=o.restaurant_id) }}" class="btn-primary" style="flex:1;text-align:center;padding:10px;font-size:12px;text-decoration:none;">View Restaurant</a>
+            <form method="POST" action="{{ url_for('place.save_offer_route', offer_id=o.id) }}" style="flex:1;">
+              <button type="submit" class="btn-sec" style="width:100%;padding:10px;font-size:12px;cursor:pointer;">💾 Save Offer</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="card" style="grid-column: 1 / -1; padding:40px; text-align:center; color:var(--muted)">
+        <div style="font-size:36px; margin-bottom:10px;">🏷️</div>
+        <h3 style="font-size:18px; margin-bottom:5px; color:var(--text)">No active offers right now</h3>
+        <p style="font-size:14px">Check back soon — restaurant deals are updated regularly.</p>
+        <a href="{{ url_for('place.restaurants_page') }}" class="btn-primary" style="display:inline-block;margin-top:16px;padding:10px 24px;text-decoration:none;font-size:13px;">Browse Restaurants →</a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- SOS Modal -->
+<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
+  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
+    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
+    <div style="font-size:48px;margin-bottom:10px">🆘</div>
+    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
+    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
+    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
+    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
+  </div>
+</div>
+{% endblock %}

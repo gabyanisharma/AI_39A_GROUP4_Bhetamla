@@ -1,0 +1,78 @@
+{#
+  Shared topbar macro — include this in every page.
+  Usage: {% include '_topbar.html' %}
+  Optional: set topbar_show_sos = false to hide SOS on a specific page.
+#}
+<div class="topbar" style="justify-content:flex-end;padding:12px 20px;gap:10px;">
+  <div class="topbar-controls" style="display:flex;align-items:center;gap:10px;margin-left:auto;">
+
+    {# Language toggle — EN / नेपाली #}
+    <button class="ctrl-btn" onclick="toggleLanguage()"
+            style="display:flex;align-items:center;gap:5px;padding:7px 12px;font-size:12px;font-weight:700;"
+            title="Switch language">
+      {% if lang == 'ne' %}
+        🌐 EN
+      {% else %}
+        🌐 नेपाली
+      {% endif %}
+    </button>
+
+    {# Dark/Light mode toggle #}
+    <button class="ctrl-btn" id="theme-toggle" onclick="toggleTheme()"
+            style="display:flex;align-items:center;gap:5px;padding:7px 12px;">
+      <span id="theme-icon">{{ '☀️' if session.get('theme') == 'dark' else '🌙' }}</span>
+      <span id="theme-label">{{ 'Light' if session.get('theme') == 'dark' else 'Dark' }}</span>
+    </button>
+
+    {# SOS button #}
+    {% if topbar_show_sos is not defined or topbar_show_sos %}
+    <button class="sos-btn" onclick="openModal('modal-sos')" style="cursor:pointer;display:flex;align-items:center;gap:6px;">
+      🆘 <span data-en="SOS" data-ne="SOS">SOS</span>
+    </button>
+    {% endif %}
+
+    {# Notification bell #}
+    <button aria-label="Notifications" onclick="openNotifPanel()"
+            style="background:none;border:none;cursor:pointer;font-size:20px;position:relative;color:var(--text);line-height:1;padding:4px;">
+      🔔
+      {% if unread_notifications_count and unread_notifications_count > 0 %}
+      <span style="position:absolute;top:-2px;right:-2px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;line-height:1;">
+        {{ unread_notifications_count if unread_notifications_count <= 99 else '99+' }}
+      </span>
+      {% endif %}
+    </button>
+
+    {# User avatar #}
+    {% set sidebar_pic = session.get('user_pic') %}
+    {% if sidebar_pic and sidebar_pic != 'default.png' %}
+    <img src="{{ url_for('static', filename='uploads/profiles/' ~ sidebar_pic) }}"
+         alt="{{ session.get('user_name','User') }}"
+         style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--border);cursor:pointer;flex-shrink:0;"
+         onclick="window.location='{{ url_for('user.settings_page') }}'">
+    {% else %}
+    <div class="avatar"
+         style="width:34px;height:34px;background:var(--blue);font-size:13px;cursor:pointer;flex-shrink:0;"
+         onclick="window.location='{{ url_for('user.settings_page') }}'">
+      {{ session.get('user_name','U')[0]|upper }}
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<script>
+// Language toggle — works on every page (not just settings)
+function toggleLanguage() {
+  var currentLang = "{{ lang|default('en') }}";
+  var newLang = (currentLang === 'en') ? 'ne' : 'en';
+  try { localStorage.setItem('bhetamla-lang', newLang); } catch(e) {}
+  if (typeof applyLang === 'function') applyLang(newLang, true);
+  // Persist to server (POST to settings endpoint)
+  var theme = "{{ session.get('theme', 'light') }}";
+  fetch("{{ url_for('user.settings_page') }}", {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'theme=' + encodeURIComponent(theme) + '&language=' + encodeURIComponent(newLang)
+  }).then(function() { location.reload(); });
+}
+</script>

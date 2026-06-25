@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block body %}
+<!-- APP SHELL -->
+<div id="app" class="screen active" style="flex-direction:row">
+  <nav class="sidebar" aria-label="Main navigation">
+    <a href="{{ url_for('user.dashboard') }}" class="sidebar-brand" style="text-decoration:none;cursor:pointer">
+      <div class="sidebar-brand-icon" style="background:transparent;padding:0;overflow:hidden;border-radius:10px">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Bhetam" style="width:40px;height:40px;object-fit:contain">
+      </div>
+      <div>
+        <div class="sidebar-brand-name"><strong style="font-weight:800;letter-spacing:-0.5px">Bhetam</strong><sup style="font-size:10px;color:var(--gold);font-weight:700">&#2354;</sup></div>
+        <div class="sidebar-brand-sub" data-en="Verified Member" data-ne="प्रमाणित सदस्य">Verified Member</div>
+      </div>
+    </a>
+
+    <a class="nav-btn {% if active_page == 'dashboard' %}active{% endif %}" href="{{ url_for('user.dashboard') }}" style="text-decoration:none" {% if active_page == 'dashboard' %}aria-current="page"{% endif %}><span class="nav-icon">&#8861;</span><span data-en="Dashboard" data-ne="ड्यासबोर्ड">Dashboard</span></a>
+    <a class="nav-btn {% if active_page == 'plan' %}active{% endif %}" href="{{ url_for('meetup.plan') }}" style="text-decoration:none" {% if active_page == 'plan' %}aria-current="page"{% endif %}><span class="nav-icon">&#65291;</span><span data-en="Plan Meetup" data-ne="भेट योजना">Plan Meetup</span></a>
+    <a class="nav-btn {% if active_page == 'groups' %}active{% endif %}" href="{{ url_for('meetup.groups') }}" style="text-decoration:none" {% if active_page == 'groups' %}aria-current="page"{% endif %}><span class="nav-icon">&#128101;</span><span data-en="My Groups" data-ne="मेरा समूह">My Groups</span></a>
+    <a class="nav-btn {% if active_page == 'gallery' %}active{% endif %}" href="{{ url_for('meetup.gallery_page_route') }}" style="text-decoration:none" {% if active_page == 'gallery' %}aria-current="page"{% endif %}><span class="nav-icon">&#128248;</span><span data-en="Gallery" data-ne="ग्यालेरी">Gallery</span></a>
+    <a class="nav-btn {% if active_page == 'saved' %}active{% endif %}" href="{{ url_for('place.saved') }}" style="text-decoration:none" {% if active_page == 'saved' %}aria-current="page"{% endif %}><span class="nav-icon">&#128278;</span><span data-en="Saved Places" data-ne="सेभ गरिएका स्थान">Saved Places</span></a>
+    <a class="nav-btn {% if active_page == 'restaurants' %}active{% endif %}" href="{{ url_for('place.restaurants_page') }}" style="text-decoration:none" {% if active_page == 'restaurants' %}aria-current="page"{% endif %}><span class="nav-icon">&#127869;</span><span data-en="Browse Restaurants" data-ne="रेस्टुरेन्ट हेर्नुस्">Browse Restaurants</span></a>
+    <a class="nav-btn {% if active_page == 'explore' %}active{% endif %}" href="{{ url_for('explore.feed') }}" style="text-decoration:none" {% if active_page == 'explore' %}aria-current="page"{% endif %}><span class="nav-icon">&#128293;</span><span data-en="Explore Spots" data-ne="स्थान अन्वेषण">Explore Spots</span></a>
+    <a class="nav-btn {% if active_page == 'route_planner' %}active{% endif %}" href="{{ url_for('ride.planner') }}" style="text-decoration:none" {% if active_page == 'route_planner' %}aria-current="page"{% endif %}><span class="nav-icon">🗺️</span><span data-en="Route Planner" data-ne="रुट योजनाकार">Route Planner</span></a>
+    <a class="nav-btn {% if active_page == 'analytics' %}active{% endif %}" href="{{ url_for('analytics.history') }}" style="text-decoration:none" {% if active_page == 'analytics' %}aria-current="page"{% endif %}><span class="nav-icon">&#128202;</span><span data-en="History &amp; Analytics" data-ne="इतिहास र विश्लेषण">History &amp; Analytics</span></a>
+    <a class="nav-btn {% if active_page == 'safety' %}active{% endif %}" href="{{ url_for('user.safety_page') }}" style="text-decoration:none" {% if active_page == 'safety' %}aria-current="page"{% endif %}><span class="nav-icon">&#128737;</span><span data-en="Safety Hub" data-ne="सुरक्षा केन्द्र">Safety Hub</span></a>
+
+    <div class="sidebar-spacer"></div>
+
+    <a class="nav-btn {% if active_page == 'settings' %}active{% endif %}" href="{{ url_for('user.settings_page') }}" style="text-decoration:none" {% if active_page == 'settings' %}aria-current="page"{% endif %}><span class="nav-icon">&#9881;</span><span data-en="Settings" data-ne="सेटिङ">Settings</span></a>
+    <a class="nav-btn {% if active_page == 'support' %}active{% endif %}" href="{{ url_for('user.support_page') }}" style="text-decoration:none" {% if active_page == 'support' %}aria-current="page"{% endif %}><span class="nav-icon">&#10067;</span><span data-en="Support" data-ne="सहायता">Support</span></a>
+    <button class="nav-btn" type="button" onclick="confirmLogout()" style="color:#f08080"><span class="nav-icon">&#10140;</span><span data-en="Logout" data-ne="लग आउट">Logout</span></button>
+
+    <a href="{{ url_for('user.settings_page') }}" class="sidebar-user" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:10px;">
+      {% set sidebar_pic = session.get('user_pic') %}
+      {% if sidebar_pic and sidebar_pic != 'default.png' %}
+      <img src="{{ url_for('static', filename='uploads/profiles/' ~ sidebar_pic) }}" alt="{{ session.get('user_name','User') }}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid rgba(20,95,227,.18)">
+      {% else %}
+      <div class="avatar" style="width:34px;height:34px;background:var(--blue);font-size:13px">{{ session.get('user_name','U')[0]|upper }}</div>
+      {% endif %}
+      <div>
+        <div style="font-weight:600;font-size:13px;color:#d8e4f0">{{ session.get('user_name','User') }}</div>
+        <div style="font-size:10px;color:rgba(180,200,220,.45);letter-spacing:.5px" data-en="VERIFIED MEMBER" data-ne="प्रमाणित सदस्य">VERIFIED MEMBER</div>
+      </div>
+    </a>
+  </nav>
+
+  <div class="main" id="main-content">
+    {% block page_content %}{% endblock %}
+  </div>
+</div>
+
+<!-- Logout modal -->
+<div class="modal-overlay" id="modal-logout" role="dialog" aria-modal="true" aria-label="Confirm logout">
+  <div class="modal-box" style="text-align:center;max-width:360px">
+    <div style="font-size:36px;margin-bottom:14px">👋</div>
+    <div class="modal-title">Log out?</div>
+    <div class="modal-sub">You'll need to sign in again to access your meetups and groups.</div>
+    <a href="{{ url_for('auth.logout') }}" class="btn-primary" style="background:var(--red);box-shadow:none;text-decoration:none;display:flex;justify-content:center">Log Out</a>
+    <button class="btn-sec" type="button" onclick="closeModal('modal-logout')" style="width:100%;justify-content:center;margin-top:10px">Cancel</button>
+  </div>
+</div>
+<!-- Notification panel overlay -->
+<div id="notif-overlay" onclick="closeNotifPanel()" style="display:none;position:fixed;inset:0;z-index:1400;background:rgba(0,0,0,.3)"></div>
+  <div id="notif-panel" class="notif-panel" role="dialog" aria-label="Notifications">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="font-family:'Playfair Display',serif;font-weight:700;font-size:18px">Notifications</div>
+      <button onclick="closeNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted)">✕</button>
+    </div>
+    {% if header_notifications %}
+      {% for n in header_notifications %}
+      <div class="notif-item" style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0;margin-top:5px"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ n.title }}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ (n.body or '')[:60] }}{% if (n.body or '')|length > 60 %}…{% endif %}</div>
+          {% if n.time %}<div style="font-size:10px;color:var(--muted);margin-top:2px;opacity:.7">{{ n.time }}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      <a href="{{ url_for('user.notifications_page') }}" onclick="closeNotifPanel()"
+         style="display:block;text-align:center;font-size:12px;font-weight:700;color:var(--blue);padding:12px 0;text-decoration:none">
+        View all notifications →
+      </a>
+    {% else %}
+    <div style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0">No new notifications yet.</div>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block scripts %}{% endblock %}
+

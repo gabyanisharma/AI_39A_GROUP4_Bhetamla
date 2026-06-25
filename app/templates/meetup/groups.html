@@ -1,0 +1,379 @@
+﻿{% extends "base_dashboard.html" %}
+{% set active_page = 'groups' %}
+{% block title %}My Groups — Bhetamल{% endblock %}
+
+{% block page_content %}
+<div id="page-groups" class="page active" style="flex-direction:column" role="main">
+  {% include '_topbar.html' %}
+
+  <div class="groups-inner">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 style="font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px;font-family:'Playfair Display',serif;color:var(--primary)">My Groups & Meetups</h1>
+        <p style="color:var(--muted);font-size:13.5px">Meetups & achievements.</p>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn-primary" href="{{ url_for('meetup.plan') }}" style="width:auto;padding:11px 20px;font-size:13px;text-decoration:none">＋ New Meetup</a>
+      </div>
+    </div>
+
+    <div class="groups-body">
+      <div class="groups-main">
+
+        <!-- Meetups -->
+        <div class="card" style="padding:20px">
+          <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:16px">📅 Your Meetups ({{ meetups|length }})</div>
+          <div id="meetup-list" style="display:flex;flex-direction:column;gap:10px;max-height:400px;overflow-y:auto">
+            {% for m in meetups %}
+            <div class="meetup-row-item" data-meetup-id="{{ m.id }}" data-title="{{ m.title|lower }}"
+                 style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;border:1.5px solid var(--border);cursor:pointer;transition:border-color .15s"
+                 onclick="selectMeetup({{ m.id }})">
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📅</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.title }}</div>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
+                  {{ m.meetup_date or 'Date not set' }}{% if m.winning_venue_name %} · 🏆 {{ m.winning_venue_name }}{% elif m.midpoint_address %} · 📍 {{ m.midpoint_address }}{% endif %}
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                <span style="background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">
+                  {{ 'Organiser' if m.created_by == current_user_id else 'Member' }}
+                </span>
+                <form method="POST" action="{{ url_for('meetup.remove_from_groups', meetup_id=m.id) }}" onsubmit="return confirm('Remove from My Groups? It stays in History & Analytics.');" onclick="event.stopPropagation()">
+                  <button type="submit" title="Remove from My Groups" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted)">✕</button>
+                </form>
+              </div>
+            </div>
+            {% else %}
+            <div style="text-align:center;color:var(--muted);font-size:13px;padding:20px 0">
+              No meetups yet. <a href="{{ url_for('meetup.plan') }}" style="color:var(--blue);font-weight:600">Create one →</a>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+
+      </div>
+
+      <div class="groups-right">
+        <!-- ── Friends ─────────────────────────────────────── -->
+        <div class="card" style="margin-bottom:16px;padding:20px">
+
+          <!-- Header -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div style="font-weight:700;font-size:15px;color:var(--primary)">
+              👥 Friends ({{ friends|length }})
+              {% if pending_requests %}
+              <span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:6px;">
+                {{ pending_requests|length }} new
+              </span>
+              {% endif %}
+            </div>
+            <button onclick="openModal('modal-add-friend')"
+                    class="btn-primary"
+                    style="width:auto;padding:6px 14px;font-size:12px">
+              ＋ Add Friend
+            </button>
+          </div>
+
+          <!-- Incoming requests -->
+          {% if pending_requests %}
+          <div style="margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:14px;">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px;">
+              Pending Requests
+            </div>
+            {% for req in pending_requests %}
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;" id="req-{{ req.id }}">
+              <div class="avatar" style="width:36px;height:36px;background:var(--blue);font-size:12px;flex-shrink:0;">
+                {{ req.full_name[:2]|upper }}
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ req.full_name }}</div>
+                <div style="font-size:11px;color:var(--muted);">{{ req.email }}</div>
+              </div>
+              <div style="display:flex;gap:6px;flex-shrink:0;">
+                <button onclick="respondRequest({{ req.id }}, 'accept')"
+                        style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;">
+                  ✓
+                </button>
+                <button onclick="respondRequest({{ req.id }}, 'reject')"
+                        style="background:var(--input-bg);color:var(--muted);border:1.5px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">
+                  ✕
+                </button>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          <!-- Sent requests -->
+          {% if sent_requests %}
+          <div style="margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:14px;">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px;">
+              Sent Requests
+            </div>
+            {% for req in sent_requests %}
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <div class="avatar" style="width:32px;height:32px;background:var(--muted);font-size:11px;flex-shrink:0;opacity:.7;">
+                {{ req.full_name[:2]|upper }}
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ req.full_name }}</div>
+              </div>
+              <span style="font-size:10px;color:var(--muted);background:var(--input-bg);padding:2px 8px;border-radius:20px;border:1px solid var(--border);">Pending</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          <!-- Accepted friends list -->
+          {% for f in friends %}
+          <div class="member-row" id="friend-{{ f.id }}" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div class="avatar" style="width:38px;height:38px;background:var(--blue);font-size:13px;flex-shrink:0;">
+              {{ f.full_name[:2]|upper }}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div class="member-name" style="font-weight:600;font-size:13px;">{{ f.full_name }}</div>
+              <div class="member-role" style="font-size:11px;color:var(--muted);">{{ f.email }}</div>
+            </div>
+            <button onclick="removeFriend({{ f.id }}, '{{ f.full_name }}')"
+                    title="Remove friend"
+                    style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 6px;border-radius:6px;transition:color .12s;"
+                    onmouseenter="this.style.color='var(--red)'"
+                    onmouseleave="this.style.color='var(--muted)'">✕</button>
+          </div>
+          {% else %}
+          <div style="font-size:13px;color:var(--muted);text-align:center;padding:8px 0;">
+            No friends yet. Click <strong>＋ Add Friend</strong> to get started.
+          </div>
+          {% endfor %}
+        </div>
+
+
+
+        <!-- Achievements -->
+        <div class="card" style="padding:20px">
+          <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:14px">🏅 Achievements</div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+            {% for a in achievements %}
+            <div class="badge-item" style="opacity:{{ '1' if a.unlocked_at else '0.45' }};text-align:center;padding:10px;background:var(--input-bg);border-radius:12px">
+              <div class="badge-icon" style="width:40px;height:40px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:18px">
+                {% if a.unlocked_at %}🏅{% else %}🔒{% endif %}
+              </div>
+              <div class="badge-label" style="font-weight:700;font-size:11px">{{ a.title }}</div>
+              <div class="badge-sub" style="font-size:10px;color:var(--muted);margin-top:2px">{{ a.description[:40] }}{% if a.description|length > 40 %}…{% endif %}</div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>    
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Friend Modal -->
+<div class="modal-overlay" id="modal-add-friend" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:420px">
+    <button class="modal-close" type="button" onclick="closeModal('modal-add-friend')">✕</button>
+    <div class="modal-title">👥 Add a Friend</div>
+    <div class="modal-sub">Search by name or email address.</div>
+
+    <div style="position:relative;margin-bottom:16px;">
+      <input id="friend-search-input" class="field-input"
+             placeholder="Type a name or email…"
+             autocomplete="off"
+             oninput="searchFriends(this.value)"
+             style="padding-right:36px" />
+      <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--muted);">🔍</span>
+    </div>
+
+    <div id="friend-search-results" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;"></div>
+    <div id="friend-search-empty" style="display:none;text-align:center;color:var(--muted);font-size:13px;padding:20px 0;">
+      No users found.
+    </div>
+    <div id="friend-search-hint" style="text-align:center;color:var(--muted);font-size:12px;padding:16px 0;">
+      Start typing to search for people on Bhetam.
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
+  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
+    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
+    <div style="font-size:48px;margin-bottom:10px">🆘</div>
+    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
+    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+window.GROUPS_CONFIG = {
+  currentUserId: {{ current_user_id }},
+  chatGroupId: {{ active_chat_group.id if active_chat_group is defined and active_chat_group else 'null' }},
+  chatTitle: 'Global Chat',
+  profileUploadBase: "{{ url_for('static', filename='uploads/profiles/') }}",
+  meetups: [
+    {% for m in meetups %}
+    { id: {{ m.id }}, title: {{ m.title|tojson }}, isOrganiser: {{ 'true' if m.created_by == current_user_id else 'false' }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+};
+</script> 
+<script src="{{ url_for('static', filename='js/groups.js') }}"></script>
+<script>
+function filterMeetups(q) {
+  document.querySelectorAll('.meetup-row-item').forEach(el => {
+    el.style.display = el.dataset.title.includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+// ── Friend search ────────────────────────────────────────────
+var _friendSearchTimer = null;
+function searchFriends(q) {
+  clearTimeout(_friendSearchTimer);
+  var results = document.getElementById('friend-search-results');
+  var empty   = document.getElementById('friend-search-empty');
+  var hint    = document.getElementById('friend-search-hint');
+
+  if (q.trim().length < 2) {
+    results.innerHTML = '';
+    empty.style.display   = 'none';
+    hint.style.display    = 'block';
+    return;
+  }
+  hint.style.display = 'none';
+  results.innerHTML = '<div style="text-align:center;padding:14px;color:var(--muted);font-size:13px;">Searching…</div>';
+
+  _friendSearchTimer = setTimeout(function() {
+    fetch('/meetup/search-users?q=' + encodeURIComponent(q.trim()))
+      .then(function(r) { return r.json(); })
+      .then(function(users) {
+        results.innerHTML = '';
+        if (!users.length) {
+          empty.style.display = 'block';
+          return;
+        }
+        empty.style.display = 'none';
+        users.forEach(function(u) {
+          var row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--input-bg);border-radius:10px;border:1.5px solid var(--border);';
+
+          var initials = (u.name || 'U').substring(0, 2).toUpperCase();
+          var actionBtn = '';
+          if (u.status === 'accepted') {
+            actionBtn = '<span style="font-size:11px;color:var(--green);font-weight:700;padding:5px 12px;background:var(--green-light);border-radius:8px;">✓ Friends</span>';
+          } else if (u.status === 'pending_sent') {
+            actionBtn = '<span style="font-size:11px;color:var(--muted);padding:5px 12px;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;">Pending…</span>';
+          } else if (u.status === 'pending_received') {
+            actionBtn = '<button onclick="respondRequest(' + u.fid + ', \'accept\'); this.closest(\'.fr-row\').remove();" style="font-size:11px;background:var(--green);color:#fff;border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-weight:700;">Accept</button>';
+          } else {
+            actionBtn = '<button onclick="sendRequest(' + u.id + ', \'' + (u.name || '').replace(/'/g, "\\'") + '\', this)" style="font-size:11px;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:5px 14px;cursor:pointer;font-weight:700;">＋ Add</button>';
+          }
+
+          row.className = 'fr-row';
+          row.innerHTML = '<div class="avatar" style="width:36px;height:36px;background:var(--blue);font-size:12px;flex-shrink:0;">' + initials + '</div>'
+            + '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;">' + (u.name || '') + '</div>'
+            + '<div style="font-size:11px;color:var(--muted);">' + (u.email || '') + '</div></div>'
+            + actionBtn;
+          results.appendChild(row);
+        });
+      })
+      .catch(function() {
+        results.innerHTML = '<div style="text-align:center;padding:14px;color:var(--red);font-size:13px;">Search failed.</div>';
+      });
+  }, 350);
+}
+
+// ── Send friend request ──────────────────────────────────────
+function sendRequest(userId, name, btn) {
+  btn.disabled = true;
+  btn.textContent = '…';
+  fetch('/meetup/friend-request/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ friend_id: userId })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      btn.textContent = 'Sent ✓';
+      btn.style.background = 'var(--green)';
+      showToast('Friend request sent to ' + name + '!');
+    } else {
+      btn.textContent = '＋ Add';
+      btn.disabled = false;
+      showToast(d.message || 'Could not send request.');
+    }
+  })
+  .catch(function() {
+    btn.textContent = '＋ Add';
+    btn.disabled = false;
+    showToast('Network error.');
+  });
+}
+
+// ── Respond to a request (accept/reject) ────────────────────
+function respondRequest(requestId, action) {
+  fetch('/meetup/friend-request/respond/' + requestId, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: action })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      // Remove the request row from the UI
+      var row = document.getElementById('req-' + requestId);
+      if (row) {
+        row.style.transition = 'opacity .2s';
+        row.style.opacity = '0';
+        setTimeout(function() { row.remove(); }, 220);
+      }
+      showToast(d.message);
+      // Reload after accept so new friend appears in list
+      if (action === 'accept') setTimeout(function() { location.reload(); }, 600);
+    } else {
+      showToast(d.message || 'Could not respond.');
+    }
+  })
+  .catch(function() { showToast('Network error.'); });
+}
+
+// ── Remove a friend ──────────────────────────────────────────
+function removeFriend(friendId, name) {
+  if (!confirm('Remove ' + name + ' from your friends?')) return;
+  fetch('/meetup/friend/remove', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ friend_id: friendId })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      var row = document.getElementById('friend-' + friendId);
+      if (row) {
+        row.style.transition = 'opacity .2s';
+        row.style.opacity = '0';
+        setTimeout(function() { row.remove(); showToast(name + ' removed.'); }, 220);
+      }
+    } else {
+      showToast(d.message || 'Could not remove friend.');
+    }
+  })
+  .catch(function() { showToast('Network error.'); });
+}
+
+// Clear search input when modal closes
+document.querySelectorAll('.modal-overlay').forEach(function(m) {
+  m.addEventListener('click', function(e) {
+    if (e.target === m) {
+      var inp = document.getElementById('friend-search-input');
+      if (inp) { inp.value = ''; searchFriends(''); }
+    }
+  });
+});
+</script>
+{% endblock %}

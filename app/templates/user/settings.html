@@ -1,0 +1,249 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'settings' %}
+{% block title %}Settings — Bhetamल{% endblock %}
+
+{% block page_content %}
+<div id="page-settings" class="page active" style="flex-direction:column" role="main">
+  {% include '_topbar.html' %}
+
+  <div class="settings-inner">
+    <div class="settings-main">
+
+      <!-- Profile card -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="profile-card-inner">
+          <div class="profile-avatar-wrap">
+            {% if user.profile_pic and user.profile_pic != 'default.png' %}
+            <img src="{{ url_for('static', filename='uploads/profiles/' ~ user.profile_pic) }}" alt="{{ user.full_name }}" style="width:74px;height:74px;border-radius:50%;object-fit:cover;border:3px solid var(--white);box-shadow:0 6px 18px rgba(8,45,37,.16)">
+            {% else %}
+            <div class="avatar" style="width:74px;height:74px;background:var(--blue);font-size:26px">{{ (user.full_name or 'U')[0]|upper }}</div>
+            {% endif %}
+            {% if user.is_verified %}<div class="profile-avatar-badge">&#10003;</div>{% endif %}
+          </div>
+          <div style="flex:1">
+            <div style="font-size:24px;font-weight:700;margin-bottom:7px">{{ user.full_name }}</div>
+            {% if user.is_verified %}<span class="badge" style="background:rgba(5,150,105,.12);color:var(--green)">&#10003; SAFETY VERIFIED</span>{% endif %}
+            <div style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;margin-top:8px">&#128205; {{ user.email }} · {{ user.phone or 'No phone added' }}</div>
+            <!-- Decorative badges — no backend data behind these yet -->
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <span class="badge" style="background:rgba(5,150,105,.1);color:var(--green)">PREMIUM MEMBER</span>
+              <span class="badge" style="background:rgba(124,58,237,.1);color:var(--purple)">SAFETY CHAMPION</span>
+            </div>
+          </div>
+          <button class="btn-primary" type="button" style="width:auto;padding:10px 18px;font-size:13px" onclick="openModal('modal-edit-profile')" data-en="✏️ Edit Profile" data-ne="✏️ प्रोफाइल सम्पादन">✏️ Edit Profile</button>
+        </div>
+      </div>
+
+      <!-- Safety & Privacy -->
+      <div class="card" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div style="font-weight:700;font-size:15px">&#128737; <span data-en="Safety &amp; Privacy" data-ne="सुरक्षा र गोपनीयता">Safety &amp; Privacy</span></div>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div class="card" style="flex:1;min-width:220px;box-shadow:none;border:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:22px">&#128154;</span>
+              <span class="badge" style="background:rgba(5,150,105,.12);color:var(--green)">{{ contacts|length }} ACTIVE</span>
+            </div>
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px" data-en="Emergency Contacts" data-ne="आपतकालीन सम्पर्क">Emergency Contacts</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:14px" data-en="Trusted individuals to notify in emergencies." data-ne="आपतकालमा सूचना दिने विश्वसनीय व्यक्तिहरू।">Trusted individuals to notify in emergencies.</div>
+            <a class="btn-sec" style="font-size:12px;padding:8px 14px;text-decoration:none" href="{{ url_for('user.safety_page') }}" data-en="Manage Contacts" data-ne="सम्पर्क व्यवस्थापन">Manage Contacts</a>
+          </div>
+          <!-- Decorative: live location sharing isn't backed by a real setting yet -->
+          <div class="card" style="flex:1;min-width:220px;box-shadow:none;border:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:22px">&#129517;</span>
+            </div>
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px" data-en="Live Location Sharing" data-ne="लाइभ स्थान साझेदारी">Live Location Sharing</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:14px" data-en="Shared only during active SOS alerts — see Safety Hub." data-ne="सक्रिय SOS अलर्टको क्रममा मात्र साझेदारी — सुरक्षा केन्द्र हेर्नुस्।">Shared only during active SOS alerts — see Safety Hub.</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--blue)"></div>
+              <span style="font-size:12px;color:var(--blue);font-weight:600" data-en="SOS-only sharing active" data-ne="SOS-मात्र साझेदारी सक्रिय">SOS-only sharing active</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Change Password -->
+      <div class="card" style="margin-bottom:20px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px">&#128274; <span data-en="Password" data-ne="पासवर्ड">Password</span></div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px" data-en="Change the password used to sign in to your account." data-ne="आफ्नो खातामा साइन इन गर्न प्रयोग गरिएको पासवर्ड परिवर्तन गर्नुस्।">Change the password used to sign in to your account.</p>
+        <button class="btn-sec" type="button" style="font-size:13px;padding:10px 16px" onclick="openModal('modal-change-password')" data-en="Change Password" data-ne="पासवर्ड परिवर्तन">Change Password</button>
+      </div>
+
+    </div>
+
+    <aside class="settings-right">
+      <!-- Invite a Friend — copies a shareable link -->
+      <div style="background:linear-gradient(160deg,#1B3D2F 0%,#2d5a3d 50%,#1565C0 100%);border-radius:var(--radius);padding:24px;text-align:center;margin-bottom:16px">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Bhetam logo" style="height:60px;width:auto;margin:0 auto 12px;display:block;object-fit:contain;filter:brightness(0) invert(1)">
+        <div style="font-family:'Playfair Display',serif;font-size:18px;margin-bottom:4px;color:#fff" data-en="Invite a Friend" data-ne="साथीलाई आमन्त्रण गर्नुस्">Invite a Friend</div>
+        <div style="font-size:12px;opacity:.8;margin-bottom:14px;color:rgba(255,255,255,.85);line-height:1.5" data-en="Share Bhetam with friends and plan meetups together." data-ne="साथीहरूसँग Bhetam साझा गर्नुस् र सँगै भेटघाट योजना बनाउनुस्।">Share Bhetam with friends and plan meetups together.</div>
+        <button type="button" onclick="copyInviteLink()" id="invite-btn"
+                style="background:rgba(255,255,255,.95);color:#1B3D2F;font-weight:700;font-size:13px;padding:10px 20px;border:none;border-radius:10px;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%"
+                data-en="🔗 Copy Invite Link" data-ne="🔗 आमन्त्रण लिंक प्रतिलिपि">
+          🔗 Copy Invite Link
+        </button>
+        <div id="invite-link-display" style="display:none;margin-top:10px;background:rgba(255,255,255,.15);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:10px;color:rgba(255,255,255,.7);margin-bottom:4px;">Share this link:</div>
+          <div id="invite-link-text" style="font-size:11px;color:#fff;word-break:break-all;font-family:monospace;"></div>
+        </div>
+      </div>
+
+      <!-- Account Status -->
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:14px" data-en="ACCOUNT STATUS" data-ne="खाता स्थिति">ACCOUNT STATUS</div>
+        {% if user.is_verified %}
+        <div class="check-row" data-en="✅ Email Verified" data-ne="✅ इमेल प्रमाणित">✅ Email Verified</div>
+        {% else %}
+        <div class="check-row" style="color:var(--red)" data-en="❌ Email Not Verified" data-ne="❌ इमेल प्रमाणित छैन">❌ Email Not Verified</div>
+        {% endif %}
+      </div>
+
+      <!-- Notification Preferences — functional -->
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:16px" data-en="🔔 Notification Preferences" data-ne="🔔 सूचना प्राथमिकताहरू">🔔 Notification Preferences</div>
+        <form method="POST" action="{{ url_for('user.settings_page') }}">
+          <input type="hidden" name="action" value="update_notification_prefs">
+          <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+
+            <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:10px;">
+              <div>
+                <div style="font-size:13px;font-weight:600;">Smart Alerts</div>
+                <div style="font-size:11px;color:var(--muted);">AI-powered reminders</div>
+              </div>
+              <input type="checkbox" name="smart_alerts_enabled" {% if prefs and prefs.smart_alerts_enabled %}checked{% endif %}
+                     style="width:18px;height:18px;cursor:pointer;accent-color:var(--primary);">
+            </label>
+
+            <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:10px;">
+              <div>
+                <div style="font-size:13px;font-weight:600;">Meetup Reminders</div>
+                <div style="font-size:11px;color:var(--muted);">Before upcoming meetups</div>
+              </div>
+              <input type="checkbox" name="meetup_reminders" {% if prefs and prefs.meetup_reminders %}checked{% endif %}
+                     style="width:18px;height:18px;cursor:pointer;accent-color:var(--primary);">
+            </label>
+
+            <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:10px;">
+              <div>
+                <div style="font-size:13px;font-weight:600;">Invite Alerts</div>
+                <div style="font-size:11px;color:var(--muted);">When you receive meetup invites</div>
+              </div>
+              <input type="checkbox" name="invite_alerts" {% if prefs and prefs.invite_alerts %}checked{% endif %}
+                     style="width:18px;height:18px;cursor:pointer;accent-color:var(--primary);">
+            </label>
+
+            <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:10px;">
+              <div>
+                <div style="font-size:13px;font-weight:600;">Trending Digest</div>
+                <div style="font-size:11px;color:var(--muted);">Weekly trending spots</div>
+              </div>
+              <input type="checkbox" name="trending_alerts" {% if prefs and prefs.trending_alerts %}checked{% endif %}
+                     style="width:18px;height:18px;cursor:pointer;accent-color:var(--primary);">
+            </label>
+
+          </div>
+          <button type="submit" class="btn-primary" style="width:100%;padding:10px;font-size:13px;">
+            Save Preferences
+          </button>
+        </form>
+        <div style="margin-top:10px;text-align:center;">
+          <a href="{{ url_for('user.notifications_page') }}" style="font-size:12px;color:var(--blue);text-decoration:none;font-weight:600;">
+            ⚙️ Advanced notification settings →
+          </a>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal-overlay" id="modal-edit-profile" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:480px">
+    <button class="modal-close" type="button" onclick="closeModal('modal-edit-profile')">✕</button>
+    <div class="modal-title">Edit Profile</div>
+    <form method="POST" action="{{ url_for('user.settings_page') }}" enctype="multipart/form-data">
+      <input type="hidden" name="action" value="update_profile">
+      <div style="margin-bottom:14px"><label class="field-label" for="ep-fullname">Full Name</label><input class="field-input" id="ep-fullname" name="full_name" value="{{ user.full_name }}" required /></div>
+      <div style="margin-bottom:14px"><label class="field-label" for="ep-phone">Phone</label><input class="field-input" id="ep-phone" name="phone" value="{{ user.phone or '' }}" /></div>
+      <div style="margin-bottom:14px"><label class="field-label" for="ep-budget">Budget Preference (NPR)</label><input class="field-input" id="ep-budget" name="budget_preference" type="number" min="0" step="0.01" value="{{ user.budget_preference or 0 }}" /></div>
+      <div style="margin-bottom:14px"><label class="field-label" for="ep-cuisine">Cuisine Preference</label><input class="field-input" id="ep-cuisine" name="cuisine_preference" value="{{ user.cuisine_preference or '' }}" placeholder="e.g. Newari, Italian, Vegan" /></div>
+      <div style="margin-bottom:20px">
+        <label class="field-label" for="ep-transport">Transport Preference</label>
+        <select class="field-input" id="ep-transport" name="transport_preference">
+          <option value="any" {% if user.transport_preference == 'any' %}selected{% endif %}>Any</option>
+          <option value="walking" {% if user.transport_preference == 'walking' %}selected{% endif %}>Walking</option>
+          <option value="bike" {% if user.transport_preference == 'bike' %}selected{% endif %}>Bike</option>
+          <option value="car" {% if user.transport_preference == 'car' %}selected{% endif %}>Car</option>
+          <option value="public" {% if user.transport_preference == 'public' %}selected{% endif %}>Public Transport</option>
+        </select>
+      </div>
+      <div style="margin-bottom:20px">
+        <label class="field-label" for="ep-profile-pic">Profile Picture</label>
+        <input class="field-input" id="ep-profile-pic" name="profile_pic" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
+      </div>
+      <button class="btn-primary" type="submit">Save Changes</button>
+    </form>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-overlay" id="modal-change-password" role="dialog" aria-modal="true">
+  <div class="modal-box" style="max-width:420px">
+    <button class="modal-close" type="button" onclick="closeModal('modal-change-password')">✕</button>
+    <div class="modal-title">Change Password</div>
+    <form method="POST" action="{{ url_for('user.settings_page') }}">
+      <input type="hidden" name="action" value="change_password">
+      <div style="margin-bottom:14px"><label class="field-label" for="cp-current">Current Password</label><input class="field-input" id="cp-current" name="current_password" type="password" required /></div>
+      <div style="margin-bottom:14px"><label class="field-label" for="cp-new">New Password</label><input class="field-input" id="cp-new" name="new_password" type="password" placeholder="Min 6 characters" required /></div>
+      <div style="margin-bottom:20px"><label class="field-label" for="cp-confirm">Confirm New Password</label><input class="field-input" id="cp-confirm" name="confirm_password" type="password" required /></div>
+      <button class="btn-primary" type="submit">Update Password</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Theme toggle — settings page uses user.theme_preference (more accurate than session)
+function toggleTheme() {
+  var theme = "{{ user.theme_preference or 'light' }}";
+  var newTheme = (theme === 'dark') ? 'light' : 'dark';
+  var lang = "{{ user.language_preference or 'en' }}";
+  fetch("{{ url_for('user.settings_page') }}", {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: 'theme=' + newTheme + '&language=' + lang
+  }).then(function() { location.reload(); });
+}
+
+// Copy invite link — copies the app URL to clipboard
+function copyInviteLink() {
+  var inviteLink = window.location.origin + '/auth/register';
+  var btn = document.getElementById('invite-btn');
+  var display = document.getElementById('invite-link-display');
+  var linkText = document.getElementById('invite-link-text');
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(inviteLink).then(function() {
+      btn.textContent = '✓ Link Copied!';
+      btn.style.background = 'rgba(255,255,255,.98)';
+      btn.style.color = 'var(--green)';
+      setTimeout(function() {
+        btn.textContent = '🔗 Copy Invite Link';
+        btn.style.color = '#1B3D2F';
+      }, 2500);
+    }).catch(function() { showFallback(); });
+  } else {
+    showFallback();
+  }
+
+  function showFallback() {
+    if (linkText) linkText.textContent = inviteLink;
+    if (display) display.style.display = 'block';
+    showToast('Copy the link above to share!');
+  }
+}
+</script>
+{% endblock %}

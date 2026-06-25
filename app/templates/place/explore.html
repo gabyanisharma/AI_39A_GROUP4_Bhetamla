@@ -1,0 +1,211 @@
+﻿{% extends "base_dashboard.html" %}
+{% set active_page = 'explore' %}
+{% block title %}Explore — Bhetamल{% endblock %}
+
+{% macro spot_card(s, liked_ids, saved_ids) %}
+<div class="card" style="cursor:pointer;transition:transform .15s;position:relative"
+     onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''"
+     onclick="window.location='{{ url_for('explore.spot', spot_id=s.id) }}'">
+  {% if s.thumbnail_url or s.image_url %}
+  <img src="{{ s.thumbnail_url or s.image_url }}" alt="{{ s.name }}" style="width:100%;height:150px;object-fit:cover;border-radius:12px;margin-bottom:12px" onerror="this.style.display='none'">
+  {% else %}
+  <div style="width:100%;height:150px;border-radius:12px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;font-size:42px;margin-bottom:12px">📍</div>
+  {% endif %}
+  <div style="position:absolute;top:12px;left:12px;display:flex;gap:6px">
+    {% if s.is_featured %}<span class="badge" style="background:rgba(212,160,23,.92);color:#fff;font-size:10px">★ Featured</span>{% endif %}
+    {% if s.trend_score and s.trend_score|float > 0 %}<span class="badge" style="background:rgba(229,62,62,.9);color:#fff;font-size:10px">🔥 {{ s.trend_score|round(0)|int }}</span>{% endif %}
+  </div>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
+    <div>
+      <div style="font-weight:700;font-size:14.5px;margin-bottom:3px">{{ s.name }}</div>
+      <div style="font-size:11.5px;color:var(--muted)">{{ s.address or 'Kathmandu' }}{% if s.cuisine %} · {{ s.cuisine }}{% endif %}</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="color:var(--amber);font-size:13px">★</span>
+      <span style="font-weight:700;font-size:13px">{{ s.rating or '—' }}</span>
+      {% if s.review_count %}<span style="font-size:11px;color:var(--muted)">({{ s.review_count }})</span>{% endif %}
+    </div>
+    {% if s.avg_cost_per_person %}<span style="font-size:12px;color:var(--muted)">NPR {{ s.avg_cost_per_person|round(0)|int }}/person</span>{% endif %}
+  </div>
+  <div style="display:flex;gap:8px" onclick="event.stopPropagation()">
+    <button type="button" class="spot-action {% if s.id in liked_ids %}is-active{% endif %}"
+            data-spot="{{ s.id }}" data-type="like"
+            onclick="toggleSpot(this)"
+            style="flex:1;border:1px solid var(--border);background:none;border-radius:9px;padding:7px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text)">
+      <span class="ico">{% if s.id in liked_ids %}❤️{% else %}🤍{% endif %}</span> Like
+    </button>
+    <button type="button" class="spot-action {% if s.id in saved_ids %}is-active{% endif %}"
+            data-spot="{{ s.id }}" data-type="save"
+            onclick="toggleSpot(this)"
+            style="flex:1;border:1px solid var(--border);background:none;border-radius:9px;padding:7px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text)">
+      <span class="ico">{% if s.id in saved_ids %}🔖{% else %}📑{% endif %}</span> Save
+    </button>
+  </div>
+</div>
+{% endmacro %}
+
+{% block page_content %}
+<div class="page active" style="flex-direction:column" role="main">
+  {% include '_topbar.html' %}
+
+  <div style="padding:28px;overflow-y:auto;flex:1">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--primary);margin-bottom:6px">
+          {% if saved_view %}Your Saved Spots{% else %}Explore Trending Spots{% endif %}
+        </h1>
+        <p style="color:var(--muted);font-size:13.5px">
+          {% if saved_view %}Spots you've bookmarked for your next meetup.
+          {% else %}Discover where Kathmandu is meeting up right now — ranked by what people love.{% endif %}
+        </p>
+      </div>
+      {% if saved_view %}
+      <a href="{{ url_for('explore.feed') }}" style="color:var(--blue);font-size:13px;font-weight:700;text-decoration:none">← Back to Explore</a>
+      {% else %}
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <form method="GET" action="{{ url_for('explore.feed') }}" style="display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:8px 14px;">
+          <span style="font-size:14px">&#128269;</span>
+          <input name="q" type="search" value="{{ search_q }}" placeholder="Search trending spots..." style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);min-width:200px;padding:0" />
+        </form>
+        <a href="{{ url_for('explore.saved') }}" style="color:var(--blue);font-size:13px;font-weight:700;text-decoration:none">🔖 Saved Spots</a>
+      </div>
+      {% endif %}
+    </div>
+
+    {# ── Recommendations rail ── #}
+    {% if recommendations %}
+    <div style="margin-bottom:28px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <h2 style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700">✨ Recommended for you</h2>
+      </div>
+      <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:6px">
+        {% for s in recommendations %}
+        <div class="card" id="rec-{{ s.id }}" style="min-width:260px;max-width:260px;position:relative;cursor:pointer"
+             onclick="window.location='{{ url_for('explore.spot', spot_id=s.id) }}'">
+          <button type="button" title="Dismiss" onclick="event.stopPropagation();dismissRec({{ s.id }})"
+                  style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.4);color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;z-index:2">✕</button>
+          {% if s.thumbnail_url or s.image_url %}
+          <img src="{{ s.thumbnail_url or s.image_url }}" alt="{{ s.name }}" style="width:100%;height:120px;object-fit:cover;border-radius:12px;margin-bottom:10px" onerror="this.style.display='none'">
+          {% else %}
+          <div style="width:100%;height:120px;border-radius:12px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:10px">📍</div>
+          {% endif %}
+          <div style="font-weight:700;font-size:14px;margin-bottom:3px">{{ s.name }}</div>
+          <div style="font-size:11px;color:var(--blue);font-weight:600;margin-bottom:6px">{{ s.recommendation_reason }}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="color:var(--amber);font-size:12px">★</span>
+            <span style="font-weight:700;font-size:12px">{{ s.rating or '—' }}</span>
+            {% if s.avg_cost_per_person %}<span style="font-size:11px;color:var(--muted);margin-left:auto">NPR {{ s.avg_cost_per_person|round(0)|int }}</span>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Filters ── #}
+    {% if not saved_view %}
+    <form method="GET" action="{{ url_for('explore.feed') }}" style="margin-bottom:20px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <select name="cuisine" class="field-input" style="width:auto;padding:8px 12px;font-size:13px" onchange="this.form.submit()">
+          <option value="">🍽️ All Cuisines</option>
+          {% for c in cuisines %}
+          <option value="{{ c }}" {% if filters.get('cuisine') == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+        <select name="price_range" class="field-input" style="width:auto;padding:8px 12px;font-size:13px" onchange="this.form.submit()">
+          <option value="">💰 Any Price</option>
+          <option value="budget" {% if filters.get('price_range') == 'budget' %}selected{% endif %}>Budget</option>
+          <option value="mid" {% if filters.get('price_range') == 'mid' %}selected{% endif %}>Mid-range</option>
+          <option value="expensive" {% if filters.get('price_range') == 'expensive' %}selected{% endif %}>Premium</option>
+        </select>
+        <select name="min_rating" class="field-input" style="width:auto;padding:8px 12px;font-size:13px" onchange="this.form.submit()">
+          <option value="">★ Any Rating</option>
+          <option value="4" {% if filters.get('min_rating') == 4.0 %}selected{% endif %}>4.0+</option>
+          <option value="4.5" {% if filters.get('min_rating') == 4.5 %}selected{% endif %}>4.5+</option>
+        </select>
+        {% if filters %}
+        <a href="{{ url_for('explore.feed') }}" style="font-size:12px;color:var(--red);font-weight:600;text-decoration:none">✕ Clear filters</a>
+        {% endif %}
+      </div>
+    </form>
+    {% endif %}
+
+    {# ── Trending grid ── #}
+    {% if spots %}
+    {% if not saved_view and not search_q %}
+    <h2 style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:12px">🔥 Trending Now</h2>
+    {% endif %}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+      {% for s in spots %}
+      {{ spot_card(s, liked_ids, saved_ids) }}
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card" style="text-align:center;padding:40px;color:var(--muted)">
+      <div style="font-size:36px;margin-bottom:14px">📍</div>
+      {% if search_q %}
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">No spots match "{{ search_q }}"</div>
+      <div style="font-size:13px">Try a different search term.</div>
+      {% elif saved_view %}
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">No saved spots yet</div>
+      <div style="font-size:13px">Tap “Save” on any trending spot to keep it here.</div>
+      {% else %}
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">No trending spots yet</div>
+      <div style="font-size:13px">Spots will appear here as the community starts engaging.</div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- SOS Modal -->
+<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
+  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
+    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
+    <div style="font-size:48px;margin-bottom:10px">🆘</div>
+    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
+    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
+    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
+    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
+  </div>
+</div>
+
+<style>
+  .spot-action.is-active { border-color: var(--primary); background: var(--input-bg); }
+</style>
+<script>
+function toggleSpot(btn) {
+  const spotId = btn.getAttribute('data-spot');
+  const type = btn.getAttribute('data-type');
+  fetch(`/explore/spot/${spotId}/interact`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: type })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.success) return;
+    const ico = btn.querySelector('.ico');
+    btn.classList.toggle('is-active', data.active);
+    if (type === 'like') ico.textContent = data.active ? '❤️' : '🤍';
+    if (type === 'save') ico.textContent = data.active ? '🔖' : '📑';
+  })
+  .catch(() => {});
+}
+
+function dismissRec(spotId) {
+  fetch(`/explore/recommendation/${spotId}/dismiss`, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        const card = document.getElementById('rec-' + spotId);
+        if (card) card.remove();
+      }
+    })
+    .catch(() => {});
+}
+</script>
+{% endblock %}
+

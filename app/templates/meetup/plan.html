@@ -1,0 +1,2057 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'plan' %}
+{% set show_advanced = created_meetup is defined and created_meetup %}
+{% set active_meetup = created_meetup if show_advanced else none %}
+{% block title %}Plan Meetup — Bhetamल{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  #plan-leaflet-map .leaflet-control-attribution {
+    font-size: 10px;
+  }
+  .plan-map-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    border: 3px solid #fff;
+    box-shadow: 0 5px 16px rgba(8,45,37,.28);
+  }
+  .plan-map-dot.member {
+    background: linear-gradient(135deg,var(--blue),var(--primary));
+  }
+  .plan-map-dot.midpoint {
+    background: linear-gradient(135deg,var(--gold),var(--green));
+  }
+  .plan-map-dot.restaurant-selected {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg,var(--gold),var(--green));
+    border: 4px solid #fff;
+    box-shadow: 0 0 0 5px rgba(200,153,58,.28), 0 12px 28px rgba(8,45,37,.35);
+  }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div id="page-plan" class="page active" style="flex-direction:column" role="main">
+  {% include '_topbar.html' %}
+
+  <div id="plan-phase-create" style="display:{{ 'none' if show_advanced else 'block' }};flex:1;overflow-y:auto;padding:32px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px;">
+      <span style="font-size:22px;">📍</span>
+      <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--primary);letter-spacing:0;">Plan a Meetup</h1>
+    </div>
+
+    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
+      <div style="flex:1;min-width:320px;max-width:560px;background:var(--white);border-radius:20px;padding:30px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
+        <div style="font-weight:700;font-size:17px;color:var(--text);margin-bottom:22px;font-family:'Lora',serif;">Create New Meetup</div>
+
+        <form method="POST" action="{{ url_for('meetup.create') }}" id="create-meetup-form">
+          <input type="hidden" id="pm-lat" name="user_lat" />
+          <input type="hidden" id="pm-lng" name="user_lng" />
+          <input type="hidden" id="pm-addr" name="user_address" />
+
+          <div style="display:flex;align-items:center;gap:12px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:12px;padding:13px 16px;margin-bottom:20px;">
+            <span style="font-size:18px;flex-shrink:0;">📍</span>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:13px;color:var(--text);" id="pm-loc-label">Location not set</div>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:1px;">Your starting point for midpoint calculation</div>
+            </div>
+            <button type="button" onclick="detectPMLocation()" style="background:none;border:none;color:var(--blue);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;padding:0;flex-shrink:0;">Detect</button>
+          </div>
+
+          <div style="margin-bottom:16px;">
+            <label class="field-label" for="pm-title">MEETUP TITLE*</label>
+            <input class="field-input" id="pm-title" name="title" placeholder="e.g. Weekend Coffee at Thamel" required />
+          </div>
+          <div style="margin-bottom:16px;">
+            <label class="field-label" for="pm-desc">DESCRIPTION (OPTIONAL)</label>
+            <textarea class="field-input" id="pm-desc" name="description" placeholder="What's the plan?" style="resize:vertical;min-height:90px;font-family:'DM Sans',sans-serif;"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div>
+              <label class="field-label" for="pm-date">DATE*</label>
+              <input class="field-input" id="pm-date" name="meetup_date" type="date" required/>
+            </div>
+            <div>
+              <label class="field-label" for="pm-time">TIME*</label>
+              <input class="field-input" id="pm-time" name="meetup_time" type="time" required/>
+            </div>
+          </div>
+
+          <div style="margin-bottom:24px;">
+            <label class="field-label">INVITE FRIENDS</label>
+            {% if friends %}
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+              {% for f in friends %}
+              <label style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:8px;border-radius:10px;border:1.5px solid var(--border);">
+                <input type="checkbox" name="invite_friends" value="{{ f.id }}" style="width:16px;height:16px;accent-color:var(--blue);cursor:pointer;" />
+                <div class="avatar" style="width:32px;height:32px;background:var(--blue);font-size:12px;flex-shrink:0;">{{ f.full_name[:2]|upper }}</div>
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:var(--text);">{{ f.full_name }}</div>
+                  <div style="font-size:11px;color:var(--muted);">{{ f.email }}</div>
+                </div>
+              </label>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div style="margin-top:10px;padding:14px;background:var(--input-bg);border-radius:10px;font-size:13px;color:var(--muted);">
+              No friends yet — <a href="{{ url_for('meetup.groups') }}" style="color:var(--blue);font-weight:600;">add some from My Groups →</a>
+            </div>
+            {% endif %}
+          </div>
+
+          <button class="btn-primary" type="submit" style="width:100%;padding:15px;font-size:15px;border-radius:12px;">
+            🚀 Create Meetup
+          </button>
+        </form>
+
+        <script>
+        document.getElementById('pm-date').min = new Date().toISOString().split('T')[0];
+
+        document.getElementById('create-meetup-form').addEventListener('submit', function(e) {
+          const lat = document.getElementById('pm-lat').value;
+          const lng = document.getElementById('pm-lng').value;
+          if (!lat || !lng) {
+            e.preventDefault();
+            alert('Please detect your location first.');
+            return;
+          }
+          const checked = document.querySelectorAll('input[name="invite_friends"]:checked');
+          if (checked.length === 0) {
+            e.preventDefault();
+            alert('Please invite at least one friend.');
+          }
+        });
+        </script>
+        <!-- Route Planner Step — shown after meetup created -->
+        {% if meetup_id %}
+        <div style="margin-top:18px;padding:18px;border:1.5px solid var(--border);border-radius:14px;background:var(--input-bg);">
+          <div style="font-weight:700;font-size:14px;margin-bottom:5px;">📍 Next: Plan Your Route</div>
+          <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;">Add waypoints and directions for your meetup group.</div>
+          <a href="{{ url_for('ride.planner') }}?meetup_id={{meetup_id }}" class="btn-primary" style="text-decoration:none;display:flex;justify-content:center;padding:12px;">
+            Open Route Planner →
+          </a>
+        </div>
+        {% endif %}
+      </div>
+
+      <div style="width:320px;flex-shrink:0;background:var(--white);border-radius:20px;padding:24px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div style="font-weight:700;font-size:16px;font-family:'Lora',serif;color:var(--text);">My Meetups</div>
+          <span style="font-size:12px;color:var(--muted);font-weight:500;">{{ meetups|length }} total</span>
+        </div>
+        {% for m in meetups[:5] %}
+        <div style="display:flex;align-items:center;gap:8px;padding:10px;border-radius:12px;border:1.5px solid var(--border);margin-bottom:10px;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+          {% if m.created_by == current_user_id %}
+          <a href="{{ url_for('meetup.plan', meetup_id=m.id) }}" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;">
+            <div style="width:42px;height:42px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📅</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ m.title }}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">By {{ m.creator_name }} — {{ m.meetup_date or 'Date not set' }}</div>
+              <div style="font-size:11px;color:var(--blue);font-weight:700;margin-top:3px;">Open planner</div>
+            </div>
+          </a>
+          {% else %}
+          <a href="javascript:void(0)" onclick="showToast('Only the organiser can make changes to this meetup.')" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;cursor:pointer;">
+            <div style="width:42px;height:42px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📅</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ m.title }}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">By {{ m.creator_name }} — {{ m.meetup_date or 'Date not set' }}</div>
+              <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:3px;">View only</div>
+            </div>
+          </a>
+          {% endif %}
+          <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;">
+            <span style="background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">{{ m.status|title }}</span>
+            {% if m.created_by == current_user_id %}
+            <form method="POST" action="{{ url_for('meetup.delete_plan', meetup_id=m.id) }}" onsubmit="return confirm('Delete this meetup plan?');" style="margin:0;">
+              <button type="submit" aria-label="Delete {{ m.title }}" title="Delete plan" style="width:30px;height:30px;border-radius:9px;border:1.5px solid rgba(192,57,43,.25);background:#FFEBEE;color:var(--red);font-size:13px;font-weight:800;cursor:pointer;">✕</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <div style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0;">No meetups yet.</div>
+        {% endfor %}
+        <a class="btn-sec" style="width:100%;justify-content:center;margin-top:14px;font-size:12.5px;text-decoration:none;display:flex;" href="{{ url_for('meetup.groups') }}">View All Meetups →</a>
+      </div>
+    </div>
+  </div>
+
+  {% include "meetup/_plan_advanced.html" %}
+</div>
+
+<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
+  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
+    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
+    <div style="font-size:48px;margin-bottom:10px">🆘</div>
+    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
+    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
+    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
+    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
+  </div>
+</div>
+
+{% include "meetup/_planner_modals.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/plan-dynamic.js') }}"></script>
+<script>
+window.PLAN_CONTEXT = {
+  hasMeetup: {{ 'true' if show_advanced else 'false' }},
+  meetupId: {{ active_meetup.id if show_advanced else 'null' }},
+  currentUserId: {{ current_user_id if current_user_id is defined else 'null' }},
+  confirmUrl: "{{ url_for('meetup.confirm_plan', meetup_id=active_meetup.id) if show_advanced else '' }}",
+  completeUrl: "{{ url_for('meetup.complete_plan', meetup_id=active_meetup.id) if show_advanced else '' }}",
+  status: {{ (active_meetup.status if show_advanced else '')|tojson }},
+  title: {{ (active_meetup.title if show_advanced else '')|tojson }},
+  date: {{ (active_meetup.meetup_date|string if show_advanced and active_meetup.meetup_date else '')|tojson }},
+  time: {{ (active_meetup.meetup_time|string if show_advanced and active_meetup.meetup_time else '')|tojson }},
+  people: {{ (created_members|length if show_advanced else 1) }},
+  mapPoints: {{ (created_map_points if created_map_points else [])|tojson }},
+  midpoint: {{ (created_midpoint if created_midpoint else none)|tojson }},
+  creatorName: {{ session.get('user_name', 'You')|tojson }},
+  members: {{ (created_members|tojson if created_members else '[]') }}
+};
+
+var planLeafletMap = null;
+var planMarkerLayer = null;
+var planRouteLayer = null;
+var planRestaurantLayer = null;
+var planSelectedRestaurantMarker = null;
+var planLatestRestaurants = [];
+var planRouteVersion = 0;
+var serialResponses = {};
+var midpointDirty = false;
+var PLAN_RESTAURANT_RADIUS_KM = 5.0;  // default; updated by the radius dropdown
+var planRestaurantFilters = {
+  cuisines: [],
+  ambiences: [],
+  maxBudget: null,
+  minRating: 0
+};
+var planSelectedVenueName = '';
+var FEATURED_OFFER_RESTAURANTS = [];
+// ═══════════════════════════════════════════════════════════════════════════
+// STATIC KATHMANDU RESTAURANT DATA — paste this block into plan.html
+// Location: IMMEDIATELY after the line that reads:
+//     var FEATURED_OFFER_RESTAURANTS = [];
+// ═══════════════════════════════════════════════════════════════════════════
+
+var STATIC_KATHMANDU_RESTAURANTS = [
+  // ── Group 1 : Nepali & Traditional ───────────────────────────────────────
+  {
+    id:'static-1', name:'Jimbu Thakali',
+    cuisine:'Nepali',
+    rating:4.6, avg_cost_per_person:1000,
+    emoji:'🍛', latitude:27.7070, longitude:85.3140,
+    offer:'10% Off on total bill via Fonepay payment',
+    badge:'10% OFF', has_offer:true
+  },
+  {
+    id:'static-2', name:'The Village Café',
+    cuisine:'Nepali, Vegetarian',
+    rating:4.3, avg_cost_per_person:1000,
+    emoji:'🍛', latitude:27.7062, longitude:85.3120,
+    has_offer:false
+  },
+  {
+    id:'static-3', name:'Mantra Thakali',
+    cuisine:'Nepali',
+    rating:4.4, avg_cost_per_person:1000,
+    emoji:'🍛', latitude:27.7050, longitude:85.3095,
+    has_offer:false
+  },
+  {
+    id:'static-4', name:'Honacha',
+    cuisine:'Nepali',
+    rating:4.2, avg_cost_per_person:300,
+    emoji:'🍛', latitude:27.7031, longitude:85.3105,
+    has_offer:false
+  },
+  {
+    id:'static-5', name:'Bhojan Griha',
+    cuisine:'Nepali, Vegetarian',
+    rating:4.5, avg_cost_per_person:2000,
+    emoji:'🍛', latitude:27.7025, longitude:85.3200,
+    offer:'Free local cultural dance showcase with set dinner group bookings (5+ people)',
+    badge:'FREE SHOW', has_offer:true
+  },
+  // ── Group 2 : Café & Breakfast ────────────────────────────────────────────
+  // NOTE: cuisine MUST contain 'coffee' so the "☕ Café" chip matches it.
+  //       cleanFilterLabel("☕ Café") → finds 'caf' → returns 'Coffee'
+  //       cuisinesOk checks: cuisineText.indexOf('coffee') !== -1
+  {
+    id:'static-6', name:'Himalayan Java Coffee',
+    cuisine:'Café, coffee',
+    rating:4.5, avg_cost_per_person:1000,
+    emoji:'☕', latitude:27.7155, longitude:85.3125,
+    offer:'Buy any large coffee, get a bakery item at 50% off (Valid 8 AM – 11 AM)',
+    badge:'50% OFF', has_offer:true
+  },
+  {
+    id:'static-7', name:'Dhokaima Café',
+    cuisine:'Café, coffee, Continental',
+    rating:4.4, avg_cost_per_person:1000,
+    emoji:'☕', latitude:27.6730, longitude:85.3260,
+    has_offer:false
+  },
+  {
+    id:'static-8', name:'The Yellow House',
+    cuisine:'Café, coffee, Continental',
+    rating:4.5, avg_cost_per_person:1000,
+    emoji:'☕', latitude:27.6740, longitude:85.3270,
+    has_offer:false
+  },
+  {
+    id:'static-9', name:'Local Tea Stalls / Chiya Hubs',
+    cuisine:'Café, coffee',
+    rating:4.1, avg_cost_per_person:300,
+    emoji:'☕', latitude:27.7072, longitude:85.3129,
+    has_offer:false
+  },
+  {
+    id:'static-10', name:'Higher Ground Café',
+    cuisine:'Café, coffee, Continental',
+    rating:4.6, avg_cost_per_person:1000,
+    emoji:'☕', latitude:27.7150, longitude:85.3130,
+    has_offer:false
+  },
+  // ── Group 3 : Italian & Pizza ─────────────────────────────────────────────
+  {
+    id:'static-11', name:'Le Sherpa',
+    cuisine:'Italian, Continental',
+    rating:4.7, avg_cost_per_person:2000,
+    emoji:'🍕', latitude:27.7158, longitude:85.3145,
+    has_offer:false
+  },
+  {
+    id:'static-12', name:'Pizzahood',
+    cuisine:'Italian, Vegetarian',
+    rating:4.3, avg_cost_per_person:1000,
+    emoji:'🍕', latitude:27.7080, longitude:85.3135,
+    offer:'Buy 1 Large Firewood Pizza, Get 1 Small Margherita Free (Tuesdays only)',
+    badge:'BUY 1 GET 1', has_offer:true
+  },
+  {
+    id:'static-13', name:'Fire and Ice Pizzeria',
+    cuisine:'Italian',
+    rating:4.6, avg_cost_per_person:1000,
+    emoji:'🍕', latitude:27.7145, longitude:85.3118,
+    has_offer:false
+  },
+  {
+    id:'static-14', name:'Roadhouse Café',
+    cuisine:'Italian',
+    rating:4.5, avg_cost_per_person:1000,
+    emoji:'🍕', latitude:27.7160, longitude:85.3108,
+    offer:'Complimentary chocolate brownie on bills above NPR 3,000',
+    badge:'FREE BROWNIE', has_offer:true
+  },
+  // ── Group 4 : Continental & Multi-Cuisine ─────────────────────────────────
+  {
+    id:'static-15', name:'Evoke Bistro & Cafe',
+    cuisine:'Continental, Café, coffee',
+    rating:4.4, avg_cost_per_person:1000,
+    emoji:'🥗', latitude:27.7165, longitude:85.3150,
+    offer:'15% discount for student ID card holders (Mondays to Thursdays)',
+    badge:'15% OFF', has_offer:true
+  },
+  {
+    id:'static-16', name:'Rusty Garden',
+    cuisine:'Continental, Nepali',
+    rating:4.2, avg_cost_per_person:1000,
+    emoji:'🥗', latitude:27.7042, longitude:85.3155,
+    has_offer:false
+  },
+  {
+    id:'static-17', name:'Trisara',
+    cuisine:'Continental',
+    rating:4.3, avg_cost_per_person:2000,
+    emoji:'🥗', latitude:27.7200, longitude:85.3180,
+    has_offer:false
+  },
+  {
+    id:'static-18', name:'Chicken Station',
+    cuisine:'Continental',
+    rating:3.9, avg_cost_per_person:300,
+    emoji:'🥗', latitude:27.7048, longitude:85.3090,
+    has_offer:false
+  },
+  // ── Group 5 : Health & Vegetarian ─────────────────────────────────────────
+  {
+    id:'static-19', name:'Annamaya',
+    cuisine:'Vegetarian, Continental',
+    rating:4.5, avg_cost_per_person:1000,
+    emoji:'🌱', latitude:27.7020, longitude:85.3175,
+    offer:'10% off on all vegan/vegetarian Buddha Bowls',
+    badge:'10% OFF', has_offer:true
+  },
+  {
+    id:'static-20', name:'Ghangri Café',
+    cuisine:'Vegetarian, Nepali',
+    rating:4.2, avg_cost_per_person:1000,
+    emoji:'🌱', latitude:27.6760, longitude:85.3165,
+    has_offer:false
+  }
+];
+
+// ── Inject static offer-restaurants into FEATURED_OFFER_RESTAURANTS ──────────
+// Runs right away AND after the live DB call (which might return nothing).
+// Restaurants with has_offer:true are merged into the global array so they
+// appear in the Restaurant Offers modal.
+(function injectStaticOffers(){
+  var toAdd = STATIC_KATHMANDU_RESTAURANTS.filter(function(r){ return r.has_offer; })
+    .map(function(r){
+      return {
+        id: r.id, offer_id: null,
+        name: r.name, offer: r.offer || '',
+        badge: r.badge || 'OFFER', emoji: r.emoji || '🍽️',
+        cuisine: r.cuisine, rating: r.rating,
+        avg_cost_per_person: r.avg_cost_per_person,
+        latitude: r.latitude, longitude: r.longitude
+      };
+    });
+  var seen = FEATURED_OFFER_RESTAURANTS.map(function(r){ return (r.name||'').toLowerCase(); });
+  toAdd.forEach(function(r){
+    if(seen.indexOf(r.name.toLowerCase()) === -1){
+      FEATURED_OFFER_RESTAURANTS.push(r);
+      seen.push(r.name.toLowerCase());
+    }
+  });
+  if(!planSelectedVenueName && FEATURED_OFFER_RESTAURANTS.length){
+    planSelectedVenueName = FEATURED_OFFER_RESTAURANTS[0].name;
+  }
+  if(typeof renderFeaturedRestaurantOffers === 'function') renderFeaturedRestaurantOffers();
+})();
+
+// ── Patch fetchMidpointRestaurants to include static restaurants ──────────────
+// Wraps the original function. Static restaurants are filtered by the active
+// cuisine / budget / rating controls, then merged with any API results.
+(function patchFetchMidpointRestaurants(){
+  var _orig = fetchMidpointRestaurants;
+
+  fetchMidpointRestaurants = function(midpoint){
+    if(!midpoint){ return _orig ? _orig(midpoint) : undefined; }
+
+    // Read current filter state
+    collectPlanRestaurantFilters();
+    var filters = planRestaurantFilters;
+
+    // Apply filters to static list
+    var filtered = STATIC_KATHMANDU_RESTAURANTS.filter(function(r){
+      var ct = (r.cuisine || '').toLowerCase();
+
+      // Cuisine: every active chip must match something in the cuisine string
+      var cuisineOk = !filters.cuisines.length ||
+        filters.cuisines.some(function(c){ return ct.indexOf(c.toLowerCase()) !== -1; });
+
+      // Budget: avg_cost_per_person must be ≤ slider value
+      // Budget <300  → avg_cost_per_person = 300
+      // Mid ~1000    → avg_cost_per_person = 1000
+      // Fine 2000+   → avg_cost_per_person = 2000  (slider max, always passes)
+      var budgetOk = !filters.maxBudget ||
+        Number(r.avg_cost_per_person || 0) <= Number(filters.maxBudget);
+
+      // Rating: must be ≥ selected minimum
+      var ratingOk = !filters.minRating ||
+        Number(r.rating || 0) >= Number(filters.minRating);
+
+      return cuisineOk && budgetOk && ratingOk;
+    }).map(function(r){
+      return Object.assign({}, r, {
+        distance_km: planDistanceKm(midpoint, r),
+        is_featured_offer: r.has_offer || false
+      });
+    }).filter(function(r){
+      return Number(r.distance_km || 0) <= PLAN_RESTAURANT_RADIUS_KM;
+    }).sort(function(a, b){ return a.distance_km - b.distance_km; });
+
+    // Run the original API call, then merge static results in
+    var promise = _orig ? _orig(midpoint) : null;
+    if(promise && typeof promise.then === 'function'){
+      return promise.then(function(apiList){
+        var seen = {};
+        (apiList || []).forEach(function(r){ seen[normalizePlanName(r.name)] = true; });
+        var extras = filtered.filter(function(r){ return !seen[normalizePlanName(r.name)]; });
+        if(!extras.length) return apiList;
+        var merged = (apiList || []).concat(extras)
+          .sort(function(a,b){ return Number(a.distance_km||0) - Number(b.distance_km||0); });
+        ensureSelectedRestaurantInList(merged);
+        planLatestRestaurants = merged;
+        displayPlanRestaurantMarkers(merged, midpoint);
+        updateNearbyRestaurantList(merged);
+
+        // Also update offer cards so offer-having restaurants get highlighted
+        var offerPool = merged.filter(function(r){ return r.is_featured_offer || r.has_offer; });
+        var existingNames = FEATURED_OFFER_RESTAURANTS.map(function(r){ return (r.name||'').toLowerCase(); });
+        offerPool.forEach(function(r){
+          var key = (r.name||'').toLowerCase();
+          if(existingNames.indexOf(key) === -1){
+            FEATURED_OFFER_RESTAURANTS.push({
+              id: r.id, offer_id: null,
+              name: r.name, offer: r.offer || '',
+              badge: r.badge || 'OFFER', emoji: r.emoji || '🍽️',
+              cuisine: r.cuisine, rating: r.rating,
+              avg_cost_per_person: r.avg_cost_per_person,
+              latitude: r.latitude, longitude: r.longitude
+            });
+            existingNames.push(key);
+          }
+        });
+        return merged;
+      });
+    }
+
+    // Fallback if original fetch doesn't exist or returns nothing
+    ensureSelectedRestaurantInList(filtered);
+    planLatestRestaurants = filtered;
+    displayPlanRestaurantMarkers(filtered, midpoint);
+    if(filtered.length) updateNearbyRestaurantList(filtered);
+    return Promise.resolve(filtered);
+  };
+})();
+// ═══════════════════════════════════════════════════════════════════════════
+// END OF STATIC RESTAURANT INJECTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Load real offers from DB and refresh the offer modal
+(function loadLiveOffers() {
+  fetch('/place/api/offers', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(function(r) { return r.ok ? r.json() : { success: false }; })
+    .then(function(data) {
+      if (!data.success || !data.offers || !data.offers.length) return;
+      var emojiMap = { nepali:'🍛', indian:'🍛', italian:'🍕', cafe:'☕', coffee:'☕',
+        'coffee & cafe':'☕', continental:'🥗', chinese:'🥡', japanese:'🍣', thai:'🍜',
+        asian:'🥡', 'fast food':'🍔', 'bakery & desserts':'🧁', vegetarian:'🌱', burgers:'🍔' };
+      FEATURED_OFFER_RESTAURANTS = data.offers.map(function(o) {
+        var c = (o.cuisine || '').toLowerCase();
+        return {
+          id: 'offer-' + o.id,
+          offer_id: o.id,
+          name: o.restaurant_name,
+          offer: o.title + (o.discount_percent ? ' · ' + o.discount_percent + '% off' : ''),
+          badge: o.discount_percent ? o.discount_percent + '% OFF' : 'OFFER',
+          emoji: emojiMap[c] || '🍽️',
+          cuisine: o.cuisine || '',
+          rating: o.rating || 0,
+          avg_cost_per_person: o.avg_cost_per_person || 0,
+          latitude: o.latitude,
+          longitude: o.longitude
+        };
+      });
+      if (!planSelectedVenueName && FEATURED_OFFER_RESTAURANTS.length) {
+        planSelectedVenueName = FEATURED_OFFER_RESTAURANTS[0].name;
+      }
+      // Re-render the offers modal if it's open
+      if (typeof renderFeaturedRestaurantOffers === 'function') renderFeaturedRestaurantOffers();
+    })
+    .catch(function() {});
+})();
+var routeColors = ['#1565C0', '#1B6B3A', '#D99A00', '#C0392B', '#5D6DFF'];
+var PLAN_LOCATION_LOOKUP = {
+  'thamel': {name:'Thamel', lat:27.7153, lng:85.3123, address:'Thamel, Kathmandu'},
+  'thamel kathmandu': {name:'Thamel', lat:27.7153, lng:85.3123, address:'Thamel, Kathmandu'},
+  'patan': {name:'Patan Durbar Square', lat:27.6726, lng:85.3257, address:'Patan Durbar Square, Lalitpur'},
+  'patan lalitpur': {name:'Patan Durbar Square', lat:27.6726, lng:85.3257, address:'Patan Durbar Square, Lalitpur'},
+  'patan durbar square': {name:'Patan Durbar Square', lat:27.6726, lng:85.3257, address:'Patan Durbar Square, Lalitpur'},
+  'lalitpur': {name:'Lalitpur', lat:27.6588, lng:85.3247, address:'Lalitpur'},
+  'kathmandu': {name:'Kathmandu', lat:27.7172, lng:85.3240, address:'Kathmandu'},
+  'garden of dreams': {name:'Garden of Dreams', lat:27.7140, lng:85.3143, address:'Garden of Dreams, Kathmandu'},
+  'asan': {name:'Asan', lat:27.7072, lng:85.3129, address:'Asan, Kathmandu'},
+  'asan tole': {name:'Asan Tole', lat:27.7072, lng:85.3129, address:'Asan Tole, Kathmandu'},
+  'naxal': {name:'Naxal', lat:27.7177, lng:85.3301, address:'Naxal, Kathmandu'},
+  'sankhamul': {name:'Sankhamul', lat:27.6792, lng:85.3397, address:'Sankhamul, Kathmandu'},
+  'baneshwor': {name:'New Baneshwor', lat:27.6887, lng:85.3420, address:'New Baneshwor, Kathmandu'},
+  'new baneshwor': {name:'New Baneshwor', lat:27.6887, lng:85.3420, address:'New Baneshwor, Kathmandu'},
+  'jawalakhel': {name:'Jawalakhel', lat:27.6720, lng:85.3133, address:'Jawalakhel, Lalitpur'},
+  'boudha': {name:'Boudha Stupa', lat:27.7215, lng:85.3618, address:'Boudha, Kathmandu'},
+  'boudhanath': {name:'Boudha Stupa', lat:27.7215, lng:85.3618, address:'Boudha, Kathmandu'},
+  'bhaktapur': {name:'Bhaktapur Durbar Square', lat:27.6720, lng:85.4281, address:'Bhaktapur Durbar Square'}
+};
+
+function escapePlanHtml(value){
+  return String(value || '').replace(/[&<>"']/g, function(ch){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+  });
+}
+
+function makePlanMapIcon(type, label){
+  var safeLabel = String(label || '•').slice(0, 2).toUpperCase();
+  return L.divIcon({
+    className: '',
+    html: '<div class="plan-map-dot '+type+'">'+escapePlanHtml(safeLabel)+'</div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -18]
+  });
+}
+
+function normalizePlanLocation(value){
+  return String(value || '').trim().toLowerCase().replace(/[^\w\s.-]/g, ' ').replace(/\s+/g, ' ');
+}
+
+function clonePlanPoint(point){
+  if(!point) return null;
+  return {
+    name: point.name || point.address || 'Location',
+    lat: Number(point.lat),
+    lng: Number(point.lng),
+    address: point.address || point.name || ''
+  };
+}
+
+function toPlanPoint(point, fallbackName){
+  if(!point) return null;
+  var lat = Number(point.lat != null ? point.lat : point.latitude);
+  var lng = Number(point.lng != null ? point.lng : point.longitude);
+  if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return {
+    name: point.name || point.full_name || fallbackName || 'Location',
+    lat: lat,
+    lng: lng,
+    address: point.address || point.display_name || point.name || ''
+  };
+}
+
+function geographicMidpoint(points){
+  var usable = (points || []).map(function(point, index){
+    return toPlanPoint(point, 'Location ' + (index + 1));
+  }).filter(Boolean);
+  if(!usable.length) return null;
+
+  var x = 0;
+  var y = 0;
+  var z = 0;
+  usable.forEach(function(point){
+    var lat = point.lat * Math.PI / 180;
+    var lng = point.lng * Math.PI / 180;
+    x += Math.cos(lat) * Math.cos(lng);
+    y += Math.cos(lat) * Math.sin(lng);
+    z += Math.sin(lat);
+  });
+
+  x /= usable.length;
+  y /= usable.length;
+  z /= usable.length;
+
+  var lngMid = Math.atan2(y, x);
+  var hyp = Math.sqrt(x * x + y * y);
+  var latMid = Math.atan2(z, hyp);
+  return {
+    lat: latMid * 180 / Math.PI,
+    lng: lngMid * 180 / Math.PI,
+    address: 'Calculated geographic midpoint'
+  };
+}
+
+function averageLatLng(points){
+  return geographicMidpoint(points);
+}
+
+function fallbackPlanPoints(){
+  return [
+    {name:'You', lat:27.7153, lng:85.3123, address:'Thamel, Kathmandu'},
+    {name:'Friend', lat:27.6766, lng:85.3188, address:'Patan, Lalitpur'}
+  ];
+}
+
+function getPlanMapPoints(){
+  var ctx = window.PLAN_CONTEXT || {};
+  var points = (ctx.mapPoints || []).map(function(point, index){
+    return toPlanPoint(point, 'P' + (index + 1));
+  }).filter(Boolean);
+  return points.length ? points : fallbackPlanPoints();
+}
+
+function getPlanMidpoint(points){
+  var ctx = window.PLAN_CONTEXT || {};
+  var midpoint = toPlanPoint(ctx.midpoint, 'Smart midpoint');
+  return midpoint || geographicMidpoint(points) || {lat:27.7033, lng:85.3186, address:'Patan Durbar Square'};
+}
+
+function formatRouteMeta(distanceMeters, durationSeconds){
+  if(!distanceMeters || !durationSeconds) return '';
+  var km = distanceMeters / 1000;
+  var mins = Math.max(1, Math.round(durationSeconds / 60));
+  return km.toFixed(km >= 10 ? 0 : 1) + ' km · ' + mins + ' min';
+}
+
+function drawRouteLine(latLngs, color, routeLabel){
+  if(!planRouteLayer || !latLngs || latLngs.length < 2) return;
+  L.polyline(latLngs, {
+    color: '#FFFFFF',
+    weight: 10,
+    opacity: .92,
+    lineCap: 'round',
+    lineJoin: 'round'
+  }).addTo(planRouteLayer);
+  var route = L.polyline(latLngs, {
+    color: color,
+    weight: 5,
+    opacity: .96,
+    lineCap: 'round',
+    lineJoin: 'round'
+  }).addTo(planRouteLayer);
+  if(routeLabel) route.bindTooltip(routeLabel, {sticky:true});
+}
+
+function drawFallbackRoute(fromLatLng, toLatLng, color){
+  drawRouteLine([fromLatLng, toLatLng], color, 'Direct route preview');
+  if(planRouteLayer){
+    L.polyline([fromLatLng, toLatLng], {
+      color: color,
+      weight: 2,
+      opacity: .55,
+      dashArray: '5 9'
+    }).addTo(planRouteLayer);
+  }
+}
+
+function fetchRoadRoute(fromLatLng, toLatLng){
+  var from = fromLatLng[1].toFixed(6) + ',' + fromLatLng[0].toFixed(6);
+  var to = toLatLng[1].toFixed(6) + ',' + toLatLng[0].toFixed(6);
+  var url = 'https://router.project-osrm.org/route/v1/driving/' + from + ';' + to + '?overview=full&geometries=geojson&alternatives=false&steps=false';
+  return fetch(url).then(function(response){
+    if(!response.ok) throw new Error('Route unavailable');
+    return response.json();
+  }).then(function(data){
+    if(!data.routes || !data.routes.length || !data.routes[0].geometry){
+      throw new Error('Route missing');
+    }
+    return {
+      latLngs: data.routes[0].geometry.coordinates.map(function(coord){
+        return [coord[1], coord[0]];
+      }),
+      label: formatRouteMeta(data.routes[0].distance, data.routes[0].duration)
+    };
+  });
+}
+
+function drawPlanRoadRoute(fromLatLng, toLatLng, color, version){
+  if(!window.fetch){
+    drawFallbackRoute(fromLatLng, toLatLng, color);
+    return;
+  }
+  fetchRoadRoute(fromLatLng, toLatLng)
+    .then(function(route){
+      if(version !== planRouteVersion) return;
+      drawRouteLine(route.latLngs, color, route.label || 'Road route');
+    })
+    .catch(function(){
+      if(version !== planRouteVersion) return;
+      drawFallbackRoute(fromLatLng, toLatLng, color);
+    });
+}
+
+function cleanFilterLabel(value){
+  var cleaned = String(value || '')
+    .replace(/[^\w\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  var lower = cleaned.toLowerCase();
+  if(lower.indexOf('nepali') !== -1 || lower.indexOf('newari') !== -1) return 'Nepali';
+  if(lower.indexOf('caf') !== -1 || lower.indexOf('coffee') !== -1) return 'Coffee';
+  if(lower.indexOf('italian') !== -1) return 'Italian';
+  if(lower.indexOf('indian') !== -1) return 'Indian';
+  if(lower.indexOf('burger') !== -1) return 'Burgers';
+  if(lower.indexOf('vegetarian') !== -1) return 'Vegetarian';
+  if(lower.indexOf('casual') !== -1 || lower.indexOf('cozy') !== -1) return 'casual';
+  if(lower.indexOf('fine') !== -1) return 'fine_dining';
+  if(lower.indexOf('rooftop') !== -1) return 'rooftop';
+  if(lower.indexOf('garden') !== -1 || lower.indexOf('family') !== -1) return 'family_friendly';
+  return cleaned;
+}
+
+function ensureNearbyRestaurantControls(){
+  var modal = document.getElementById('modal-nearby-restaurants');
+  if(!modal) return null;
+  var btnRow = modal.querySelector('.feat-btn-row');
+  if(!document.getElementById('restaurant-min-rating') && btnRow){
+    var rating = document.createElement('div');
+    rating.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:12px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:10px';
+    rating.innerHTML = '<label for="restaurant-min-rating" style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap">Minimum Rating</label>' +
+      '<select id="restaurant-min-rating" class="field-input" style="padding:8px 10px;font-size:12px">' +
+      '<option value="0">Any rating</option><option value="4">4.0+ stars</option><option value="4.5">4.5+ stars</option></select>';
+    btnRow.parentNode.insertBefore(rating, btnRow);
+    rating.querySelector('select').addEventListener('change', refreshMidpointRestaurants);
+  }
+  var list = document.getElementById('nearby-restaurant-results');
+  if(!list && btnRow){
+    list = document.createElement('div');
+    list.id = 'nearby-restaurant-results';
+    var oldRows = modal.querySelectorAll('.venue-row');
+    oldRows.forEach(function(row){ row.style.display = 'none'; });
+    btnRow.parentNode.insertBefore(list, btnRow);
+  }
+  return list;
+}
+
+function collectPlanRestaurantFilters(){
+  planRestaurantFilters.cuisines = Array.prototype.map.call(
+    document.querySelectorAll('#modal-cuisine-preference .filter-chip.active'),
+    function(chip){ return chip.dataset.filter || cleanFilterLabel(chip.textContent); }
+  ).filter(Boolean);
+  planRestaurantFilters.ambiences = Array.prototype.map.call(
+    document.querySelectorAll('#modal-ambience-filter .ambience-pill.active'),
+    function(pill){
+      var label = pill.querySelector('.ambience-pill-label');
+      return pill.dataset.filter || cleanFilterLabel(label ? label.textContent : pill.textContent);
+    }
+  ).filter(Boolean);
+  planRestaurantFilters.maxBudget = readBudgetSelection ? readBudgetSelection() : null;
+  var ratingInput = document.getElementById('restaurant-min-rating');
+  planRestaurantFilters.minRating = ratingInput ? Number(ratingInput.value || 0) : 0;
+  return planRestaurantFilters;
+}
+
+function restaurantPriceLabel(value){
+  var amount = Number(value || 0);
+  return amount ? 'NPR ' + amount.toLocaleString() : 'Budget not listed';
+}
+
+function restaurantDistanceLabel(value){
+  var km = Number(value || 0);
+  if(!Number.isFinite(km) || km <= 0) return 'Distance unknown';
+  if(km < 1) return Math.round(km * 1000) + ' m';
+  return km.toFixed(1) + ' km';
+}
+
+function normalizePlanName(value){
+  return String(value || '').trim().toLowerCase();
+}
+
+function planDistanceKm(a, b){
+  if(!a || !b) return 0;
+  var lat1 = Number(a.lat != null ? a.lat : a.latitude);
+  var lng1 = Number(a.lng != null ? a.lng : a.longitude);
+  var lat2 = Number(b.lat != null ? b.lat : b.latitude);
+  var lng2 = Number(b.lng != null ? b.lng : b.longitude);
+  if(!Number.isFinite(lat1) || !Number.isFinite(lng1) || !Number.isFinite(lat2) || !Number.isFinite(lng2)) return 0;
+  var rad = Math.PI / 180;
+  var dLat = (lat2 - lat1) * rad;
+  var dLng = (lng2 - lng1) * rad;
+  var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function prepareFeaturedOfferRestaurants(midpoint){
+  collectPlanRestaurantFilters();
+  return FEATURED_OFFER_RESTAURANTS.map(function(r){
+    var copy = Object.assign({}, r);
+    copy.distance_km = midpoint ? planDistanceKm(midpoint, r) : 0;
+    copy.is_featured_offer = true;
+    return copy;
+  }).filter(function(r){
+    var cuisineText = normalizePlanName((r.cuisine || '') + ' ' + (r.category || ''));
+    var ambienceText = normalizePlanName(r.ambience || '');
+    var cuisinesOk = !planRestaurantFilters.cuisines.length || planRestaurantFilters.cuisines.some(function(c){
+      return cuisineText.indexOf(normalizePlanName(c)) !== -1;
+    });
+    var ambiencesOk = !planRestaurantFilters.ambiences.length || planRestaurantFilters.ambiences.some(function(a){
+      return ambienceText.indexOf(normalizePlanName(a)) !== -1 || normalizePlanName(a) === 'casual' && ambienceText.indexOf('casual') !== -1;
+    });
+    var budgetOk = !planRestaurantFilters.maxBudget || Number(r.avg_cost_per_person || 0) <= Number(planRestaurantFilters.maxBudget);
+    var ratingOk = !planRestaurantFilters.minRating || Number(r.rating || 0) >= Number(planRestaurantFilters.minRating);
+    var radiusOk = !midpoint || Number(r.distance_km || 0) <= PLAN_RESTAURANT_RADIUS_KM;
+    return cuisinesOk && ambiencesOk && budgetOk && ratingOk && radiusOk;
+  });
+}
+
+function mergePlanRestaurants(restaurants, midpoint){
+  var seen = {};
+  var merged = [];
+  prepareFeaturedOfferRestaurants(midpoint).concat(restaurants || []).forEach(function(r){
+    if(!r || !r.name) return;
+    var key = normalizePlanName(r.name);
+    if(seen[key]) return;
+    seen[key] = true;
+    if(midpoint && Number(r.distance_km || 0) > PLAN_RESTAURANT_RADIUS_KM) return;
+    merged.push(r);
+  });
+  return merged.sort(function(a, b){
+    if(a.name === planSelectedVenueName) return -1;
+    if(b.name === planSelectedVenueName) return 1;
+    return Number(a.distance_km || 0) - Number(b.distance_km || 0);
+  });
+}
+
+function ensureSelectedRestaurantInList(restaurants){
+  if(!restaurants || !restaurants.length){
+    planSelectedVenueName = '';
+    return;
+  }
+  var selectedKey = normalizePlanName(planSelectedVenueName);
+  var selectedStillVisible = selectedKey && restaurants.some(function(r){
+    return normalizePlanName(r.name) === selectedKey;
+  });
+  if(!selectedStillVisible){
+    planSelectedVenueName = restaurants[0].name;
+  }
+}
+
+function restaurantMarkerIcon(){
+  return L.divIcon({
+    className: '',
+    html: '<div class="plan-map-dot" style="background:linear-gradient(135deg,var(--green),var(--blue));font-size:14px">🍽️</div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -18]
+  });
+}
+
+function restaurantMarkerIconForCuisine(cuisine, isOffer){
+  var emojiMap = { nepali:'🍛', indian:'🍛', italian:'🍕', cafe:'☕', coffee:'☕',
+    'coffee & cafe':'☕', continental:'🥗', chinese:'🥡', japanese:'🍣', thai:'🍜',
+    asian:'🥡', 'fast food':'🍔', 'bakery & desserts':'🧁', vegetarian:'🌱', burgers:'🍔' };
+  var c = (cuisine || '').toLowerCase();
+  var emoji = emojiMap[c] || '🍽️';
+  var bg = isOffer
+    ? 'linear-gradient(135deg,var(--green),#1B6B3A)'
+    : 'linear-gradient(135deg,var(--green),var(--blue))';
+  var border = isOffer ? 'border:2px solid var(--amber);' : '';
+  return L.divIcon({
+    className: '',
+    html: '<div class="plan-map-dot" style="background:' + bg + ';font-size:15px;' + border + '">' + emoji + '</div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -18]
+  });
+}
+
+function selectedRestaurantMarkerIcon(cuisine, isOffer){
+  var emojiMap = { nepali:'🍛', indian:'🍛', italian:'🍕', cafe:'☕', coffee:'☕',
+    'coffee & cafe':'☕', continental:'🥗', chinese:'🥡', japanese:'🍣', thai:'🍜',
+    asian:'🥡', 'fast food':'🍔', 'bakery & desserts':'🧁', vegetarian:'🌱', burgers:'🍔' };
+  var c = (cuisine || '').toLowerCase();
+  var emoji = emojiMap[c] || '🍽️';
+  return L.divIcon({
+    className: '',
+    html: '<div class="plan-map-dot restaurant-selected" title="Selected restaurant">' + emoji + '</div>',
+    iconSize: [42, 42],
+    iconAnchor: [21, 21],
+    popupAnchor: [0, -24]
+  });
+}
+
+function restaurantPopupHtml(r){
+  var offerBadge = r.is_featured_offer ? '<br><span style="background:var(--green);color:#fff;font-size:10px;padding:2px 6px;border-radius:6px;font-weight:700">' + escapePlanHtml(r.badge || 'OFFER') + '</span>' : '';
+  return '<strong>' + escapePlanHtml(r.name) + '</strong><br>' +
+    escapePlanHtml(r.cuisine || 'Restaurant') + ' · Star ' + Number(r.rating || 0).toFixed(1) + '<br>' +
+    restaurantPriceLabel(r.avg_cost_per_person) + ' · ' + restaurantDistanceLabel(r.distance_km) +
+    offerBadge;
+}
+
+function syncVenueRowsToSelection(){
+  document.querySelectorAll('#modal-nearby-restaurants .venue-row').forEach(function(row){
+    var rowName = row.dataset.restaurantName || (row.querySelector('.venue-name') ? row.querySelector('.venue-name').textContent.trim() : '');
+    row.classList.toggle('selected', normalizePlanName(rowName) === normalizePlanName(planSelectedVenueName));
+  });
+}
+
+function displayPlanRestaurantMarkers(restaurants, midpoint, focusName){
+  if(!planRestaurantLayer || !window.L) return;
+  planRestaurantLayer.clearLayers();
+  planSelectedRestaurantMarker = null;
+  var selectedKey = normalizePlanName(focusName || planSelectedVenueName);
+  var selectedMarker = null;
+
+  (restaurants || []).forEach(function(r){
+    if(r.latitude == null || r.longitude == null) return;
+    var isSelected = selectedKey && normalizePlanName(r.name) === selectedKey;
+    var marker = L.marker([r.latitude, r.longitude], {
+      icon: isSelected ? selectedRestaurantMarkerIcon(r.cuisine, r.is_featured_offer) : restaurantMarkerIconForCuisine(r.cuisine, r.is_featured_offer),
+      zIndexOffset: isSelected ? 1000 : 0
+    }).addTo(planRestaurantLayer).bindPopup(restaurantPopupHtml(r));
+
+    marker.on('click', function(){
+      planSelectedVenueName = r.name;
+      syncVenueRowsToSelection();
+      syncOfferRestaurantHighlight(r.name);
+      displayPlanRestaurantMarkers(planLatestRestaurants, midpoint || getPlanMidpoint(getPlanMapPoints()), r.name);
+    });
+
+    if(isSelected){
+      planSelectedRestaurantMarker = marker;
+      selectedMarker = marker;
+    }
+  });
+
+  if(selectedMarker){
+    selectedMarker.openPopup();
+  }
+}
+
+function focusSelectedRestaurantOnMap(name){
+  if(!name || !planLeafletMap) return;
+  var selected = (planLatestRestaurants || []).find(function(r){
+    return normalizePlanName(r.name) === normalizePlanName(name);
+  });
+  if(!selected || selected.latitude == null || selected.longitude == null) return;
+  displayPlanRestaurantMarkers(planLatestRestaurants, getPlanMidpoint(getPlanMapPoints()), name);
+  planLeafletMap.setView([Number(selected.latitude), Number(selected.longitude)], Math.max(planLeafletMap.getZoom(), 16), {animate:true});
+  if(planSelectedRestaurantMarker) planSelectedRestaurantMarker.openPopup();
+}
+
+function updateNearbyRestaurantList(restaurants){
+  var modal = document.getElementById('modal-nearby-restaurants');
+  if(!modal) return;
+  var list = ensureNearbyRestaurantControls();
+  if(!list) return;
+  if(!restaurants.length){
+    list.innerHTML = '<div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px">No restaurants match within ' + PLAN_RESTAURANT_RADIUS_KM + ' km. Try a larger radius or clear some filters.</div>';
+    return;
+  }
+  list.innerHTML = restaurants.slice(0, 10).map(function(r, index){
+    var selected = normalizePlanName(r.name) === normalizePlanName(planSelectedVenueName) || (!planSelectedVenueName && index === 0) ? ' selected' : '';
+    return '<div class="venue-row'+selected+'" data-restaurant-id="'+r.id+'" data-restaurant-name="'+escapePlanHtml(r.name)+'" data-lat="'+r.latitude+'" data-lng="'+r.longitude+'" onclick="selectVenueRow(this)">' +
+      '<div class="venue-emoji">'+escapePlanHtml(r.emoji || 'R')+'</div>' +
+      '<div style="flex:1"><div class="venue-name">'+escapePlanHtml(r.name)+'</div>' +
+      '<div class="venue-rating">Star '+Number(r.rating || 0).toFixed(1)+' · '+escapePlanHtml(r.cuisine || 'Restaurant')+' · '+restaurantPriceLabel(r.avg_cost_per_person)+' · '+restaurantDistanceLabel(r.distance_km)+'</div></div>' +
+      '</div>';
+  }).join('');
+}
+
+function fetchMidpointRestaurants(midpoint){
+  if(!midpoint || !window.fetch) return;
+  collectPlanRestaurantFilters();
+  var params = new URLSearchParams();
+  params.set('lat', midpoint.lat);
+  params.set('lng', midpoint.lng);
+  params.set('radius', String(PLAN_RESTAURANT_RADIUS_KM));
+  if(planRestaurantFilters.maxBudget) params.set('max_budget', planRestaurantFilters.maxBudget);
+  if(planRestaurantFilters.minRating) params.set('min_rating', planRestaurantFilters.minRating);
+  planRestaurantFilters.cuisines.forEach(function(c){ params.append('cuisine', c); });
+  planRestaurantFilters.ambiences.forEach(function(a){ params.append('ambience', a); });
+
+  return fetch('/place/api/restaurants?' + params.toString(), {headers:{'Accept':'application/json'}})
+    .then(function(response){ return response.ok ? response.json() : []; })
+    .then(function(restaurants){
+      restaurants = mergePlanRestaurants(restaurants, midpoint);
+      ensureSelectedRestaurantInList(restaurants);
+      planLatestRestaurants = restaurants;
+      if(!planRestaurantLayer || !window.L) return restaurants;
+      displayPlanRestaurantMarkers(restaurants, midpoint);
+      var bounds = [];
+      restaurants.forEach(function(r){
+        if(r.latitude == null || r.longitude == null) return;
+        bounds.push([r.latitude, r.longitude]);
+      });
+      if(bounds.length){
+        bounds.push([midpoint.lat, midpoint.lng]);
+        planLeafletMap.fitBounds(bounds, {padding:[46, 46], maxZoom:15});
+      }
+      updateNearbyRestaurantList(restaurants);
+      return restaurants;
+    })
+    .catch(function(){ return []; });
+}
+
+function refreshMidpointRestaurants(){
+  ensureNearbyRestaurantControls();
+  // Read radius from the modal dropdown (falls back to 5 km, not 100)
+  var radiusSel = document.getElementById('nearby-radius-select');
+  if (radiusSel) {
+    PLAN_RESTAURANT_RADIUS_KM = parseFloat(radiusSel.value) || 5.0;
+  }
+  // Refresh active filter pills
+  if (typeof window.loadModalData === 'function') {
+    var nearbyModal = document.getElementById('modal-nearby-restaurants');
+    if (nearbyModal && nearbyModal.classList.contains('open')) {
+      // Re-render pills via plan-dynamic's internal helper by triggering loadNearby indirectly
+      var pillsEl = document.getElementById('nearby-filter-pills');
+      var wrapperEl = document.getElementById('nearby-active-filters');
+      if (pillsEl && wrapperEl) {
+        collectPlanRestaurantFilters();
+        var pills = [];
+        (planRestaurantFilters.cuisines||[]).forEach(function(c){ pills.push('🍽️ ' + c); });
+        if (planRestaurantFilters.maxBudget) pills.push('💰 ≤ NPR ' + Number(planRestaurantFilters.maxBudget).toLocaleString() + '/person');
+        var ratingEl = document.getElementById('restaurant-min-rating');
+        if (ratingEl && parseFloat(ratingEl.value) > 0) pills.push('⭐ ' + ratingEl.value + '+ stars');
+        if (pills.length) {
+          wrapperEl.style.display = 'block';
+          pillsEl.innerHTML = pills.map(function(p){ return '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(21,101,192,.1);color:var(--blue);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid rgba(21,101,192,.2);">' + p + '</span>'; }).join('');
+        } else {
+          wrapperEl.style.display = 'none';
+        }
+      }
+    }
+  }
+  var points = getPlanMapPoints();
+  var midpoint = getPlanMidpoint(points);
+  if(planLeafletMap && midpoint) fetchMidpointRestaurants(midpoint);
+}
+
+function selectVenueRow(row){
+  if(!row) return;
+  document.querySelectorAll('#modal-nearby-restaurants .venue-row').forEach(function(item){
+    item.classList.remove('selected');
+  });
+  row.classList.add('selected');
+  var name = row.dataset.restaurantName || (row.querySelector('.venue-name') ? row.querySelector('.venue-name').textContent.trim() : '');
+  if(name){
+    planSelectedVenueName = name;
+    syncOfferRestaurantHighlight(name);
+    focusSelectedRestaurantOnMap(name);
+  }
+}
+
+function renderFeaturedRestaurantOffers(){
+  var holder = document.getElementById('featured-restaurant-offers');
+  if(!holder) return;
+  var saveBtn = document.querySelector('#modal-restaurant-offers .feat-btn-row button.btn-primary');
+
+  var selectedName = readVenueSelection() || planSelectedVenueName;
+  if(selectedName){
+    var matches = FEATURED_OFFER_RESTAURANTS.filter(function(r){
+      return normalizePlanName(r.name) === normalizePlanName(selectedName);
+    });
+    if(matches.length){
+      renderOfferCards(matches, holder, false);
+      if(saveBtn) saveBtn.style.display = 'inline-block';
+    } else {
+      holder.innerHTML = '<div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px;text-align:center;">There is currently no offers for '+escapePlanHtml(selectedName)+'.</div>';
+      if(saveBtn) saveBtn.style.display = 'none';
+    }
+  } else {
+    holder.innerHTML = '<div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px;text-align:center;">Please select a restaurant first to view its offers.</div>';
+    if(saveBtn) saveBtn.style.display = 'none';
+  }
+}
+
+function renderOfferCards(pool, holder, append){
+  var html = pool.map(function(r){
+    var selected = normalizePlanName(r.name) === normalizePlanName(planSelectedVenueName) ? ' selected' : '';
+    return '<div class="restaurant-card'+selected+'" data-offer-restaurant="'+escapePlanHtml(r.name)+'" onclick="selectOfferRestaurant(this)">' +
+      '<div class="rest-emoji">'+escapePlanHtml(r.emoji)+'</div>' +
+      '<div style="flex:1"><div class="rest-name">'+escapePlanHtml(r.name)+'</div><div class="rest-meta">'+escapePlanHtml(r.offer)+'</div></div>' +
+      '<span style="background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px">'+escapePlanHtml(r.badge)+'</span>' +
+      '</div>';
+  }).join('');
+  if(append){
+    holder.innerHTML += html;
+  } else {
+    holder.innerHTML = html;
+  }
+}
+
+
+function syncOfferRestaurantHighlight(name){
+  document.querySelectorAll('#modal-restaurant-offers .restaurant-card').forEach(function(card){
+    var cardName = card.dataset.offerRestaurant || (card.querySelector('.rest-name') ? card.querySelector('.rest-name').textContent.trim() : '');
+    card.classList.toggle('selected', normalizePlanName(cardName) === normalizePlanName(name));
+  });
+}
+
+function selectOfferRestaurant(card){
+  if(!card) return;
+  var name = card.dataset.offerRestaurant || (card.querySelector('.rest-name') ? card.querySelector('.rest-name').textContent.trim() : '');
+  if(!name) return;
+  planSelectedVenueName = name;
+  syncOfferRestaurantHighlight(name);
+  var matchedRow = null;
+  document.querySelectorAll('#modal-nearby-restaurants .venue-row').forEach(function(row){
+    var rowName = row.dataset.restaurantName || (row.querySelector('.venue-name') ? row.querySelector('.venue-name').textContent.trim() : '');
+    var isMatch = normalizePlanName(rowName) === normalizePlanName(name);
+    row.classList.toggle('selected', isMatch);
+    if(isMatch) matchedRow = row;
+  });
+  if(!matchedRow) refreshMidpointRestaurants();
+  showToast(name + ' selected');
+}
+
+function getSelectedFeaturedOffer(){
+  return FEATURED_OFFER_RESTAURANTS.find(function(r){
+    return normalizePlanName(r.name) === normalizePlanName(planSelectedVenueName);
+  }) || null;
+}
+
+function saveSelectedOfferRestaurant(){
+  var selected = getSelectedFeaturedOffer();
+  if(selected && selected.offer_id){
+    if(window.fetch){
+      fetch('/place/offer/' + selected.offer_id + '/save', {method:'POST'})
+        .catch(function(){});
+    }
+  }
+  var payload = selected ? {
+    selected_venue: selected.name,
+    selected_venue_lat: selected.latitude,
+    selected_venue_lng: selected.longitude
+  } : readVenueSelectionPayload();
+  savePlanPreferences(payload);
+  showToast((payload.selected_venue || 'Offer') + ' saved!');
+  completeSerialStep('modal-restaurant-offers','offer saved');
+}
+
+function renderPlanMap(points, midpoint){
+  if(!planLeafletMap || !window.L) return;
+  var validPoints = (points || []).map(function(point, index){
+    return toPlanPoint(point, 'P' + (index + 1));
+  }).filter(Boolean);
+  if(!validPoints.length) validPoints = fallbackPlanPoints();
+  var validMidpoint = toPlanPoint(midpoint, 'Smart midpoint') || geographicMidpoint(validPoints);
+  if(!validMidpoint) return;
+
+  if(!planRouteLayer) planRouteLayer = L.layerGroup().addTo(planLeafletMap);
+  if(!planMarkerLayer) planMarkerLayer = L.layerGroup().addTo(planLeafletMap);
+  if(!planRestaurantLayer) planRestaurantLayer = L.layerGroup().addTo(planLeafletMap);
+  planRouteLayer.clearLayers();
+  planMarkerLayer.clearLayers();
+  planRestaurantLayer.clearLayers();
+  var version = ++planRouteVersion;
+  var bounds = [];
+
+  validPoints.forEach(function(point, index){
+    var latLng = [point.lat, point.lng];
+    bounds.push(latLng);
+    L.marker(latLng, {
+      icon: makePlanMapIcon('member', point.name || ('P' + (index + 1)))
+    }).addTo(planMarkerLayer).bindPopup(
+      '<strong>' + escapePlanHtml(point.name || 'Member') + '</strong><br>' +
+      escapePlanHtml(point.address || 'Starting point')
+    );
+  });
+
+  var midLatLng = [validMidpoint.lat, validMidpoint.lng];
+  bounds.push(midLatLng);
+  L.marker(midLatLng, {
+    icon: makePlanMapIcon('midpoint', 'M')
+  }).addTo(planMarkerLayer).bindPopup(
+    '<strong>Smart midpoint</strong><br>' + escapePlanHtml(validMidpoint.address || 'Balanced meeting point')
+  );
+
+  validPoints.forEach(function(point, index){
+    drawPlanRoadRoute(
+      [point.lat, point.lng],
+      midLatLng,
+      routeColors[index % routeColors.length],
+      version
+    );
+  });
+
+  if(bounds.length){
+    planLeafletMap.fitBounds(bounds, {padding:[46, 46], maxZoom:14});
+  }
+  fetchMidpointRestaurants(validMidpoint);
+  setTimeout(function(){ planLeafletMap.invalidateSize(); }, 180);
+}
+
+function initPlanLeafletMap(){
+  var mapEl = document.getElementById('plan-leaflet-map');
+  var fallback = document.getElementById('plan-map-fallback');
+  if(!mapEl) return;
+  if(!window.L){
+    if(fallback) fallback.style.display = 'flex';
+    return;
+  }
+
+  if(planLeafletMap){
+    renderPlanMap(getPlanMapPoints(), getPlanMidpoint(getPlanMapPoints()));
+    return;
+  }
+
+  var ktmCenter = [27.7172, 85.3240];
+  planLeafletMap = L.map(mapEl, {
+    zoomControl: true,
+    scrollWheelZoom: true
+  }).setView(ktmCenter, 13);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(planLeafletMap);
+
+  planRouteLayer = L.layerGroup().addTo(planLeafletMap);
+  planMarkerLayer = L.layerGroup().addTo(planLeafletMap);
+  planRestaurantLayer = L.layerGroup().addTo(planLeafletMap);
+  var points = getPlanMapPoints();
+  renderPlanMap(points, getPlanMidpoint(points));
+}
+
+function lookupKnownPlanLocation(query){
+  var key = normalizePlanLocation(query);
+  if(!key) return null;
+  if(PLAN_LOCATION_LOOKUP[key]) return clonePlanPoint(PLAN_LOCATION_LOOKUP[key]);
+  var keys = Object.keys(PLAN_LOCATION_LOOKUP);
+  for(var i = 0; i < keys.length; i++){
+    if(key.indexOf(keys[i]) !== -1 || keys[i].indexOf(key) !== -1){
+      return clonePlanPoint(PLAN_LOCATION_LOOKUP[keys[i]]);
+    }
+  }
+  return null;
+}
+
+function parseCoordinateInput(query){
+  var match = String(query || '').match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+  if(!match) return null;
+  var lat = Number(match[1]);
+  var lng = Number(match[2]);
+  if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if(Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return {name:'Custom location', lat:lat, lng:lng, address:lat.toFixed(5) + ', ' + lng.toFixed(5)};
+}
+
+function shortPlanAddress(displayName){
+  if(!displayName) return '';
+  return String(displayName).split(',').slice(0, 3).join(',').trim();
+}
+
+function geocodePlanLocation(entry){
+  var query = typeof entry === 'string' ? entry : entry.query;
+  var sourceLat = typeof entry === 'string' ? null : Number(entry.lat);
+  var sourceLng = typeof entry === 'string' ? null : Number(entry.lng);
+  var sourceValue = typeof entry === 'string' ? '' : (entry.sourceValue || '');
+  var currentValue = String(query || '').trim();
+  if(Number.isFinite(sourceLat) && Number.isFinite(sourceLng) && sourceValue && currentValue === sourceValue){
+    return Promise.resolve({
+      name: entry.name || currentValue || 'Location',
+      lat: sourceLat,
+      lng: sourceLng,
+      address: currentValue || entry.address || ''
+    });
+  }
+  var coords = parseCoordinateInput(currentValue);
+  if(coords) return Promise.resolve(coords);
+  var known = lookupKnownPlanLocation(currentValue);
+  if(known) return Promise.resolve(known);
+  if(!currentValue || !window.fetch) return Promise.resolve(null);
+
+  var searchText = /nepal|kathmandu|lalitpur|bhaktapur/i.test(currentValue)
+    ? currentValue
+    : currentValue + ', Nepal';
+  var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=np&q=' + encodeURIComponent(searchText);
+  return fetch(url, {headers:{'Accept':'application/json'}})
+    .then(function(response){
+      if(!response.ok) throw new Error('Location lookup failed');
+      return response.json();
+    })
+    .then(function(results){
+      if(!results || !results.length) return null;
+      return {
+        name: currentValue,
+        lat: Number(results[0].lat),
+        lng: Number(results[0].lon),
+        address: shortPlanAddress(results[0].display_name) || currentValue
+      };
+    })
+    .catch(function(){ return null; });
+}
+
+function reverseGeocodePlan(lat, lng){
+  if(!window.fetch) return Promise.resolve(lat.toFixed(5) + ', ' + lng.toFixed(5));
+  var url = 'https://nominatim.openstreetmap.org/reverse?format=json&lat=' + encodeURIComponent(lat.toFixed(6)) + '&lon=' + encodeURIComponent(lng.toFixed(6)) + '&zoom=16&addressdetails=0';
+  return fetch(url, {headers:{'Accept':'application/json'}})
+    .then(function(response){
+      if(!response.ok) throw new Error('Reverse lookup failed');
+      return response.json();
+    })
+    .then(function(data){
+      return shortPlanAddress(data.display_name) || (lat.toFixed(5) + ', ' + lng.toFixed(5));
+    })
+    .catch(function(){
+      return lat.toFixed(5) + ', ' + lng.toFixed(5);
+    });
+}
+
+function haversineKm(a, b){
+  var radius = 6371;
+  var dLat = (b.lat - a.lat) * Math.PI / 180;
+  var dLng = (b.lng - a.lng) * Math.PI / 180;
+  var lat1 = a.lat * Math.PI / 180;
+  var lat2 = b.lat * Math.PI / 180;
+  var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * radius * Math.asin(Math.sqrt(h));
+}
+
+function estimateTravelMinutes(points, midpoint){
+  if(!points.length || !midpoint) return 0;
+  var totalKm = points.reduce(function(total, point){
+    return total + haversineKm(point, midpoint);
+  }, 0);
+  var avgKm = totalKm / points.length;
+  return Math.max(4, Math.round((avgKm / 18) * 60));
+}
+
+function addMidpointInput(value, point){
+  var list = document.getElementById('midpoint-location-list');
+  if(!list) return null;
+  var inputs = list.querySelectorAll('.mp-location-input');
+  if(inputs.length >= 6){
+    showToast('You can compare up to 6 locations.');
+    return inputs[inputs.length - 1];
+  }
+  var input = document.createElement('input');
+  input.className = 'field-input mp-location-input';
+  input.placeholder = 'Another location';
+  input.value = value || '';
+  input.addEventListener('input', function(){ midpointDirty = true; });
+  if(point){
+    input.dataset.lat = point.lat;
+    input.dataset.lng = point.lng;
+    input.dataset.name = point.name || '';
+    input.dataset.address = point.address || value || '';
+    input.dataset.sourceValue = value || point.address || '';
+  }
+  list.appendChild(input);
+  return input;
+}
+
+function ensureMidpointInputCount(count){
+  var list = document.getElementById('midpoint-location-list');
+  if(!list) return [];
+  while(list.querySelectorAll('.mp-location-input').length < count){
+    addMidpointInput('');
+  }
+  return Array.prototype.slice.call(list.querySelectorAll('.mp-location-input'));
+}
+
+function seedMidpointInputsFromPlan(){
+  var points = getPlanMapPoints();
+  var inputs = ensureMidpointInputCount(Math.max(2, Math.min(points.length, 6)));
+  points.slice(0, inputs.length).forEach(function(point, index){
+    var input = inputs[index];
+    if(!input) return;
+    var value = point.address || point.name || (point.lat.toFixed(5) + ', ' + point.lng.toFixed(5));
+    input.value = value;
+    input.dataset.lat = point.lat;
+    input.dataset.lng = point.lng;
+    input.dataset.name = point.name || '';
+    input.dataset.address = point.address || value;
+    input.dataset.sourceValue = value;
+  });
+  inputs.forEach(function(input){
+    input.addEventListener('input', function(){ midpointDirty = true; });
+  });
+  midpointDirty = false;
+}
+
+function collectMidpointEntries(){
+  return Array.prototype.slice.call(document.querySelectorAll('.mp-location-input'))
+    .map(function(input){
+      return {
+        query: input.value.trim(),
+        lat: input.dataset.lat,
+        lng: input.dataset.lng,
+        name: input.dataset.name,
+        address: input.dataset.address,
+        sourceValue: input.dataset.sourceValue
+      };
+    })
+    .filter(function(entry){ return entry.query; });
+}
+
+function applyMidpointResult(midpoint, points){
+  if(!midpoint || !points || points.length < 2) return;
+  window.PLAN_CONTEXT = window.PLAN_CONTEXT || {};
+  PLAN_CONTEXT.mapPoints = points.map(function(point){
+    return {name:point.name, lat:point.lat, lng:point.lng, address:point.address};
+  });
+  PLAN_CONTEXT.midpoint = {
+    lat: midpoint.lat,
+    lng: midpoint.lng,
+    address: midpoint.address
+  };
+  var minutes = estimateTravelMinutes(points, midpoint);
+  var result = document.getElementById('midpoint-result');
+  if(result){
+    var heading = result.querySelector('h3');
+    var meta = result.querySelector('p');
+    if(heading) heading.textContent = midpoint.address || 'Calculated midpoint';
+    if(meta) meta.textContent = '~' + minutes + ' min avg travel · ' + points.length + ' locations balanced';
+  }
+  var sumMid = document.getElementById('sum-mid');
+  if(sumMid) sumMid.textContent = midpoint.address || 'Calculated midpoint';
+  var finalMid = document.getElementById('fsum-mid');
+  if(finalMid) finalMid.textContent = midpoint.address || 'Calculated midpoint';
+  renderPlanMap(points, midpoint);
+  midpointDirty = false;
+}
+
+async function calcMidpoint(){
+  var entries = collectMidpointEntries();
+  if(entries.length < 2){
+    showToast('Please enter at least two locations.');
+    var first = document.querySelector('.mp-location-input');
+    if(first) first.focus();
+    return false;
+  }
+
+  showToast('Calculating midpoint...');
+  var points = [];
+  var missing = [];
+  for(var i = 0; i < entries.length; i++){
+    var point = await geocodePlanLocation(entries[i]);
+    if(point && Number.isFinite(point.lat) && Number.isFinite(point.lng)){
+      points.push(point);
+    } else {
+      missing.push(entries[i].query);
+    }
+  }
+
+  if(points.length < 2){
+    showToast('Please use clearer place names or coordinates.');
+    return false;
+  }
+
+  var midpoint = geographicMidpoint(points);
+  if(!midpoint){
+    showToast('Could not calculate a midpoint.');
+    return false;
+  }
+  midpoint.address = await reverseGeocodePlan(midpoint.lat, midpoint.lng);
+  applyMidpointResult(midpoint, points);
+  if(missing.length){
+    showToast('Midpoint updated using ' + points.length + ' locations. Check: ' + missing[0]);
+  } else {
+    showToast('Midpoint updated accurately.');
+  }
+  return true;
+}
+
+function saveRideEstimateToMidpoint(){
+  var meetupId = planPrefMeetupId();
+  if(!meetupId || !window.fetch) return Promise.resolve(false);
+  var ctx = window.PLAN_CONTEXT || {};
+  var midpoint = ctx.midpoint;
+  if(!midpoint || !Number.isFinite(Number(midpoint.lat)) || !Number.isFinite(Number(midpoint.lng))){
+    return Promise.resolve(false);
+  }
+
+  var fromLat = document.getElementById('pm-lat') ? document.getElementById('pm-lat').value : '';
+  var fromLng = document.getElementById('pm-lng') ? document.getElementById('pm-lng').value : '';
+  var fromAddr = document.getElementById('pm-addr') ? document.getElementById('pm-addr').value : '';
+
+  // Fall back to the first midpoint-calculator input if pm-lat/lng weren't set
+  if(!fromLat || !fromLng){
+    var firstInput = document.getElementById('mp-loc1');
+    if(firstInput && firstInput.dataset.lat && firstInput.dataset.lng){
+      fromLat = firstInput.dataset.lat;
+      fromLng = firstInput.dataset.lng;
+      fromAddr = firstInput.dataset.address || firstInput.value || '';
+    }
+  }
+
+  if(!fromLat || !fromLng) return Promise.resolve(false);
+
+  return fetch('/ride/calculate/' + meetupId, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+    body: JSON.stringify({
+      from_lat: Number(fromLat),
+      from_lng: Number(fromLng),
+      from_address: fromAddr || 'My location',
+      to_lat: Number(midpoint.lat),
+      to_lng: Number(midpoint.lng),
+      to_address: midpoint.address || 'Smart midpoint'
+    })
+  }).then(function(r){ return r.json(); }).catch(function(){ return false; });
+}
+
+async function acceptMidpointStep(){
+  if(midpointDirty || !window.PLAN_CONTEXT || !PLAN_CONTEXT.midpoint){
+    var ok = await calcMidpoint();
+    if(!ok) return false;
+  }
+  // Save a ride estimate (my location → midpoint) so Ride Cost and
+  // Walking Distance have real numbers when the user reaches those steps.
+  await saveRideEstimateToMidpoint();
+  showToast('Midpoint set!');
+  completeSerialStep('modal-midpoint', 'midpoint accepted');
+  return true;
+}
+
+function loadMultiStopRoute(){
+  var ctx = window.PLAN_CONTEXT || {};
+  var startEl = document.getElementById('ms-start');
+  var stop1El = document.getElementById('ms-stop1');
+  var stop2El = document.getElementById('ms-stop2');
+  var summaryEl = document.getElementById('multistop-route-summary');
+  if(!startEl || !stop1El || !stop2El || !summaryEl) return;
+
+  // Start: meetup date/time, or "Now" if not set
+  var when = formatPlanDate(ctx.date, ctx.time) || 'Time not set';
+  startEl.textContent = 'Your Location · ' + when;
+
+  // Stop 1: the calculated midpoint
+  var midpoint = ctx.midpoint;
+  var midLabel = midpoint && midpoint.address ? midpoint.address : 'Midpoint not calculated yet';
+  stop1El.textContent = midLabel;
+
+  // Stop 2: whichever venue was selected in Nearby Restaurants / Offers
+  var venue = readVenueSelection() || planSelectedVenueName || 'Venue not selected yet';
+  stop2El.textContent = venue;
+
+  // Pull the saved ride cost estimate for a real transport total
+  var meetupId = planPrefMeetupId();
+  if(meetupId && window.fetch){
+    fetch('/ride/split/' + meetupId, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        var stops = 2;
+        if(data && data.success && data.data && data.data.members && data.data.members.length){
+          var m = data.data.members[0];
+          var mins = (m.bike_mins || 15) + 30; // travel + time at first stop, rough
+          var hrs = (mins / 60).toFixed(1);
+          var transport = Math.round((m.bike_cost || 0) * (ctx.people || 1));
+          summaryEl.textContent = 'Route summary: ' + stops + ' stops · ~' + hrs + ' hrs · NPR ' + transport + ' estimated transport';
+        } else {
+          summaryEl.textContent = 'Route summary: ' + stops + ' stops · transport cost not yet calculated';
+        }
+      })
+      .catch(function(){
+        summaryEl.textContent = 'Route summary: 2 stops · transport cost not yet calculated';
+      });
+  } else {
+    summaryEl.textContent = 'Route summary: 2 stops · transport cost not yet calculated';
+  }
+}
+
+function applyBrowserLocationToPlanner(point){
+  if(!point) return;
+  var lat = document.getElementById('pm-lat');
+  var lng = document.getElementById('pm-lng');
+  var addr = document.getElementById('pm-addr');
+  var label = document.getElementById('pm-loc-label');
+  if(lat) lat.value = Number(point.lat).toFixed(6);
+  if(lng) lng.value = Number(point.lng).toFixed(6);
+  if(addr) addr.value = point.address || 'Current location';
+  if(label) label.textContent = point.address || 'Current location detected';
+
+  var firstMidpointInput = document.getElementById('mp-loc1');
+  if(firstMidpointInput){
+    firstMidpointInput.value = point.address || 'Current location';
+    firstMidpointInput.dataset.lat = point.lat;
+    firstMidpointInput.dataset.lng = point.lng;
+    firstMidpointInput.dataset.name = 'You';
+    firstMidpointInput.dataset.address = point.address || 'Current location';
+    firstMidpointInput.dataset.sourceValue = firstMidpointInput.value;
+    midpointDirty = true;
+  }
+}
+
+function detectPMLocation(options){
+  options = options || {};
+  var label = document.getElementById('pm-loc-label');
+  if(!label) return;
+  label.textContent = options.silent ? 'Finding your location...' : 'Detecting...';
+  var applyFallback = function(){
+    var fallback = {lat: 27.715300, lng: 85.312300, address: 'Thamel, Kathmandu'};
+    applyBrowserLocationToPlanner(fallback);
+    if(!options.silent && window.showToast) showToast('Location fallback: Thamel');
+  };
+  if(!navigator.geolocation){
+    applyFallback();
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(function(pos){
+    var point = {
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      address: 'Current location'
+    };
+    reverseGeocodePlan(point.lat, point.lng).then(function(address){
+      point.address = address || 'Current location';
+      applyBrowserLocationToPlanner(point);
+      if(!options.silent && window.showToast) showToast('Location detected');
+    });
+  }, applyFallback, {enableHighAccuracy: true, timeout: 8000, maximumAge: 60000});
+}
+
+function formatPlanDate(dateValue, timeValue){
+  if(!dateValue) return 'Date not set';
+  var pieces = dateValue.split('-').map(Number);
+  var date = new Date(pieces[0], pieces[1] - 1, pieces[2]);
+  var formatted = date.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
+  if(timeValue){
+    var time = timeValue.split(':');
+    date.setHours(Number(time[0] || 0), Number(time[1] || 0), 0);
+    formatted += ' at ' + date.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+  }
+  return formatted;
+}
+
+// ── Plan popup preferences → backend ─────────────────────────
+// Cuisine chips had no handler defined anywhere; define it here so
+// selections toggle (multi-select) before we read them.
+function toggleChip(el){
+  if(el) el.classList.toggle('active');
+  refreshMidpointRestaurants();
+}
+
+function updateBudget(val){
+  var display = document.getElementById('budget-display');
+  if(display) display.textContent = 'NPR ' + parseInt(val || 0, 10).toLocaleString();
+  refreshMidpointRestaurants();
+}
+
+function setBudgetPreset(el, val){
+  document.querySelectorAll('#modal-budget-filter .filter-chip').forEach(function(chip){
+    chip.classList.remove('active');
+  });
+  if(el) el.classList.add('active');
+  var input = document.querySelector('#modal-budget-filter input[type=range]');
+  if(input) input.value = val;
+  updateBudget(val);
+}
+
+function toggleAmbience(el){
+  if(el) el.classList.toggle('active');
+  refreshMidpointRestaurants();
+}
+
+function planPrefMeetupId(){
+  var ctx = window.PLAN_CONTEXT || {};
+  return (ctx.hasMeetup && ctx.meetupId) ? ctx.meetupId : null;
+}
+
+// Fire-and-forget save of one popup's slice. No-op (resolves false) when
+// there's no saved meetup yet, so the "new meetup" flow is unchanged.
+function savePlanPreferences(fields){
+  var id = planPrefMeetupId();
+  if(!id || !window.fetch || !fields) return Promise.resolve(false);
+  var clean = {};
+  Object.keys(fields).forEach(function(k){
+    var v = fields[k];
+    if(v !== null && v !== undefined && v !== '') clean[k] = v;
+  });
+  if(!Object.keys(clean).length) return Promise.resolve(false);
+  return fetch('/meetup/' + id + '/preferences', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+    body: JSON.stringify(clean)
+  }).then(function(r){ return r.json(); }).catch(function(){ return false; });
+}
+
+function readCuisineSelection(){
+  var chips = document.querySelectorAll('#modal-cuisine-preference .filter-chip.active');
+  return Array.prototype.map.call(chips, function(c){ return cleanFilterLabel(c.dataset.filter || c.textContent); }).join(', ');
+}
+
+function readAmbienceSelection(){
+  var pills = document.querySelectorAll('#modal-ambience-filter .ambience-pill.active');
+  return Array.prototype.map.call(pills, function(p){
+    var label = p.querySelector('.ambience-pill-label');
+    return cleanFilterLabel(p.dataset.filter || (label ? label.textContent : p.textContent));
+  }).join(', ');
+}
+
+function readBudgetSelection(){
+  var input = document.querySelector('#modal-budget-filter input[type=range]');
+  var val = input ? Number(input.value) : null;
+  return Number.isFinite(val) ? val : null;
+}
+
+function readVenueSelection(){
+  var row = document.querySelector('#nearby-restaurant-results .venue-row.selected') ||
+            document.querySelector('#modal-nearby-restaurants .venue-row.selected');
+  var name = row ? row.querySelector('.venue-name') : null;
+  if(name) return name.textContent.trim();
+  if(planSelectedVenueName) return planSelectedVenueName;
+  row = document.querySelector('#nearby-restaurant-results .venue-row') ||
+        document.querySelector('#modal-nearby-restaurants .venue-row');
+  name = row ? row.querySelector('.venue-name') : null;
+  return name ? name.textContent.trim() : '';
+}
+
+function readVenueSelectionPayload(){
+  var row = document.querySelector('#nearby-restaurant-results .venue-row.selected') ||
+            document.querySelector('#modal-nearby-restaurants .venue-row.selected');
+  var payload = {selected_venue: readVenueSelection()};
+  if(row && row.dataset){
+    var rowLat = Number(row.dataset.lat);
+    var rowLng = Number(row.dataset.lng);
+    if(Number.isFinite(rowLat)) payload.selected_venue_lat = rowLat;
+    if(Number.isFinite(rowLng)) payload.selected_venue_lng = rowLng;
+  } else {
+    var selected = getSelectedFeaturedOffer();
+    if(selected){
+      payload.selected_venue = selected.name;
+      payload.selected_venue_lat = selected.latitude;
+      payload.selected_venue_lng = selected.longitude;
+    } else {
+      row = document.querySelector('#nearby-restaurant-results .venue-row') ||
+            document.querySelector('#modal-nearby-restaurants .venue-row');
+      if(row && row.dataset){
+        var fallbackLat = Number(row.dataset.lat);
+        var fallbackLng = Number(row.dataset.lng);
+        if(Number.isFinite(fallbackLat)) payload.selected_venue_lat = fallbackLat;
+        if(Number.isFinite(fallbackLng)) payload.selected_venue_lng = fallbackLng;
+      }
+    }
+  }
+  return payload;
+}
+
+function readRideSelection(){
+  var selected = document.querySelector('#modal-ride-cost .restaurant-card.selected');
+  var card = selected || document.querySelector('#modal-ride-cost .restaurant-card');
+  if(!card) return '';
+  return card.dataset.rideOption || (card.querySelector('.rest-name') ? card.querySelector('.rest-name').textContent.trim() : '');
+}
+
+function showCompletionAction(isCompleted){
+  var doneCard = document.getElementById('plan-done-card');
+  var startCard = document.getElementById('plan-start-card');
+  var activeCard = document.getElementById('plan-active-card');
+  var confirmBtn = document.getElementById('plan-confirm-send-btn');
+  var completeBtn = document.getElementById('plan-mark-complete-btn');
+  var resetBtn = document.getElementById('plan-reset-after-done-btn');
+  var doneCopy = document.getElementById('plan-done-copy');
+
+  if(startCard) startCard.style.display = 'none';
+  if(activeCard) activeCard.style.display = 'none';
+  if(doneCard) doneCard.style.display = 'flex';
+  if(confirmBtn) confirmBtn.style.display = 'none';
+  if(completeBtn) completeBtn.style.display = isCompleted ? 'none' : 'block';
+  if(resetBtn) resetBtn.style.display = 'none';
+  if(doneCopy){
+    doneCopy.textContent = isCompleted
+      ? 'This meetup is complete and now appears in History & Analytics.'
+      : 'Invites are sent. When the meetup is done, mark it complete for History & Analytics.';
+  }
+}
+
+function confirmAdvancedPlan(){
+  if(!window.PLAN_CONTEXT || !PLAN_CONTEXT.confirmUrl){
+    showToast('🎉 Meetup plan confirmed!');
+    showCompletionAction(false);
+    return;
+  }
+  var payload = {};
+  if(PLAN_CONTEXT.midpoint && Number.isFinite(Number(PLAN_CONTEXT.midpoint.lat)) && Number.isFinite(Number(PLAN_CONTEXT.midpoint.lng))){
+    payload.midpoint = PLAN_CONTEXT.midpoint;
+  }
+  fetch(PLAN_CONTEXT.confirmUrl, {
+    method:'POST',
+    headers:{
+      'X-Requested-With':'XMLHttpRequest',
+      'Content-Type':'application/json'
+    },
+    body: JSON.stringify(payload)
+  })
+    .then(function(response){ return response.json(); })
+    .then(function(data){
+      if(!data.success){
+        showToast(data.message || 'Could not confirm this meetup.');
+        return;
+      }
+      var note = data.notified ? ' Invites updated for ' + data.notified + ' friend(s).' : '';
+      showToast('🎉 Meetup plan confirmed!' + note);
+      showCompletionAction(false);
+    })
+    .catch(function(){
+      showToast('🎉 Meetup plan confirmed locally.');
+      showCompletionAction(false);
+    });
+}
+
+function markMeetupComplete(){
+  if(!window.PLAN_CONTEXT || !PLAN_CONTEXT.completeUrl || !window.fetch){
+    showToast('Could not mark this meetup complete.');
+    return;
+  }
+  var btn = document.getElementById('plan-mark-complete-btn');
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = 'Marking complete...';
+  }
+  fetch(PLAN_CONTEXT.completeUrl, {
+    method:'POST',
+    headers:{'X-Requested-With':'XMLHttpRequest'}
+  })
+    .then(function(response){ return response.json(); })
+    .then(function(data){
+      if(!data.success){
+        if(btn){
+          btn.disabled = false;
+          btn.textContent = 'Mark Complete';
+        }
+        showToast(data.message || 'Could not mark this meetup complete.');
+        return;
+      }
+      PLAN_CONTEXT.status = 'completed';
+      showCompletionAction(true);
+      showToast(data.message || 'Meetup marked complete.');
+    })
+    .catch(function(){
+      if(btn){
+        btn.disabled = false;
+        btn.textContent = 'Mark Complete';
+      }
+      showToast('Could not mark this meetup complete.');
+    });
+}
+
+function currentSerialStepId(){
+  if(typeof window.stepIdx === 'undefined' || !window.STEPS) return null;
+  if(stepIdx < 0 || stepIdx >= STEPS.length) return null;
+  return STEPS[stepIdx].id;
+}
+
+function recordSerialResponse(id, value){
+  if(!id) return;
+  serialResponses[id] = value || true;
+}
+
+function requireSerialResponse(id){
+  var step = (window.STEPS || []).find(function(item){ return item.id === id; });
+  var label = step ? step.label : 'this popup';
+  showToast('Please choose an option for ' + label + '.');
+  return false;
+}
+
+function completeSerialStep(id, value){
+  recordSerialResponse(id, value || 'answered');
+  if(window._planBaseSerialNext) return window._planBaseSerialNext(id);
+  return serialNext(id);
+}
+
+(function(){
+  var baseOpenFinalSummary = window.openFinalSummary;
+  window._planBaseSerialNext = window.serialNext;
+  var baseFinishSerialPlan = window.finishSerialPlan;
+  var baseResetSerialPlan = window.resetSerialPlan;
+  var baseCloseFeatModal = window.closeFeatModal;
+  var baseCloseModal = window.closeModal;
+
+  window.serialNext = function(closingId, responseValue){
+    var currentId = currentSerialStepId();
+    if(responseValue) recordSerialResponse(closingId, responseValue);
+    if(currentId && closingId === currentId && !serialResponses[closingId]){
+      return requireSerialResponse(closingId);
+    }
+    return window._planBaseSerialNext ? window._planBaseSerialNext(closingId) : false;
+  };
+
+  window.finishSerialPlan = function(){
+    var currentId = currentSerialStepId();
+    if(currentId && !serialResponses[currentId]){
+      return requireSerialResponse(currentId);
+    }
+    return baseFinishSerialPlan ? baseFinishSerialPlan() : false;
+  };
+
+  window.resetSerialPlan = function(){
+    serialResponses = {};
+    midpointDirty = false;
+    if(baseResetSerialPlan) return baseResetSerialPlan();
+  };
+
+  window.closeFeatModal = function(id){
+    // ✕ always exits the step flow and goes back to the map —
+    // it should never be blocked by an unanswered step.
+    if(id && id === currentSerialStepId() && window.exitSerialToMap){
+      window.exitSerialToMap();
+    }
+    if(baseCloseFeatModal) return baseCloseFeatModal(id);
+  };
+
+  window.closeModal = function(id){
+    if(id && id === currentSerialStepId() && window.exitSerialToMap){
+      window.exitSerialToMap();
+    }
+    if(baseCloseModal) return baseCloseModal(id);
+  };
+
+  
+  document.addEventListener('click', function(e){
+    var currentId = currentSerialStepId();
+    if(!currentId || e.target.id !== currentId) return;
+    if(e.target.classList.contains('feat-modal-overlay') || e.target.classList.contains('modal-overlay')){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      requireSerialResponse(currentId);
+    }
+  }, true);
+
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'Escape') return;
+    var currentId = currentSerialStepId();
+    if(!currentId) return;
+    var currentModal = document.getElementById(currentId);
+    if(currentModal && currentModal.classList.contains('open')){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      requireSerialResponse(currentId);
+    }
+  }, true);
+
+  window.openFinalSummary = function(){
+    if(baseOpenFinalSummary) baseOpenFinalSummary();
+    var ctx = window.PLAN_CONTEXT || {};
+    var title = document.getElementById('fsum-title');
+    var dt = document.getElementById('fsum-dt');
+    var people = document.getElementById('fsum-people');
+    if(title && ctx.title) title.textContent = ctx.title;
+    if(dt) dt.textContent = formatPlanDate(ctx.date, ctx.time);
+    if(people) people.textContent = (ctx.people || 1) + ' people';
+  };
+// If we arrived here via the Dashboard's "Split Bill" shortcut, open that modal directly.
+  if(new URLSearchParams(window.location.search).get('open') === 'split'){
+    var openSplitModal = function(){
+      if(window.openModal) window.openModal('modal-budget-split');
+    };
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', openSplitModal);
+    } else {
+      openSplitModal();
+    }
+  }
+  if(window.PLAN_CONTEXT && PLAN_CONTEXT.hasMeetup){
+    var hydratePlanner = function(){
+      var titleEl = document.getElementById('pm-title');
+      if(titleEl && PLAN_CONTEXT.title) titleEl.value = PLAN_CONTEXT.title;
+      if(window.buildSteps) window.buildSteps();
+	      seedMidpointInputsFromPlan();
+	      initPlanLeafletMap();
+	      renderFeaturedRestaurantOffers();
+	      ensureNearbyRestaurantControls();
+      var venueBtn = document.querySelector('#modal-nearby-restaurants .feat-btn-row .btn-primary');
+      if(venueBtn){
+        venueBtn.onclick = function(){
+          savePlanPreferences(readVenueSelectionPayload());
+          showToast('Venue updated!');
+          completeSerialStep('modal-nearby-restaurants','venue selected');
+        };
+      }
+      if(PLAN_CONTEXT.status === 'completed'){
+        showCompletionAction(true);
+      } else if(window.showToast) {
+        showToast('✅ Meetup created. Continue with smart planning.');
+      }
+    };
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', hydratePlanner);
+    } else {
+      hydratePlanner();
+    }
+	  } else {
+	    var autoDetectLocation = function(){
+	      renderFeaturedRestaurantOffers();
+	      var lat = document.getElementById('pm-lat');
+	      if(lat && !lat.value) detectPMLocation({silent:true});
+	    };
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', autoDetectLocation);
+    } else {
+      autoDetectLocation();
+    }
+  }
+})();
+</script>
+{% endblock %}

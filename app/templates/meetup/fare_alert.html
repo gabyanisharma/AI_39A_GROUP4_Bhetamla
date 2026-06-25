@@ -1,0 +1,799 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'fare_alert' %}
+{% block title %}Fare Drop Alerts — Bhetamल{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Fare Alert page styles ── */
+.fa-hero {
+  background: linear-gradient(135deg,#082D25 0%,#0E6A3A 42%,#145FE3 100%);
+  border-radius: 20px;
+  padding: 28px 32px;
+  color: #fff;
+  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.fa-hero::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(215,164,49,.22), transparent 70%);
+  pointer-events: none;
+}
+.fa-hero-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -.5px;
+  margin-bottom: 6px;
+}
+.fa-hero-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,.75);
+  max-width: 460px;
+  line-height: 1.6;
+}
+.fa-hero-pills {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.fa-hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Mode selector */
+.mode-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.mode-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: var(--white);
+  cursor: pointer;
+  transition: all .2s;
+  font-family: inherit;
+  flex: 1;
+  min-width: 80px;
+}
+.mode-tab:hover { border-color: var(--blue); transform: translateY(-2px); }
+.mode-tab.active {
+  border-color: var(--blue);
+  background: var(--blue-light);
+  box-shadow: 0 4px 16px rgba(20,95,227,.18);
+}
+.mode-tab-icon { font-size: 22px; }
+.mode-tab-label { font-size: 11px; font-weight: 700; color: var(--muted); }
+.mode-tab.active .mode-tab-label { color: var(--blue); }
+.mode-tab-fare {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--primary);
+  font-family: 'Playfair Display', serif;
+}
+.mode-tab.active .mode-tab-fare { color: var(--blue); }
+
+/* Fare card */
+.fare-card {
+  background: var(--white);
+  border-radius: 18px;
+  padding: 24px;
+  border: 1.5px solid var(--border);
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+  transition: border-color .2s;
+}
+.fare-card:hover { border-color: rgba(20,95,227,.3); }
+
+/* Target fare slider */
+.fare-slider-wrap {
+  margin: 16px 0 20px;
+}
+.fare-slider-wrap input[type=range] {
+  width: 100%;
+  accent-color: var(--blue);
+  height: 6px;
+  cursor: pointer;
+}
+.fare-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+/* Alert list */
+.alert-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1.5px solid var(--border);
+  background: var(--white);
+  margin-bottom: 10px;
+  transition: all .18s;
+}
+.alert-row:hover { border-color: var(--blue); transform: translateX(2px); }
+.alert-row.triggered {
+  border-color: var(--green);
+  background: var(--green-light);
+}
+.alert-row.triggered .alert-status { color: var(--green); }
+
+.alert-mode-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: var(--input-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.alert-info { flex: 1; min-width: 0; }
+.alert-meetup { font-weight: 700; font-size: 13.5px; color: var(--text); }
+.alert-meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.alert-fares {
+  text-align: right;
+  flex-shrink: 0;
+}
+.alert-target { font-size: 11px; color: var(--muted); font-weight: 600; }
+.alert-live {
+  font-size: 18px;
+  font-weight: 800;
+  font-family: 'Playfair Display', serif;
+  color: var(--primary);
+}
+.alert-live.dropped { color: var(--green); }
+.alert-saving {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--green);
+  background: var(--green-light);
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-top: 2px;
+  display: inline-block;
+}
+
+/* Sparkline canvas */
+.sparkline-wrap {
+  position: relative;
+  height: 80px;
+  margin: 12px 0 4px;
+}
+#sparkline-canvas {
+  width: 100%;
+  height: 80px;
+  border-radius: 8px;
+}
+
+/* Toast override for alerts */
+.fare-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: linear-gradient(135deg,#0E6A3A,#145FE3);
+  color: #fff;
+  padding: 14px 24px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  z-index: 3000;
+  opacity: 0;
+  pointer-events: none;
+  transition: all .35s;
+  white-space: nowrap;
+  box-shadow: 0 8px 28px rgba(20,95,227,.35);
+}
+.fare-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Pulse animation for live check button */
+@keyframes farePulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(20,95,227,.4); }
+  50%      { box-shadow: 0 0 0 10px rgba(20,95,227,0); }
+}
+.btn-live-check { animation: farePulse 2.5s ease infinite; }
+
+/* Empty state */
+.fa-empty {
+  text-align: center;
+  padding: 48px 20px;
+}
+.fa-empty-icon { font-size: 56px; margin-bottom: 16px; }
+.fa-empty-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+.fa-empty-sub { font-size: 13px; color: var(--muted); line-height: 1.65; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<!-- ═══════════════════════════════════════════════════════
+     FARE DROP ALERT PAGE
+     Covers two modes:
+       (a) meetup=None  → global alert list for the user
+       (b) meetup set   → per-meetup alert dashboard
+════════════════════════════════════════════════════════ -->
+<div id="page-fare-alert" class="page active" style="flex-direction:column;overflow:auto" role="main">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-controls">
+      <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
+    </div>
+    <button class="sos-btn" onclick="showToast('SOS Alert Sent!')">&#10033; SOS</button>
+    <button aria-label="Notifications" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;position:relative">
+      &#128276;
+      {% if unread_notifications_count > 0 %}
+      <span style="position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
+        {{ unread_notifications_count }}
+      </span>
+      {% endif %}
+    </button>
+  </div>
+
+  <div style="padding:28px;max-width:960px;width:100%">
+
+    <!-- ── HERO ── -->
+    <div class="fa-hero">
+      <div class="fa-hero-title">
+        📉 Fare Drop Alerts
+      </div>
+      <div class="fa-hero-sub">
+        Set a target fare for your meetup rides. We'll notify you the moment the price drops — so every meetup costs less.
+      </div>
+      <div class="fa-hero-pills">
+        <div class="fa-hero-pill">🚗 Car · 🛵 Bike · 🚌 Public</div>
+        {% if meetup %}
+        <div class="fa-hero-pill">📍 {{ meetup.destination or 'Destination set' }}</div>
+        <div class="fa-hero-pill">📏 {{ distance }} km away</div>
+        {% else %}
+        <div class="fa-hero-pill">{{ alerts|length if alerts else 0 }} Active Alerts</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <style>
+      .flash-message { padding:12px 16px;border-radius:12px;margin-bottom:16px;font-weight:600;font-size:13px; }
+      .flash-message.success { background:var(--green-light); color:var(--green); border:1px solid rgba(14,106,58,.2); }
+      .flash-message.error { background:#FFEBEE; color:var(--red); border:1px solid rgba(192,57,43,.2); }
+    </style>
+
+    <!-- Flash messages -->
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in msgs %}
+      <div class="flash-message {{ 'success' if cat=='success' else 'error' }}">
+        {{ '✓' if cat=='success' else '⚠' }} {{ msg }}
+      </div>
+      {% endfor %}
+    {% endwith %}
+
+
+    {% if meetup %}
+    <!-- ═══════════════════════════════════════
+         PER-MEETUP ALERT DASHBOARD
+    ════════════════════════════════════════ -->
+
+    <!-- Meetup header strip -->
+    <div class="card" style="margin-bottom:20px;padding:18px 22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--primary)">
+            {{ meetup.title }}
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">
+            📍 {{ meetup.destination or 'Destination' }}
+            &nbsp;·&nbsp;
+            📅 {{ meetup.meetupDateTime.strftime('%b %d, %Y · %I:%M %p') if meetup.meetupDateTime else 'TBD' }}
+            &nbsp;·&nbsp;
+            📏 {{ distance }} km from you
+          </div>
+        </div>
+        <a href="{{ url_for('fare_alert.index') }}" class="btn-sec" style="padding:8px 16px;font-size:12.5px;text-decoration:none">← All Alerts</a>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+
+      <!-- LEFT COLUMN: mode selector + set alert -->
+      <div style="flex:1;min-width:300px">
+
+        <!-- Mode Selector -->
+        <div class="card" style="margin-bottom:18px">
+          <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:16px">
+            🚦 Choose Travel Mode
+          </div>
+          <div class="mode-tabs" id="mode-tabs">
+            {% set mode_icons = {'car':'🚗','bike':'🛵','public':'🚌','walk':'🚶'} %}
+            {% set mode_labels = {'car':'Car / Taxi','bike':'Bike / Moto','public':'Bus / Public','walk':'Walk'} %}
+            {% for mode, icon in mode_icons.items() %}
+            <button class="mode-tab {% if loop.first %}active{% endif %}"
+                    id="tab-{{ mode }}"
+                    onclick="selectMode('{{ mode }}')"
+                    aria-pressed="{{ 'true' if loop.first else 'false' }}">
+              <span class="mode-tab-icon">{{ icon }}</span>
+              <span class="mode-tab-label">{{ mode_labels[mode] }}</span>
+              <span class="mode-tab-fare" id="fare-{{ mode }}">
+                NPR {{ '{:,.0f}'.format(fares[mode]) }}
+              </span>
+            </button>
+            {% endfor %}
+          </div>
+
+          <!-- Live refresh button -->
+          <button class="btn-primary btn-live-check" id="btn-refresh"
+                  style="width:100%;padding:12px;font-size:13.5px;margin-top:8px"
+                  onclick="refreshFares()">
+            🔄 <span id="refresh-label">Check Live Fares</span>
+          </button>
+          <div id="last-checked" style="text-align:center;font-size:11px;color:var(--muted);margin-top:6px"></div>
+        </div>
+
+        <!-- Set Alert Form -->
+        <div class="fare-card" id="alert-form-card">
+          <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:4px">
+            🔔 Set Fare Drop Alert
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:18px">
+            Get notified when the fare drops to your target price.
+          </div>
+
+          <div style="background:var(--input-bg);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted)">CURRENT FARE</div>
+              <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:800;color:var(--primary)" id="current-fare-display">
+                NPR {{ '{:,.0f}'.format(fares['car']) }}
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted)">MODE</div>
+              <div style="font-size:14px;font-weight:700;color:var(--blue)" id="selected-mode-label">🚗 Car / Taxi</div>
+            </div>
+          </div>
+
+          <form action="{{ url_for('fare_alert.create') }}" method="POST" id="alert-form">
+            <input type="hidden" name="meetup_id" value="{{ meetup.id }}">
+            <input type="hidden" name="mode" id="form-mode" value="car">
+
+            <label class="field-label">TARGET FARE (NPR)</label>
+            <div style="font-family:'Playfair Display',serif;font-size:32px;font-weight:800;color:var(--blue);text-align:center;margin:8px 0 4px" id="target-display">
+              NPR <span id="target-val">{{ '{:,.0f}'.format((fares['car'] * 0.85)|round|int) }}</span>
+            </div>
+            <div class="fare-slider-wrap">
+              <input type="range" id="fare-slider"
+                     name="target_fare"
+                     min="50" max="{{ (fares['car'] * 1.1)|round|int }}"
+                     value="{{ (fares['car'] * 0.85)|round|int }}"
+                     oninput="updateSlider(this.value)">
+              <div class="fare-slider-labels">
+                <span>NPR 50 (min)</span>
+                <span id="slider-max">NPR {{ '{:,.0f}'.format((fares['car'] * 1.1)|round|int) }} (max)</span>
+              </div>
+            </div>
+
+            <!-- Saving preview -->
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:18px;padding:10px;background:var(--green-light);border-radius:10px;border:1px solid rgba(14,106,58,.15)">
+              <span style="font-size:16px">💰</span>
+              <span style="font-size:13px;font-weight:700;color:var(--green)" id="saving-preview">
+                You save NPR {{ '{:,.0f}'.format((fares['car'] - fares['car'] * 0.85)|round|int) }} when alert fires
+              </span>
+            </div>
+
+            {% if existing_alert %}
+            <div style="padding:10px 14px;background:rgba(20,95,227,.08);border-radius:10px;border:1px solid rgba(20,95,227,.18);margin-bottom:14px;font-size:12.5px;color:var(--blue);font-weight:600">
+              ✓ Active alert at NPR {{ '{:,.0f}'.format(existing_alert.targetFare) }} for {{ existing_alert.mode }}
+            </div>
+            {% endif %}
+
+            <button type="submit" class="btn-primary" style="width:100%;padding:14px;font-size:14px">
+              🔔 Activate Fare Drop Alert
+            </button>
+          </form>
+
+          {% if existing_alert %}
+          <form action="{{ url_for('fare_alert.delete', alert_id=existing_alert.alertID) }}" method="POST" style="margin-top:8px">
+            <button type="submit" class="btn-sec" style="width:100%;justify-content:center;padding:10px;font-size:12.5px;color:var(--red);border-color:var(--red)">
+              🗑️ Remove Current Alert
+            </button>
+          </form>
+          {% endif %}
+        </div>
+
+      </div><!-- /left column -->
+
+      <!-- RIGHT COLUMN: fare chart + tips -->
+      <div style="width:300px;flex-shrink:0">
+
+        <!-- Sparkline Chart -->
+        <div class="card" style="margin-bottom:18px">
+          <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:4px">
+            📈 Fare Trend
+          </div>
+          <div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">
+            Last recorded price history for this route
+          </div>
+          <div class="sparkline-wrap">
+            <canvas id="sparkline-canvas"></canvas>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10.5px;color:var(--muted);font-weight:600">
+            <span id="chart-mode-label">🚗 Car</span>
+            <span id="chart-avg">—</span>
+          </div>
+        </div>
+
+        <!-- Fare comparison mini-card -->
+        <div class="card" style="margin-bottom:18px">
+          <div style="font-weight:700;font-size:14px;color:var(--primary);margin-bottom:14px">
+            🆚 Mode Comparison
+          </div>
+          {% for mode, icon in mode_icons.items() %}
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:16px">{{ icon }}</span>
+              <span style="font-size:12.5px;font-weight:600">{{ mode_labels[mode] }}</span>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:14px;font-weight:800;color:var(--primary)">NPR {{ '{:,.0f}'.format(fares[mode]) }}</div>
+              {% if fares[mode] == fares.values()|select('greaterthan', 0)|min %}
+              <div style="font-size:10px;font-weight:700;color:var(--green)">CHEAPEST</div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Tips -->
+        <div class="card" style="padding:16px">
+          <div style="font-weight:700;font-size:13px;color:var(--primary);margin-bottom:12px">💡 Fare Tips</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.7">
+            <div style="margin-bottom:6px">🕐 <strong>Early morning (6–8 AM)</strong> usually has lowest fares.</div>
+            <div style="margin-bottom:6px">⚡ <strong>Surge pricing</strong> during rain &amp; peak hours.</div>
+            <div>🤝 <strong>Splitting with group</strong> always beats solo fare.</div>
+          </div>
+        </div>
+
+      </div><!-- /right column -->
+    </div><!-- /flex row -->
+
+
+    {% else %}
+    <!-- ═══════════════════════════════════════
+         GLOBAL ALERT LIST (no specific meetup)
+    ════════════════════════════════════════ -->
+
+    {% if alerts and alerts|length > 0 %}
+
+    <!-- Summary strip -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">
+      <div class="card" style="text-align:center;padding:18px">
+        <div style="font-size:28px;font-weight:800;font-family:'Playfair Display',serif;color:var(--primary)">{{ alerts|length }}</div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-top:2px;letter-spacing:.5px">ACTIVE ALERTS</div>
+      </div>
+      <div class="card" style="text-align:center;padding:18px">
+        <div style="font-size:28px;font-weight:800;font-family:'Playfair Display',serif;color:var(--green)">
+          {{ alerts|selectattr('triggered')|list|length }}
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-top:2px;letter-spacing:.5px">ALERTS TRIGGERED</div>
+      </div>
+      <div class="card" style="text-align:center;padding:18px">
+        <div style="font-size:28px;font-weight:800;font-family:'Playfair Display',serif;color:var(--blue)">
+          NPR {{ '{:,.0f}'.format(alerts|sum(attribute='saving')|abs) }}
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-top:2px;letter-spacing:.5px">TOTAL SAVED</div>
+      </div>
+    </div>
+
+    <!-- Alert rows -->
+    {% set mode_icons_g = {'car':'🚗','bike':'🛵','public':'🚌','walk':'🚶'} %}
+    {% for a in alerts %}
+    <div class="alert-row {% if a.triggered %}triggered{% endif %}" id="alert-{{ a.alertID }}">
+      <div class="alert-mode-icon">{{ mode_icons_g.get(a.mode, '🚗') }}</div>
+      <div class="alert-info">
+        <div class="alert-meetup">{{ a.meetup_title }}</div>
+        <div class="alert-meta">
+          {{ a.mode|title }} &nbsp;·&nbsp;
+          Target: NPR {{ '{:,.0f}'.format(a.targetFare) }}
+          {% if a.triggered %}
+          &nbsp;·&nbsp; <span style="color:var(--green);font-weight:700">🎉 Alert Fired!</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="alert-fares">
+        <div class="alert-target">Live fare</div>
+        <div class="alert-live {% if a.triggered %}dropped{% endif %}">
+          NPR {{ '{:,.0f}'.format(a.liveFare|float) }}
+        </div>
+        {% if a.triggered %}
+        <div class="alert-saving">↓ Save NPR {{ '{:,.0f}'.format(a.saving|abs) }}</div>
+        {% endif %}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-left:8px;flex-shrink:0">
+        <a href="{{ url_for('fare_alert.meetup_alerts', meetup_id=a.meetupID) }}"
+           class="btn-sec" style="padding:6px 12px;font-size:11.5px;text-decoration:none">View</a>
+        <form action="{{ url_for('fare_alert.delete', alert_id=a.alertID) }}" method="POST">
+          <button type="submit" class="btn-sec"
+                  style="padding:6px 12px;font-size:11.5px;color:var(--red);border-color:var(--red);width:100%"
+                  onclick="return confirm('Remove this alert?')">
+            ✕
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="card">
+      <div class="fa-empty">
+        <div class="fa-empty-icon">📉</div>
+        <div class="fa-empty-title">No Fare Alerts Yet</div>
+        <div class="fa-empty-sub">
+          Open any meetup and tap "Set Fare Drop Alert" to be notified<br>when travel costs drop to your target price.
+        </div>
+        <a href="{{ url_for('meetup.plan') }}" class="btn-primary"
+           style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;margin-top:20px;width:auto;padding:12px 24px">
+          📅 Browse My Meetups
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+    {% endif %}<!-- end meetup/list switch -->
+
+  </div><!-- /padding wrap -->
+</div><!-- /page -->
+
+<!-- ── Fare drop toast ── -->
+<div id="fare-toast" class="fare-toast"></div>
+<div id="fare-data"
+     data-fares='{{ fares | default({}) | tojson }}'
+     data-history='{{ history | default([]) | tojson }}'
+     data-meetup-id='{{ meetup.id if meetup else "null" }}'
+     hidden></div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+// ═══════════════════════════════════════════════════════════
+//  Fare Drop Alert — client-side logic
+// ═══════════════════════════════════════════════════════════
+
+const fareDataEl = document.getElementById('fare-data');
+const FARES_INITIAL = JSON.parse(fareDataEl.dataset.fares || '{}');
+const HISTORY_DATA  = JSON.parse(fareDataEl.dataset.history || '[]');
+const MEETUP_ID = fareDataEl.dataset.meetupId === 'null' ? null : Number(fareDataEl.dataset.meetupId);
+const MODE_LABELS   = {car:'🚗 Car / Taxi', bike:'🛵 Bike / Moto', public:'🚌 Public', walk:'🚶 Walk'};
+const MODE_ICONS    = {car:'🚗', bike:'🛵', public:'🚌', walk:'🚶'};
+
+let selectedMode    = 'car';
+let liveFares       = Object.assign({}, FARES_INITIAL);
+let sparkChart      = null;
+
+// ── Mode selection ────────────────────────────────────────
+function selectMode(mode) {
+  selectedMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(t => {
+    t.classList.toggle('active', t.id === 'tab-' + mode);
+    t.setAttribute('aria-pressed', t.id === 'tab-' + mode ? 'true' : 'false');
+  });
+  document.getElementById('form-mode') && (document.getElementById('form-mode').value = mode);
+  document.getElementById('selected-mode-label') &&
+    (document.getElementById('selected-mode-label').textContent = MODE_LABELS[mode]);
+
+  const fare = liveFares[mode] || 0;
+  if (document.getElementById('current-fare-display'))
+    document.getElementById('current-fare-display').textContent = 'NPR ' + fmt(fare);
+
+  // Update slider range
+  const slider = document.getElementById('fare-slider');
+  if (slider) {
+    const max = Math.round(fare * 1.1);
+    slider.max   = max;
+    slider.value = Math.round(fare * 0.85);
+    document.getElementById('slider-max').textContent = 'NPR ' + fmt(max) + ' (max)';
+    updateSlider(slider.value);
+  }
+  drawSparkline(mode);
+}
+
+// ── Slider ────────────────────────────────────────────────
+function updateSlider(val) {
+  const v = parseFloat(val);
+  document.getElementById('target-val').textContent = fmt(v);
+  const current = liveFares[selectedMode] || 0;
+  const saving  = current - v;
+  const prevEl  = document.getElementById('saving-preview');
+  if (prevEl) {
+    if (saving > 0) {
+      prevEl.textContent = 'You save NPR ' + fmt(saving) + ' when alert fires';
+      prevEl.style.color = 'var(--green)';
+    } else {
+      prevEl.textContent = 'Target is above current fare — alert fires immediately!';
+      prevEl.style.color = 'var(--amber)';
+    }
+  }
+}
+
+// ── Live fare refresh (AJAX) ──────────────────────────────
+function refreshFares() {
+  if (!MEETUP_ID) return;
+  const btn   = document.getElementById('btn-refresh');
+  const label = document.getElementById('refresh-label');
+  btn.disabled = true;
+  label.textContent = 'Checking...';
+
+  fetch(`/fare-alert/check/${MEETUP_ID}`)
+    .then(r => r.json())
+    .then(data => {
+      liveFares = data.fares;
+
+      // Update mode tab fares
+      Object.keys(data.fares).forEach(mode => {
+        const el = document.getElementById('fare-' + mode);
+        if (el) el.textContent = 'NPR ' + fmt(data.fares[mode]);
+      });
+
+      // Update current display
+      const cd = document.getElementById('current-fare-display');
+      if (cd) cd.textContent = 'NPR ' + fmt(data.fares[selectedMode]);
+
+      // Show triggered alerts
+      if (data.alerts && data.alerts.length > 0) {
+        data.alerts.forEach(a => {
+          showFareToast(`🎉 Fare dropped! ${MODE_ICONS[a.mode]} NPR ${fmt(a.fare)} — You save NPR ${fmt(a.saving)}`);
+        });
+      } else {
+        showFareToast('✓ Fares refreshed at ' + data.checkedAt);
+      }
+
+      document.getElementById('last-checked').textContent = 'Last checked: ' + data.checkedAt;
+
+      // Fetch updated history for chart
+      return fetch(`/fare-alert/history/${MEETUP_ID}`);
+    })
+    .then(r => r.json())
+    .then(hist => {
+      drawSparklineFromData(selectedMode, hist[selectedMode] || []);
+    })
+    .catch(() => showFareToast('⚠ Could not refresh fares.'))
+    .finally(() => {
+      btn.disabled = false;
+      label.textContent = 'Check Live Fares';
+    });
+}
+
+// ── Sparkline chart ───────────────────────────────────────
+function drawSparkline(mode) {
+  const data = HISTORY_DATA[mode] || [];
+  drawSparklineFromData(mode, data);
+}
+
+function drawSparklineFromData(mode, data) {
+  const canvas = document.getElementById('sparkline-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 260;
+  const H = 80;
+  canvas.width  = W;
+  canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+
+  if (!data || data.length === 0) {
+    ctx.fillStyle = '#aaa';
+    ctx.font = '12px DM Sans';
+    ctx.textAlign = 'center';
+    ctx.fillText('No history yet — refresh fares to start tracking', W/2, H/2);
+    document.getElementById('chart-mode-label').textContent = MODE_ICONS[mode] + ' ' + mode;
+    document.getElementById('chart-avg').textContent = '—';
+    return;
+  }
+
+  const values = data.map(d => d.fare);
+  const minV   = Math.min(...values) * 0.95;
+  const maxV   = Math.max(...values) * 1.05;
+  const range  = maxV - minV || 1;
+
+  const pad = 8;
+  const pts = values.map((v, i) => ({
+    x: pad + (i / (values.length - 1 || 1)) * (W - pad*2),
+    y: H - pad - ((v - minV) / range) * (H - pad*2)
+  }));
+
+  // Gradient fill
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, 'rgba(20,95,227,.25)');
+  grad.addColorStop(1, 'rgba(20,95,227,0)');
+  ctx.beginPath();
+  pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.lineTo(pts[pts.length-1].x, H);
+  ctx.lineTo(pts[0].x, H);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.strokeStyle = '#145FE3';
+  ctx.lineWidth   = 2.5;
+  ctx.lineJoin    = 'round';
+  ctx.stroke();
+
+  // Last dot
+  const last = pts[pts.length-1];
+  ctx.beginPath();
+  ctx.arc(last.x, last.y, 5, 0, Math.PI*2);
+  ctx.fillStyle   = '#145FE3';
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth   = 2;
+  ctx.fill();
+  ctx.stroke();
+
+  // Labels
+  const avg = values.reduce((a,b) => a+b, 0) / values.length;
+  document.getElementById('chart-mode-label').textContent = MODE_ICONS[mode] + ' ' + mode[0].toUpperCase() + mode.slice(1);
+  document.getElementById('chart-avg').textContent = 'Avg NPR ' + fmt(avg);
+}
+
+// ── Toast ─────────────────────────────────────────────────
+function showFareToast(msg) {
+  const t = document.getElementById('fare-toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3800);
+}
+
+// ── Helpers ───────────────────────────────────────────────
+function fmt(n) {
+  return Math.round(n).toLocaleString('en-NP');
+}
+
+// ── Init ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.getElementById('fare-slider')) {
+    updateSlider(document.getElementById('fare-slider').value);
+  }
+  if (document.getElementById('sparkline-canvas')) {
+    drawSparkline('car');
+  }
+  // Auto-refresh every 90 seconds if on a meetup page
+  if (MEETUP_ID) {
+    setInterval(refreshFares, 90000);
+  }
+});
+</script>
+{% endblock %}

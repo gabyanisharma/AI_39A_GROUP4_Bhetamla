@@ -1,0 +1,157 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'explore' %}
+{% block title %}{{ spot.name }} — Bhetamल{% endblock %}
+
+{% block page_content %}
+<div class="page active" style="flex-direction:column" role="main">
+  {% include '_topbar.html' %}
+
+  <div class="venue-hero">
+    {% if spot.thumbnail_url or spot.image_url %}
+    <img src="{{ spot.thumbnail_url or spot.image_url }}" alt="{{ spot.name }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.35" onerror="this.style.display='none'">
+    {% endif %}
+    <div style="position:relative;z-index:1">
+      <div class="venue-hero-title">{{ spot.name }}</div>
+      <div class="venue-hero-loc">&#128205; {{ spot.address or 'Kathmandu' }}
+        {% if spot.is_featured %}&nbsp;·&nbsp;<span class="badge" style="background:rgba(255,255,255,.2);color:rgba(255,255,255,.9);font-size:10px">★ FEATURED</span>{% endif %}
+        {% if spot.trend_score and spot.trend_score|float > 0 %}&nbsp;·&nbsp;<span class="badge" style="background:rgba(255,255,255,.2);color:rgba(255,255,255,.9);font-size:10px">🔥 TREND {{ spot.trend_score|round(0)|int }}</span>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="venue-body">
+    <div class="venue-main">
+      <div class="card" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">
+          <div class="rating-row">
+            <span style="font-size:22px;font-weight:700;color:var(--amber)">{{ spot.rating or '—' }}</span>
+            <span style="color:var(--amber);font-size:16px">
+              {% if spot.rating %}{% for i in range(spot.rating|int) %}★{% endfor %}{% for i in range(5 - spot.rating|int) %}☆{% endfor %}{% endif %}
+            </span>
+            <span style="font-size:12px;color:var(--muted)">({{ spot.review_count or 0 }} review{{ 's' if (spot.review_count or 0) != 1 else '' }})</span>
+          </div>
+          <a href="{{ url_for('explore.feed') }}" style="color:var(--blue);font-size:13px;font-weight:700;text-decoration:none">← Back to Explore</a>
+        </div>
+        {% if spot.description %}
+        <p style="font-size:13.5px;color:var(--muted);line-height:1.65;margin-top:12px">{{ spot.description }}</p>
+        {% endif %}
+        <div class="tags-row" style="margin-top:12px">
+          {% if spot.cuisine %}<div class="tag">🍽️ {{ spot.cuisine }}</div>{% endif %}
+          {% if spot.category %}<div class="tag">🏷️ {{ spot.category }}</div>{% endif %}
+          {% if spot.avg_cost_per_person %}<div class="tag">💰 NPR {{ spot.avg_cost_per_person|round(0)|int }}/person</div>{% endif %}
+          {% if spot.ambience %}<div class="tag">✨ {{ spot.ambience }}</div>{% endif %}
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          <button type="button" class="spot-action {% if is_liked %}is-active{% endif %}" data-spot="{{ spot.id }}" data-type="like"
+                  onclick="toggleSpot(this)"
+                  style="border:1px solid var(--border);background:none;border-radius:9px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text)">
+            <span class="ico">{% if is_liked %}❤️{% else %}🤍{% endif %}</span> Like
+          </button>
+          <button type="button" class="spot-action {% if is_saved %}is-active{% endif %}" data-spot="{{ spot.id }}" data-type="save"
+                  onclick="toggleSpot(this)"
+                  style="border:1px solid var(--border);background:none;border-radius:9px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text)">
+            <span class="ico">{% if is_saved %}🔖{% else %}📑{% endif %}</span> Save
+          </button>
+          <button type="button" class="spot-action" data-spot="{{ spot.id }}" data-type="visit"
+                  onclick="toggleSpot(this)"
+                  style="border:1px solid var(--border);background:none;border-radius:9px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text)">
+            ✅ Mark as Visited
+          </button>
+        </div>
+      </div>
+
+      {% if spot.latitude and spot.longitude %}
+      <div class="card">
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px">Location</div>
+        <div style="font-size:13px;color:var(--muted)">📍 {{ spot.latitude }}, {{ spot.longitude }}</div>
+          <button onclick="goToRoutePlanner({{ spot.latitude }}, {{ spot.longitude }}, '{{ spot.name | replace("'", "\\'") }}')"
+            style="display:inline-flex;align-items:center;gap:8px;margin-top:12px;background:var(--primary);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer">
+            🧭 Get Directions from My Location
+          </button>
+          <div id="directions-status" style="margin-top:8px;font-size:12px;color:var(--muted)"></div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- SOS Modal -->
+<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
+  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
+    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
+    <div style="font-size:48px;margin-bottom:10px">🆘</div>
+    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
+    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
+    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
+    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
+  </div>
+</div>
+
+<style>
+  .spot-action.is-active { border-color: var(--primary); background: var(--input-bg); }
+</style>
+<script>
+function toggleSpot(btn) {
+  const spotId = btn.getAttribute('data-spot');
+  const type = btn.getAttribute('data-type');
+  fetch(`/explore/spot/${spotId}/interact`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: type })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.success) return;
+    const ico = btn.querySelector('.ico');
+    if (type === 'like' || type === 'save') {
+      btn.classList.toggle('is-active', data.active);
+    }
+    if (type === 'like' && ico) ico.textContent = data.active ? '❤️' : '🤍';
+    if (type === 'save' && ico) ico.textContent = data.active ? '🔖' : '📑';
+  })
+  .catch(() => {});
+}
+function goToRoutePlanner(destLat, destLng, destName) {
+  const status = document.getElementById('directions-status');
+  if (!navigator.geolocation) {
+    // No geolocation — go to planner with just the destination pre-filled
+    const params = new URLSearchParams({
+      to_lat:  destLat,
+      to_lng:  destLng,
+      to_name: destName
+    });
+    window.location.href = '/ride/planner?' + params.toString();
+    return;
+  }
+  status.textContent = '📡 Detecting your location…';
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      const params = new URLSearchParams({
+        from_lat:  pos.coords.latitude,
+        from_lng:  pos.coords.longitude,
+        to_lat:    destLat,
+        to_lng:    destLng,
+        to_name:   destName
+      });
+      window.location.href = '/ride/planner?' + params.toString();
+    },
+    function() {
+      // User denied or error — still go, planner will handle it
+      status.textContent = '⚠️ Could not detect location. Opening planner anyway…';
+      const params = new URLSearchParams({
+        to_lat:  destLat,
+        to_lng:  destLng,
+        to_name: destName
+      });
+      setTimeout(function() {
+        window.location.href = '/ride/planner?' + params.toString();
+      }, 1200);
+    },
+    { timeout: 8000, maximumAge: 60000 }
+  );
+}
+
+</script>
+{% endblock %}

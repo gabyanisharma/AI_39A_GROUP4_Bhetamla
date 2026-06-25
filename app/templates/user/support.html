@@ -1,0 +1,105 @@
+﻿{% extends "base_dashboard.html" %}
+{% set active_page = 'support' %}
+{% block title %}Support — Bhetamल{% endblock %}
+
+{% block page_content %}
+<div id="page-support" class="page active" style="flex-direction:column" role="main">
+  {% set topbar_show_sos = false %}
+  {% include '_topbar.html' %}
+
+  <div style="padding:28px;max-width:700px">
+    <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;margin-bottom:8px;color:var(--primary)">Support &amp; Help</h1>
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:28px">Find answers, get help, and reach our support team.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px">
+      <div class="card" style="cursor:pointer;text-align:center;padding:24px" onclick="showToast('Live chat coming soon!')">
+        <div style="font-size:32px;margin-bottom:10px">💬</div>
+        <div style="font-weight:700;font-size:14px">Live Chat</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">Chat with our support team</div>
+      </div>
+      <div class="card" style="cursor:pointer;text-align:center;padding:24px" onclick="showToast('Email support: help@bhetamla.com')">
+        <div style="font-size:32px;margin-bottom:10px">📧</div>
+        <div style="font-weight:700;font-size:14px">Email Support</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">help@bhetamla.com</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700;font-size:15px;margin-bottom:16px">Frequently Asked Questions</div>
+      {% set faqs = [
+        ('How do I create a meetup?', 'Go to Plan Meetup from the sidebar, fill in the details and invite friends. The smart midpoint calculator will suggest the best meeting spot.'),
+        ('How does location sharing work?', 'Location is only shared when you actively trigger it or during an SOS alert. It is never stored permanently.'),
+        ('How do I add emergency contacts?', 'Go to Safety Hub → Emergency Contacts → Add Contact. They will be notified instantly during any SOS alert.'),
+        ('Can I change my language?', 'Yes! Click the EN | नेपाली button in the top bar to switch between English and Nepali at any time.'),
+        ('How do group votes work?', 'In My Groups, the admin can start a vote session. Members vote for their preferred venue and the winner is announced automatically.'),
+      ] %}
+      {% for q, a in faqs %}
+      <div style="border-bottom:1px solid var(--border);padding:14px 0;">
+        <button onclick="toggleTopic({{ loop.index }})" id="topic-btn-{{ loop.index }}" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;color:var(--text);text-align:left;padding:0" aria-expanded="false">
+          {{ q }}
+          <span id="topic-arrow-{{ loop.index }}" style="font-size:14px;color:var(--muted);transition:transform .2s;flex-shrink:0;margin-left:10px;">›</span>
+        </button>
+        <div id="topic-body-{{ loop.index }}" style="display:none;margin-top:10px;font-size:13px;color:var(--muted);line-height:1.65;">
+          {{ a }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Rating & Feedback (US27) -->
+    <div class="card" style="margin-top:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+        <div style="font-weight:700;font-size:15px">Rate Bhetamla</div>
+        {% if feedback_summary and feedback_summary.total %}
+        <span style="font-size:12px;color:var(--muted)">★ {{ feedback_summary.average }} avg · {{ feedback_summary.total }} review{{ 's' if feedback_summary.total != 1 else '' }}</span>
+        {% endif %}
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Tell us how we're doing. Your feedback helps improve the app.</p>
+      <form method="POST" action="{{ url_for('user.feedback_submit') }}">
+        <input type="hidden" name="rating" id="fb-rating" value="0" required />
+        <div id="fb-stars" style="display:flex;gap:6px;margin-bottom:14px;font-size:30px;line-height:1;cursor:pointer">
+          {% for i in range(1, 6) %}
+          <span class="fb-star" data-val="{{ i }}" role="button" aria-label="{{ i }} star" style="color:var(--border);transition:color .15s">★</span>
+          {% endfor %}
+        </div>
+        <select name="category" class="field-input" style="margin-bottom:12px">
+          <option value="general">General feedback</option>
+          <option value="bug">Bug report</option>
+          <option value="feature">Feature request</option>
+          <option value="praise">Compliment</option>
+        </select>
+        <textarea name="message" class="field-input" rows="3" placeholder="What did you like, or what can we improve? (optional)" style="margin-bottom:14px;resize:vertical"></textarea>
+        <button class="btn-primary" type="submit">Submit Feedback</button>
+      </form>
+
+      {% if my_feedback %}
+      <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px">YOUR PAST FEEDBACK</div>
+        {% for f in my_feedback[:5] %}
+        <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:13px;color:var(--amber)">{{ '★' * f.rating }}<span style="color:var(--border)">{{ '★' * (5 - f.rating) }}</span></div>
+          {% if f.message %}<div style="font-size:12.5px;color:var(--text);margin-top:3px">{{ f.message }}</div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var stars = document.querySelectorAll('#fb-stars .fb-star');
+  var input = document.getElementById('fb-rating');
+  function paint(v){
+    stars.forEach(function(s){
+      s.style.color = (Number(s.dataset.val) <= v) ? 'var(--amber)' : 'var(--border)';
+    });
+  }
+  stars.forEach(function(s){
+    s.addEventListener('click', function(){ input.value = s.dataset.val; paint(Number(s.dataset.val)); });
+    s.addEventListener('mouseenter', function(){ paint(Number(s.dataset.val)); });
+  });
+  document.getElementById('fb-stars').addEventListener('mouseleave', function(){ paint(Number(input.value)); });
+})();
+</script>
+{% endblock %}

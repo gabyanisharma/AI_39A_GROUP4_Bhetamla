@@ -1,0 +1,154 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'saved' %}
+{% block title %}{{ restaurant.name }} — Bhetamल{% endblock %}
+
+{% block page_content %}
+<div class="page active" style="flex-direction:column" role="main">
+  {% include '_topbar.html' %}
+
+  <div class="venue-hero">
+    {% if restaurant.thumbnail_url %}
+    <img src="{{ restaurant.thumbnail_url }}" alt="{{ restaurant.name }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.35" onerror="this.style.display='none'">
+    {% endif %}
+    <div style="position:relative;z-index:1">
+      <div class="venue-hero-title">{{ restaurant.name }}</div>
+      <div class="venue-hero-loc">&#128205; {{ restaurant.address or 'Kathmandu' }}
+        {% if restaurant.is_verified %}&nbsp;·&nbsp;<span class="badge" style="background:rgba(255,255,255,.2);color:rgba(255,255,255,.9);font-size:10px">&#9989; VERIFIED</span>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="venue-body">
+    <div class="venue-main">
+      <!-- Info card -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="rating-row">
+          <span style="font-size:22px;font-weight:700;color:var(--amber)">{{ restaurant.rating or '—' }}</span>
+          <span style="color:var(--amber);font-size:16px">
+            {% if restaurant.rating %}{% for i in range(restaurant.rating|int) %}★{% endfor %}{% for i in range(5 - restaurant.rating|int) %}☆{% endfor %}{% endif %}
+          </span>
+          <span style="font-size:12px;color:var(--muted)">({{ reviews|length }} review{{ 's' if reviews|length != 1 else '' }})</span>
+        </div>
+        {% if restaurant.description %}
+        <p style="font-size:13.5px;color:var(--muted);line-height:1.65;margin-top:12px">{{ restaurant.description }}</p>
+        {% endif %}
+        <div class="tags-row" style="margin-top:12px">
+          {% if restaurant.cuisine_type %}<div class="tag">🍽️ {{ restaurant.cuisine_type }}</div>{% endif %}
+          {% if restaurant.avg_cost_per_person %}<div class="tag">💰 NPR {{ restaurant.avg_cost_per_person }}/person</div>{% endif %}
+          {% if restaurant.ambience %}<div class="tag">✨ {{ restaurant.ambience }}</div>{% endif %}
+        </div>
+      </div>
+
+      <!-- Offers -->
+      {% if offers %}
+      <div class="card" style="margin-bottom:20px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:14px">Active Offers & Discounts</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          {% for o in offers %}
+          <div style="border:1.5px solid var(--border);border-radius:12px;padding:16px;background:var(--input-bg);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+              <div>
+                <div style="font-weight:700;font-size:15px;color:var(--text)">🏷️ {{ o.title }}</div>
+                <div style="font-size:12px;color:var(--muted)">Valid until: <strong style="color:var(--text)">{{ o.valid_until }}</strong></div>
+              </div>
+              <span style="background:rgba(30,130,76,.1);color:var(--green);font-weight:700;font-size:11px;padding:4px 10px;border-radius:20px">{{ o.discount_percent }}% OFF</span>
+            </div>
+            <p style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:12px">{{ o.description }}</p>
+            <div style="display:flex;align-items:center;gap:10px">
+              {% if not o.is_saved %}
+              <form method="POST" action="{{ url_for('place.save_offer_route', offer_id=o.id) }}" style="flex:1">
+                <button type="submit" class="btn-primary" style="width:100%;padding:10px;font-size:13px">Save Offer for Later</button>
+              </form>
+              {% else %}
+              <div style="flex:1;background:var(--blue-light);color:var(--blue);font-weight:600;font-size:13px;padding:10px;text-align:center;border-radius:8px">
+                ✅ Saved
+              </div>
+              <form method="POST" action="{{ url_for('place.toggle_reminder_route', offer_id=o.id) }}">
+                <input type="hidden" name="remind_me" value="{{ '0' if o.remind_me else '1' }}">
+                <button type="submit" class="btn-sec" style="padding:10px;font-size:12px;cursor:pointer;">
+                  {{ '🔕 Disable Reminder' if o.remind_me else '🔔 Notify Before Expiry' }}
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Reviews -->
+      <div class="card" style="margin-bottom:20px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:14px">Reviews</div>
+        {% for rev in reviews %}
+        <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div class="avatar" style="width:28px;height:28px;background:var(--blue);font-size:10px">{{ rev.full_name[:2]|upper }}</div>
+            <div style="font-weight:600;font-size:13px">{{ rev.full_name }}</div>
+            <div style="color:var(--amber);font-size:12px">{% for i in range(rev.rating|int) %}★{% endfor %}</div>
+            <div style="font-size:11px;color:var(--muted);margin-left:auto">{{ rev.created_at }}</div>
+          </div>
+          {% if rev.review %}<div style="font-size:13px;color:var(--text);line-height:1.6">{{ rev.review }}</div>{% endif %}
+        </div>
+        {% else %}
+        <div style="font-size:13px;color:var(--muted)">No reviews yet — be the first!</div>
+        {% endfor %}
+      </div>
+
+      <!-- Leave a review -->
+      <div class="card">
+        <div style="font-weight:700;font-size:15px;margin-bottom:14px">
+          {{ 'Update Your Review' if user_review else 'Leave a Review' }}
+        </div>
+        <form method="POST" action="{{ url_for('place.add_review_page', restaurant_id=restaurant.id) }}">
+          <div id="star-row" class="rating-star-row" style="margin-bottom:12px">
+            {% for i in range(1,6) %}
+            <span class="rating-star" onclick="setStars({{ i }})" data-val="{{ i }}" style="font-size:26px;cursor:pointer;color:{% if user_review and user_review.rating >= i %}var(--amber){% else %}var(--muted){% endif %}">{{ '★' if user_review and user_review.rating >= i else '☆' }}</span>
+            {% endfor %}
+          </div>
+          <input type="hidden" id="rating-input" name="rating" value="{{ user_review.rating if user_review else '' }}" required />
+          <textarea name="review" id="review-text" class="review-textarea" placeholder="Share your experience...">{{ user_review.review if user_review else '' }}</textarea>
+          <button class="btn-primary" type="submit" style="margin-top:12px;padding:11px">Submit Review</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="venue-sidebar">
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:14px">Quick Actions</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <a href="{{ url_for('meetup.plan') }}" class="btn-primary" style="padding:11px;font-size:13px;text-decoration:none;display:flex;align-items:center;justify-content:center">📅 Plan Meetup Here</a>
+          <form method="POST" action="{{ url_for('place.save') }}">
+            <input type="hidden" name="place_name" value="{{ restaurant.name }}" />
+            <input type="hidden" name="address" value="{{ restaurant.address or '' }}" />
+            <input type="hidden" name="latitude" value="{{ restaurant.latitude or '' }}" />
+            <input type="hidden" name="longitude" value="{{ restaurant.longitude or '' }}" />
+            <button class="btn-sec" type="submit" style="width:100%;justify-content:center;padding:11px;font-size:13px">❤️ Save to Favourites</button>
+          </form>
+          <a href="{{ url_for('place.restaurants_page') }}" class="btn-sec" style="width:100%;justify-content:center;padding:11px;font-size:13px;text-decoration:none">← Back to Restaurants</a>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:10px">LOCATION INFO</div>
+        <div style="font-size:13px;color:var(--text);margin-bottom:4px;font-weight:600">{{ restaurant.address or 'Kathmandu' }}</div>
+        {% if restaurant.latitude and restaurant.longitude %}
+        <a href="https://www.google.com/maps?q={{ restaurant.latitude }},{{ restaurant.longitude }}" target="_blank" style="font-size:12px;color:var(--blue);font-weight:600;text-decoration:none">📍 Get Directions</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setStars(n) {
+  document.querySelectorAll('.rating-star').forEach((s, i) => {
+    s.textContent = i < n ? '★' : '☆';
+    s.style.color = i < n ? 'var(--amber)' : 'var(--muted)';
+  });
+  document.getElementById('rating-input').value = n;
+}
+</script>
+{% endblock %}

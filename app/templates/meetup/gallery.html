@@ -1,0 +1,112 @@
+{% extends "base_dashboard.html" %}
+{% set active_page = 'gallery' %}
+{% block title %}Meetup Gallery — Bhetamल{% endblock %}
+
+{% block page_content %}
+<div id="page-gallery" class="page active" style="flex-direction:column" role="main">
+  {% include '_topbar.html' %}
+
+  <div class="groups-inner">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 style="font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px;font-family:'Playfair Display',serif;color:var(--primary)">Meetup Gallery</h1>
+        <p style="color:var(--muted);font-size:13.5px">Upload and browse photos from your meetups.</p>
+      </div>
+      <div>
+        <label for="gallery-meetup-select" style="display:block;font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px">Choose a meetup</label>
+        <select id="gallery-meetup-select" onchange="window.loadGallery(this.value)"
+                style="padding:10px 14px;border-radius:10px;border:1.5px solid var(--border);font-size:13px;min-width:240px;background:var(--card,#fff);color:var(--text)">
+          {% for m in meetups %}
+          <option value="{{ m.id }}">{{ m.title }}{% if m.meetup_date %} · {{ m.meetup_date }}{% endif %}</option>
+          {% else %}
+          <option value="">No meetups yet</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Upload Card -->
+    <div class="card" id="gallery-upload-card" style="margin-bottom:24px">
+      <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:4px">📤 Upload a Photo</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">JPG/PNG under 5MB. Choose public (visible to all members) or private (only you).</p>
+
+      <!-- Drop zone -->
+      <div id="gallery-drop-zone"
+           style="border:2px dashed var(--border);border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;margin-bottom:14px;background:var(--input-bg)"
+           onclick="document.getElementById('gallery-file-input').click()"
+           ondragover="event.preventDefault();this.style.borderColor='var(--primary)';this.style.background='rgba(18,48,42,.06)'"
+           ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--input-bg)'"
+           ondrop="window.handleDrop(event)">
+        <div id="gallery-drop-placeholder">
+          <div style="font-size:32px;margin-bottom:8px">🖼️</div>
+          <div style="font-weight:600;font-size:14px;color:var(--text)">Click or drag a photo here</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">JPG or PNG, max 5MB</div>
+        </div>
+        <div id="gallery-preview-wrap" style="display:none">
+          <img id="gallery-preview-img" src="" alt="Preview"
+               style="max-height:200px;max-width:100%;border-radius:10px;object-fit:contain;box-shadow:0 2px 12px rgba(0,0,0,.12)">
+          <div id="gallery-preview-name" style="margin-top:8px;font-size:12px;color:var(--muted)"></div>
+        </div>
+      </div>
+
+      <form id="gallery-upload-form" enctype="multipart/form-data" onsubmit="return window.uploadGallery(event)"
+            style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <input type="file" id="gallery-file-input" name="photo" accept=".jpg,.jpeg,.png" required
+               style="display:none" onchange="window.previewPhoto(this)">
+        <input type="text" name="caption" placeholder="Caption (optional)" maxlength="200"
+               style="flex:1;min-width:200px;padding:9px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--input-bg);color:var(--text)">
+        <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" name="is_public" value="1" checked> Public
+        </label>
+        <button type="submit" id="gallery-upload-btn" class="btn-primary" style="width:auto;padding:9px 18px;font-size:13px;margin-top:0">
+          Upload
+        </button>
+      </form>
+    </div>
+
+    <!-- Stats bar -->
+    <div id="gallery-stats-bar" style="display:none;margin-bottom:16px;font-size:12px;color:var(--muted);display:flex;gap:16px;align-items:center">
+      <span id="gallery-photo-count"></span>
+    </div>
+
+    <!-- Grid -->
+    <div id="gallery-grid"
+         style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px">
+    </div>
+    <div id="gallery-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--muted)">
+      <div style="font-size:48px;margin-bottom:10px">📷</div>
+      <div style="font-weight:600;font-size:15px;margin-bottom:4px">No photos yet</div>
+      <div style="font-size:13px">Be the first to upload a memory from this meetup.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div class="modal-overlay" id="gallery-lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <div class="modal-box" style="max-width:760px;width:94%;padding:0;overflow:hidden">
+    <button class="modal-close" onclick="closeModal('gallery-lightbox')" style="z-index:2">✕</button>
+    <img id="lightbox-img" src="" alt="" style="width:100%;max-height:62vh;object-fit:contain;background:#000;display:block">
+    <div style="padding:18px 20px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px">
+        <div>
+          <div id="lightbox-caption" style="font-weight:700;font-size:15px;margin-bottom:4px"></div>
+          <div id="lightbox-meta" style="font-size:12px;color:var(--muted)"></div>
+        </div>
+        <a id="lightbox-download" href="" download class="btn-sec" style="width:auto;padding:7px 14px;font-size:12px;text-decoration:none;flex-shrink:0">⬇ Download</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.GALLERY_CONFIG = {
+  currentUserId: {{ current_user_id }},
+  meetups: [
+    {% for m in meetups %}{ id: {{ m.id }}, title: {{ m.title|tojson }} }{% if not loop.last %},{% endif %}{% endfor %}
+  ]
+};
+</script>
+<script src="{{ url_for('static', filename='js/gallery.js') }}"></script>
+{% endblock %}
