@@ -4,9 +4,7 @@
 
 {% block page_content %}
 <div class="page active" style="flex-direction:column" role="main">
-  <div class="topbar">
-    <div class="topbar-controls"><button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button></div>
-  </div>
+  {% include '_topbar.html' %}
 
   <div class="venue-hero">
     {% if restaurant.thumbnail_url %}

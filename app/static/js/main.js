@@ -84,7 +84,7 @@ function toggleTheme(){setTheme(currentTheme==='light'?'dark':'light');}
   }
 })();
  
-function applyLang(lang){
+function applyLang(lang, showFeedback){
   currentLang=lang;
   document.documentElement.lang=lang==='ne'?'ne':'en';
   document.querySelectorAll('[data-en],[data-ne]').forEach(el=>{
@@ -96,9 +96,11 @@ function applyLang(lang){
   });
   const lbl=document.getElementById('lang-setting');
   if(lbl)lbl.textContent=lang==='ne'?'नेपाली':'English';
-  showToast(lang==='ne'?'नेपाली भाषामा परिवर्तन गरियो':'Switched to English');
+  if(showFeedback){
+    showToast(lang==='ne'?'नेपाली भाषामा परिवर्तन गरियो':'Switched to English');
+  }
 }
-function toggleLang(){applyLang(currentLang==='en'?'ne':'en');}
+function toggleLang(){applyLang(currentLang==='en'?'ne':'en', true);}
 
 function selectVenue(n){
   var all = document.querySelectorAll('#nearby-dynamic-list .venue-row, #modal-nearby-restaurants .venue-row');

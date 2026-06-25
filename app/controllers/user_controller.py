@@ -23,6 +23,15 @@ def settings():
         return redirect(url_for('auth.login'))
 
     user = User.get_by_id(get_current_user_id())
+    user_id = get_current_user_id()
+
+    # Emergency contacts count for the Safety & Privacy card
+    from app.models.notification import EmergencyContact
+    contacts = EmergencyContact.get_by_user(user_id) or []
+
+    # Notification preferences for the Preferences panel
+    from app.models.notification_preference import NotificationPreference
+    prefs = NotificationPreference.get_or_create(user_id)
 
     if request.method == 'POST':
         action = request.form.get('action')
@@ -65,6 +74,16 @@ def settings():
             session['language'] = language
             flash('Preferences saved!', 'success')
 
+        elif action == 'update_notification_prefs':
+            def _cb(name): return 1 if request.form.get(name) else 0
+            NotificationPreference.update(user_id, {
+                'smart_alerts_enabled': _cb('smart_alerts_enabled'),
+                'meetup_reminders':     _cb('meetup_reminders'),
+                'invite_alerts':        _cb('invite_alerts'),
+                'trending_alerts':      _cb('trending_alerts'),
+            })
+            flash('Notification preferences saved!', 'success')
+
         elif action == 'change_password':
             current_password = request.form.get('current_password', '')
             new_password     = request.form.get('new_password', '')
@@ -82,7 +101,7 @@ def settings():
 
         return redirect(url_for('user.settings_page'))
 
-    return render_template('user/settings.html', user=user)
+    return render_template('user/settings.html', user=user, contacts=contacts, prefs=prefs)
 
 def notifications():
     if not is_logged_in():

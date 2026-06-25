@@ -90,18 +90,49 @@
     <button class="feat-modal-close" onclick="closeFeatModal('modal-nearby-restaurants')" aria-label="Close">&#10005;</button>
     <div class="feat-modal-icon">🍽️</div>
     <div class="feat-modal-title">Nearby Restaurants</div>
-    <div class="feat-modal-sub">Top picks near your midpoint.</div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:10px">
-      <label for="restaurant-min-rating" style="font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap">Minimum Rating</label>
-      <select id="restaurant-min-rating" class="field-input" onchange="refreshMidpointRestaurants()" style="padding:8px 10px;font-size:12px">
-        <option value="0">Any rating</option>
-        <option value="4">4.0+ stars</option>
-        <option value="4.5">4.5+ stars</option>
-      </select>
+    <div class="feat-modal-sub" id="nearby-modal-sub">Restaurants sorted by distance from your group's midpoint.</div>
+
+    <!-- Midpoint context pill -->
+    <div id="nearby-midpoint-info" style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(21,101,192,.08),rgba(27,107,58,.08));border:1px solid rgba(21,101,192,.18);border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:12px;">
+      <span style="font-size:16px;flex-shrink:0;">📍</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;color:var(--text);" id="nearby-midpoint-label">Calculating midpoint…</div>
+        <div style="color:var(--muted);font-size:11px;margin-top:1px;">Restaurants are sorted by distance from here</div>
+      </div>
     </div>
-    <div id="nearby-restaurant-results" style="margin-bottom:12px">
-      <div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px">Recommendations load around the calculated midpoint.</div>
+
+    <!-- Active filters summary — shows cuisine + budget set in earlier steps -->
+    <div id="nearby-active-filters" style="display:none;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;margin-bottom:6px;">ACTIVE FILTERS</div>
+      <div id="nearby-filter-pills" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
     </div>
+
+    <!-- Radius + Rating controls -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+      <div style="background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;">
+        <label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;">📏 RADIUS</label>
+        <select id="nearby-radius-select" class="field-input" onchange="updateNearbyRadius(this.value)" style="padding:6px 8px;font-size:12px;width:100%;">
+          <option value="2">Within 2 km</option>
+          <option value="5" selected>Within 5 km</option>
+          <option value="10">Within 10 km</option>
+          <option value="25">Within 25 km</option>
+          <option value="100">Any distance</option>
+        </select>
+      </div>
+      <div style="background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;">
+        <label for="restaurant-min-rating" style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;">⭐ MIN RATING</label>
+        <select id="restaurant-min-rating" class="field-input" onchange="refreshMidpointRestaurants()" style="padding:6px 8px;font-size:12px;width:100%;">
+          <option value="0">Any rating</option>
+          <option value="4">4.0+ stars</option>
+          <option value="4.5">4.5+ stars</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="nearby-restaurant-results" style="margin-bottom:12px;">
+      <div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px;">Recommendations load around the calculated midpoint.</div>
+    </div>
+
     <div class="feat-btn-row">
       <button class="btn-primary" type="button" onclick="setNearbyVenue();">Set Venue</button>
       <button class="btn-sec" type="button" onclick="completeSerialStep('modal-nearby-restaurants','venue skipped')">Skip →</button>

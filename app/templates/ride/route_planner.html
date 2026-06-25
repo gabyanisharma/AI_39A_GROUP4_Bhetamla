@@ -250,24 +250,7 @@
 <div id="page-rp" class="page active" style="flex-direction:column" role="main">
 
   <!-- Top bar -->
-  <div class="topbar">
-    <div style="display:flex;align-items:center;gap:8px;flex:1">
-      <span style="font-size:20px">🗺️</span>
-      <span style="font-size:15px;font-weight:700;color:var(--primary);font-family:'Lora',serif;">Multi-Stop Route Planner</span>
-    </div>
-    <div class="topbar-controls">
-      <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
-    </div>
-    <button class="sos-btn" onclick="openModal('modal-sos')">&#10033; SOS</button>
-    <button aria-label="Notifications" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;position:relative">
-      &#128276;
-      {% if unread_notifications_count > 0 %}
-      <span style="position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
-        {{ unread_notifications_count }}
-      </span>
-      {% endif %}
-    </button>
-  </div>
+  {% include '_topbar.html' %}
 
   <!-- Main Shell -->
   <div id="rp-shell" style="flex:1;position:relative;">
@@ -423,7 +406,19 @@
 // ══════════════════════════════════════════════════════════════
 
 const KTM = [27.7172, 85.3240];
-const OSRM_BASE = 'https://router.project-osrm.org';
+// OSRM public demo servers — one per profile
+const OSRM_DRIVING  = 'https://router.project-osrm.org';
+const OSRM_FOOT     = 'https://routing.openstreetmap.de/routed-foot';
+const OSRM_BIKE     = 'https://routing.openstreetmap.de/routed-bike';
+
+function osrmBase(profile) {
+  if (profile === 'foot')    return OSRM_FOOT;
+  if (profile === 'cycling') return OSRM_BIKE;
+  return OSRM_DRIVING;
+}
+
+// Average speeds used for fallback estimation (km/h)
+const MODE_SPEED = { driving: 40, foot: 5, cycling: 15 };
 
 // ── State ────────────────────────────────────────────────────
 let stops = [];          // [{name, lat, lng}]
@@ -433,7 +428,7 @@ let optMode = 'time';    // 'time' | 'distance'
 let travelMode = 'driving'; // 'driving' | 'walking' | 'cycling'
 let routeStats = { distance: 0, duration: 0 };
 let dragSrcIdx = null;
-let multiETA = {};       // { driving: {dist, dur}, walking: {...}, cycling: {...} }
+let multiETA = {};       // { driving: {dist, dur, geometry}, walking: {...}, cycling: {...} }
 
 // ── Map Init ─────────────────────────────────────────────────
 const map = L.map('rp-map').setView(KTM, 13);
@@ -646,10 +641,26 @@ function setTravelMode(mode) {
     var btn = document.getElementById('mode-' + m);
     if (btn) btn.classList.toggle('active', m === mode);
   });
-  // If we already have multi-ETA data, re-render stats with the new mode
+  // If we already have data for this mode, update stats and redraw the route
   if (multiETA[mode]) {
     updateStats({ distance: multiETA[mode].dist, duration: multiETA[mode].dur });
     renderETAPanel();
+    // Redraw the actual geometry for this mode if we have it
+    if (multiETA[mode].geometry) {
+      drawRoute(multiETA[mode].geometry, mode);
+    } else if (routeLayer) {
+      // No geometry stored (estimated fallback) — just recolour the existing line
+      routeLayer.setStyle({
+        color: ROUTE_COLORS[mode] || '#14322A',
+        dashArray: mode === 'walking' ? '8, 8' : null
+      });
+    }
+  } else if (routeLayer) {
+    // Route drawn but no ETA data yet — just recolour
+    routeLayer.setStyle({
+      color: ROUTE_COLORS[mode] || '#14322A',
+      dashArray: mode === 'walking' ? '8, 8' : null
+    });
   }
 }
 
@@ -658,24 +669,28 @@ function calculateRoute() {
   if (stops.length < 2) { showToast('Add at least 2 stops first!'); return; }
   setLoading(true);
 
+  // Reset all stored ETAs so stale values don't bleed through
+  multiETA = {};
+
   const coords = stops.map(s => `${s.lng},${s.lat}`).join(';');
-  const profile = travelMode === 'walking' ? 'foot' : (travelMode === 'cycling' ? 'bike' : 'driving');
-  const osrmProfile = travelMode === 'cycling' ? 'cycling' : travelMode;
-  const url = `${OSRM_BASE}/route/v1/${osrmProfile}/${coords}?overview=full&geometries=geojson&steps=false`;
+  // OSRM public API uses: 'driving', 'foot', 'cycling'
+  const osrmProfile = travelMode === 'walking' ? 'foot' : travelMode;
+  const base = osrmBase(osrmProfile);
+  const url = `${base}/route/v1/${osrmProfile}/${coords}?overview=full&geometries=geojson&steps=false`;
 
   fetch(url)
     .then(r => r.json())
     .then(data => {
       if (data.code !== 'Ok') { showToast('Routing failed. Try again.'); return; }
       const route = data.routes[0];
-      drawRoute(route.geometry.coordinates);
+      drawRoute(route.geometry.coordinates, travelMode);
       const mainDist = route.distance / 1000;
       const mainDur = Math.round(route.duration / 60);
       routeStats = { distance: mainDist, duration: mainDur };
-      multiETA[travelMode] = { dist: mainDist, dur: mainDur };
+      multiETA[travelMode] = { dist: mainDist, dur: mainDur, geometry: route.geometry.coordinates };
       updateStats(routeStats);
       // Fetch other modes for comparison
-      fetchMultiETA(coords, route.geometry.coordinates);
+      fetchMultiETA(coords);
       showToast('✅ Route calculated for ' + travelMode + '!');
     })
     .catch(() => showToast('Network error — could not reach routing server.'))
@@ -683,7 +698,7 @@ function calculateRoute() {
 }
 
 // ── Fetch ETA for all travel modes (comparison) ──────────────
-function fetchMultiETA(coords, activeGeometry) {
+function fetchMultiETA(coords) {
   const modes = [
     { key: 'driving', profile: 'driving' },
     { key: 'walking', profile: 'foot' },
@@ -691,23 +706,53 @@ function fetchMultiETA(coords, activeGeometry) {
   ];
   const otherModes = modes.filter(m => m.key !== travelMode);
   let pending = otherModes.length;
+  if (pending === 0) { renderETAPanel(); return; }
+
+  // Get the straight-line distance (km) to use for fallback estimation
+  const drivingDist = multiETA[travelMode] ? multiETA[travelMode].dist : null;
 
   otherModes.forEach(function(m) {
-    const url = `${OSRM_BASE}/route/v1/${m.profile}/${coords}?overview=false&geometries=geojson&steps=false`;
+    const base = osrmBase(m.profile);
+    const url = `${base}/route/v1/${m.profile}/${coords}?overview=full&geometries=geojson&steps=false`;
     fetch(url)
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        if (data.code === 'Ok' && data.routes.length) {
+        if (data.code === 'Ok' && data.routes && data.routes.length) {
           var route = data.routes[0];
           multiETA[m.key] = {
             dist: route.distance / 1000,
-            dur: Math.round(route.duration / 60)
+            dur:  Math.round(route.duration / 60),
+            geometry: route.geometry.coordinates
+          };
+        } else {
+          // API failed — estimate from driving distance using average speeds
+          if (drivingDist) {
+            var speed = MODE_SPEED[m.profile] || MODE_SPEED[m.key] || 5;
+            multiETA[m.key] = {
+              dist: drivingDist,
+              dur:  Math.round((drivingDist / speed) * 60),
+              geometry: null,
+              estimated: true
+            };
+          } else {
+            multiETA[m.key] = null;
+          }
+        }
+      })
+      .catch(function() {
+        // Network error — fall back to speed-based estimate
+        if (drivingDist) {
+          var speed = MODE_SPEED[m.profile] || MODE_SPEED[m.key] || 5;
+          multiETA[m.key] = {
+            dist: drivingDist,
+            dur:  Math.round((drivingDist / speed) * 60),
+            geometry: null,
+            estimated: true
           };
         } else {
           multiETA[m.key] = null;
         }
       })
-      .catch(function() { multiETA[m.key] = null; })
       .finally(function() {
         pending--;
         if (pending <= 0) renderETAPanel();
@@ -735,14 +780,17 @@ function renderETAPanel() {
     var isActive = key === travelMode;
     var h = Math.floor(data.dur / 60);
     var m = data.dur % 60;
-    var timeStr = h > 0 ? h + 'h ' + m + 'm' : m + ' min';
-    html += '<div class="eta-row" style="' + (isActive ? 'border-color:var(--blue);background:var(--blue-light)' : '') + '">'
+    var timeStr = (data.estimated ? '~' : '') + (h > 0 ? h + 'h ' + m + 'm' : m + ' min');
+    var distStr = (data.estimated ? '~' : '') + data.dist.toFixed(1) + ' km';
+    html += '<div class="eta-row" onclick="setTravelMode(\'' + key + '\')" '
+      + 'style="cursor:pointer;' + (isActive ? 'border-color:var(--blue);background:var(--blue-light)' : '') + '">'
       + '<span class="eta-mode-icon">' + info.icon + '</span>'
       + '<span class="eta-mode-label">' + info.label
       + (isActive ? '<span class="eta-active-badge">SELECTED</span>' : '')
+      + (data.estimated ? '<span style="font-size:9px;color:var(--muted);margin-left:4px">est.</span>' : '')
       + '</span>'
       + '<span class="eta-mode-time">' + timeStr + '</span>'
-      + '<span class="eta-mode-dist">' + data.dist.toFixed(1) + ' km</span>'
+      + '<span class="eta-mode-dist">' + distStr + '</span>'
       + '</div>';
   });
 
@@ -755,10 +803,13 @@ function optimiseRoute() {
   if (stops.length < 2) { showToast('Add at least 2 stops first!'); return; }
   if (stops.length > 10) { showToast('Optimisation supports up to 10 stops.'); return; }
   setLoading(true);
+  multiETA = {}; // clear stale values
 
   const coords = stops.map(s => `${s.lng},${s.lat}`).join(';');
-  const osrmProfile = travelMode === 'walking' ? 'foot' : (travelMode === 'cycling' ? 'cycling' : 'driving');
-  const url = `${OSRM_BASE}/trip/v1/${osrmProfile}/${coords}?overview=full&geometries=geojson&source=first&roundtrip=false`;
+  // OSRM public API uses: 'driving', 'foot', 'cycling'
+  const osrmProfile = travelMode === 'walking' ? 'foot' : travelMode;
+  const base = osrmBase(osrmProfile);
+  const url = `${base}/trip/v1/${osrmProfile}/${coords}?overview=full&geometries=geojson&source=first&roundtrip=false`;
 
   fetch(url)
     .then(r => r.json())
@@ -776,11 +827,13 @@ function optimiseRoute() {
       renderStopList();
 
       const trip = data.trips[0];
-      drawRoute(trip.geometry.coordinates);
-      updateStats({
-        distance: trip.distance / 1000,
-        duration: Math.round(trip.duration / 60)
-      });
+      drawRoute(trip.geometry.coordinates, travelMode);
+      const tripDist = trip.distance / 1000;
+      const tripDur  = Math.round(trip.duration / 60);
+      routeStats = { distance: tripDist, duration: tripDur };
+      multiETA[travelMode] = { dist: tripDist, dur: tripDur };
+      updateStats(routeStats);
+      fetchMultiETA(coords);
       showToast('⚡ Stops optimised for ' + (optMode === 'time' ? 'fastest time' : 'shortest distance') + '!');
     })
     .catch(() => showToast('Network error during optimisation.'))
@@ -788,13 +841,25 @@ function optimiseRoute() {
 }
 
 // ── Draw route polyline on map ───────────────────────────────
-function drawRoute(coords) {
+const ROUTE_COLORS = {
+  driving: '#14322A',   // dark green
+  walking: '#E11D48',   // vivid red/rose — highly visible on map
+  cycling: '#2563EB',   // blue
+};
+
+function drawRoute(coords, mode) {
   if (routeLayer) map.removeLayer(routeLayer);
   const latlngs = coords.map(c => [c[1], c[0]]);
+  const activeMode = mode || travelMode;
+  const color = ROUTE_COLORS[activeMode] || '#14322A';
+  const isDashed = activeMode === 'walking';
   routeLayer = L.polyline(latlngs, {
-    color: '#14322A', weight: 5, opacity: 0.8,
-    dashArray: null,
-    lineJoin: 'round'
+    color: color,
+    weight: isDashed ? 6 : 5,       // slightly thicker dashes for visibility
+    opacity: isDashed ? 0.95 : 0.85,
+    dashArray: isDashed ? '10, 8' : null,
+    lineJoin: 'round',
+    lineCap: 'round'
   }).addTo(map);
   map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
 }

@@ -451,7 +451,9 @@ CREATE TABLE IF NOT EXISTS restaurants (
 
     is_active BOOLEAN DEFAULT TRUE,
 
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE KEY uq_restaurant_name (name)
 );
 
 
@@ -504,7 +506,9 @@ CREATE TABLE IF NOT EXISTS restaurant_offers (
 
     FOREIGN KEY (restaurant_id)
     REFERENCES restaurants(id)
-    ON DELETE CASCADE
+    ON DELETE CASCADE,
+
+    UNIQUE KEY uq_offer_restaurant_title (restaurant_id, title)
 );
 
 
@@ -1187,3 +1191,231 @@ CREATE TABLE IF NOT EXISTS budget_split_log (
         REFERENCES meetups(id)
         ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+
+-- =========================================
+-- SEED DATA: KATHMANDU RESTAURANTS
+-- ~100 real restaurants across the valley.
+-- Uses INSERT IGNORE so re-importing is safe.
+-- =========================================
+
+INSERT IGNORE INTO restaurants (name,address,latitude,longitude,category,cuisine,price_range,rating,review_count,ambience,opening_time,closing_time,description,avg_cost_per_person,is_active) VALUES
+('Fire and Ice Pizzeria','Tridevi Marg, Thamel',27.7148,85.3128,'Restaurant','Italian','mid',4.5,412,'lively','11:00:00','22:00:00','Wood-fired pizzas and a buzzing crowd in central Thamel.',950,TRUE),
+('Third Eye Restaurant','Chaksibari Marg, Thamel',27.7141,85.3110,'Restaurant','Indian','mid',4.3,198,'casual','11:00:00','22:30:00','Long-running Indian and Nepali kitchen popular with travellers.',850,TRUE),
+('Yangling Tibetan Restaurant','Mandala Street, Thamel',27.7156,85.3116,'Restaurant','Tibetan','budget',4.4,263,'casual','08:00:00','21:30:00','Famous for hearty momos and thukpa at honest prices.',500,TRUE),
+('La Dolce Vita','Thamel Marg, Thamel',27.7159,85.3122,'Restaurant','Italian','mid',4.4,176,'romantic','12:00:00','22:00:00','Cosy Italian trattoria with house-made pasta.',1100,TRUE),
+('Pumpernickel Bakery','Chaksibari Marg, Thamel',27.7138,85.3113,'Cafe','Bakery','budget',4.2,154,'garden','07:00:00','20:00:00','Garden bakery cafe great for breakfast meetups.',450,TRUE),
+('Or2K Cushion Lounge','Mandala Street, Thamel',27.7152,85.3120,'Restaurant','Mediterranean','mid',4.3,221,'cozy','09:00:00','22:00:00','Vegetarian mezze on floor cushions, relaxed vibe.',900,TRUE),
+('Decode Yoga & Cafe','Saat Ghumti, Thamel',27.7162,85.3105,'Cafe','Cafe','mid',4.5,97,'quiet','07:30:00','20:30:00','Calm wellness cafe with healthy bowls and coffee.',600,TRUE),
+('New Orleans Cafe','Jyatha, Thamel',27.7128,85.3134,'Restaurant','Continental','mid',4.3,188,'lively','10:00:00','23:00:00','Courtyard restaurant with live music nights.',1000,TRUE),
+('Roadhouse Cafe Thamel','Jyatha, Thamel',27.7126,85.3137,'Restaurant','Italian','mid',4.4,209,'casual','10:00:00','22:30:00','Wood-fired pizza branch tucked off the main strip.',1100,TRUE),
+('Cafe Mitra','Chaksibari Marg, Thamel',27.7144,85.3108,'Restaurant','Continental','expensive',4.6,132,'romantic','12:00:00','22:00:00','Intimate fine-dining spot with curated wine list.',1900,TRUE);
+
+INSERT IGNORE INTO restaurants (name,address,latitude,longitude,category,cuisine,price_range,rating,review_count,ambience,opening_time,closing_time,description,avg_cost_per_person,is_active) VALUES
+('Hankook Sarang','Durbar Marg, Kathmandu',27.7115,85.3175,'Restaurant','Korean','mid',4.4,168,'casual','11:00:00','22:00:00','Authentic Korean BBQ in the heart of the city.',1300,TRUE),
+('Chez Caroline','Babar Mahal Revisited',27.6985,85.3265,'Restaurant','French','expensive',4.6,211,'garden','09:00:00','22:00:00','European bistro in a heritage courtyard.',1800,TRUE),
+('K-Too Beer & Steakhouse','Durbar Marg, Kathmandu',27.7108,85.3178,'Restaurant','Steakhouse','expensive',4.5,240,'lively','11:00:00','23:00:00','Steaks, burgers and cold beer near the palace.',1700,TRUE),
+('The Ship Restaurant','Kamaladi, Kathmandu',27.7060,85.3220,'Restaurant','Continental','mid',4.2,143,'lively','11:00:00','22:30:00','Nautical-themed bar and grill for big groups.',1100,TRUE),
+('Bota Momo Durbar Marg','Durbar Marg, Kathmandu',27.7120,85.3182,'Restaurant','Nepali','budget',4.3,320,'casual','10:00:00','21:00:00','Steamed and jhol momos, always a queue.',400,TRUE),
+('Java House Durbar Marg','Durbar Marg, Kathmandu',27.7112,85.3179,'Cafe','Coffee','mid',4.4,287,'lively','07:00:00','21:00:00','Flagship coffee house, a classic meeting point.',650,TRUE),
+('Wunjala Moskva','Naxal, Kathmandu',27.7170,85.3275,'Restaurant','Nepali','expensive',4.5,121,'garden','12:00:00','22:00:00','Newari and Russian fusion in a leafy garden.',1600,TRUE),
+('1905 Suites & Restaurant','Kantipath, Lazimpat',27.7185,85.3185,'Restaurant','Continental','mid',4.4,176,'garden','08:00:00','22:00:00','Heritage lawn cafe hosting weekend markets.',1200,TRUE),
+('Tamarind Restaurant','Lazimpat, Kathmandu',27.7225,85.3205,'Restaurant','Continental','mid',4.3,154,'garden','08:00:00','22:00:00','Garden dining with a broad continental menu.',1100,TRUE),
+('Or-Tho Restaurant','Lazimpat, Kathmandu',27.7231,85.3212,'Restaurant','Korean','mid',4.2,98,'casual','11:00:00','21:30:00','Homestyle Korean meals near the embassies.',1000,TRUE);
+
+INSERT IGNORE INTO restaurants (name,address,latitude,longitude,category,cuisine,price_range,rating,review_count,ambience,opening_time,closing_time,description,avg_cost_per_person,is_active) VALUES
+('Cafe Cheeno','Lazimpat, Kathmandu',27.7218,85.3208,'Cafe','Cafe','mid',4.5,142,'cozy','07:30:00','21:00:00','Brunch-friendly cafe with strong espresso.',700,TRUE),
+('Roadhouse Cafe Bhatbhateni','Bhatbhateni, Kathmandu',27.7221,85.3305,'Restaurant','Italian','mid',4.4,233,'casual','10:00:00','22:30:00','Reliable pizza and pasta beside the supermarket.',1100,TRUE),
+('Bawarchi Restaurant','Naxal, Kathmandu',27.7158,85.3282,'Restaurant','Indian','mid',4.3,167,'family_friendly','11:00:00','22:00:00','North Indian curries and biryani for groups.',900,TRUE),
+('Cafe Swotha','Naxal, Kathmandu',27.7162,85.3278,'Cafe','Cafe','mid',4.4,112,'quiet','08:00:00','20:30:00','Quiet courtyard cafe for catch-ups.',650,TRUE),
+('Sajha Chiya Ghar','Baluwatar, Kathmandu',27.7282,85.3288,'Cafe','Cafe','budget',4.2,89,'casual','07:00:00','20:00:00','Local tea house with snacks and milk tea.',300,TRUE),
+('Imago Dei Cafe','Naxal, Kathmandu',27.7150,85.3290,'Cafe','Cafe','mid',4.5,76,'quiet','08:00:00','20:00:00','Art-gallery cafe, calm and creative.',700,TRUE),
+('Le Trio Restaurant','Maharajgunj, Kathmandu',27.7382,85.3292,'Restaurant','Continental','expensive',4.5,143,'fine_dining','11:00:00','22:30:00','Upscale continental kitchen near the hospital.',1900,TRUE),
+('Chabahil Sekuwa Corner','Chabahil, Kathmandu',27.7178,85.3470,'Restaurant','Nepali','budget',4.2,256,'lively','16:00:00','23:00:00','Smoky grilled sekuwa and chilled drinks.',600,TRUE),
+('Garden Kitchen Boudha','Boudha, Kathmandu',27.7215,85.3622,'Restaurant','Continental','mid',4.4,167,'garden','08:00:00','22:00:00','Stupa-view garden restaurant, relaxed afternoons.',1000,TRUE),
+('Flavors Cafe Boudha','Boudha, Kathmandu',27.7208,85.3615,'Cafe','Cafe','mid',4.5,142,'rooftop','07:00:00','21:00:00','Rooftop cafe overlooking the great stupa.',650,TRUE);
+
+INSERT IGNORE INTO restaurants (name,address,latitude,longitude,category,cuisine,price_range,rating,review_count,ambience,opening_time,closing_time,description,avg_cost_per_person,is_active) VALUES
+('Utse Tibetan Restaurant','Boudha, Kathmandu',27.7220,85.3608,'Restaurant','Tibetan','budget',4.3,188,'casual','08:00:00','21:30:00','Classic Tibetan dishes near the kora.',550,TRUE),
+('Stupa View Restaurant','Boudha, Kathmandu',27.7218,85.3612,'Restaurant','Vegetarian','mid',4.5,173,'rooftop','09:00:00','21:30:00','Vegetarian terrace dining facing the stupa.',1100,TRUE),
+('The Yellow House','Sanepa, Lalitpur',27.6812,85.3078,'Cafe','Cafe','mid',4.6,211,'garden','07:30:00','21:00:00','Bright garden cafe loved for brunch.',800,TRUE),
+('Cafe Soma Jhamel','Jhamsikhel, Lalitpur',27.6759,85.3145,'Cafe','Cafe','mid',4.5,198,'cozy','07:30:00','21:30:00','Leafy courtyard for long catch-ups.',700,TRUE),
+('Heritage Kitchen & Bar','Jhamsikhel, Lalitpur',27.6762,85.3150,'Restaurant','Continental','mid',4.4,165,'lively','11:00:00','23:00:00','Bar and grill at the heart of Jhamel.',1200,TRUE),
+('Bajeko Sekuwa Jhamsikhel','Jhamsikhel, Lalitpur',27.6755,85.3138,'Restaurant','Nepali','mid',4.3,287,'family_friendly','11:00:00','22:00:00','Famous Nepali grill chain, generous portions.',850,TRUE),
+('Sing Ma Food Court','Jhamsikhel, Lalitpur',27.6766,85.3148,'Restaurant','Chinese','budget',4.2,176,'casual','11:00:00','21:30:00','Hand-pulled noodles and dumplings.',600,TRUE),
+('The Tap House','Jhamsikhel, Lalitpur',27.6758,85.3152,'Restaurant','Continental','mid',4.4,221,'lively','12:00:00','23:00:00','Craft beer bar with pub food and big screens.',1100,TRUE),
+('Cafe Du Temple Patan','Pulchowk, Lalitpur',27.6792,85.3168,'Restaurant','Continental','mid',4.3,134,'garden','08:00:00','22:00:00','Garden dining a short walk from Patan square.',1000,TRUE),
+('Karma Coffee Roasters','Jhamsikhel, Lalitpur',27.6760,85.3140,'Cafe','Coffee','budget',4.5,152,'quiet','07:30:00','20:00:00','Specialty roaster, laptop-friendly mornings.',500,TRUE);
+
+INSERT IGNORE INTO restaurants (name,address,latitude,longitude,category,cuisine,price_range,rating,review_count,ambience,opening_time,closing_time,description,avg_cost_per_person,is_active) VALUES
+('The Village Cafe','Pulchowk, Lalitpur',27.6795,85.3172,'Restaurant','Nepali','mid',4.4,167,'family_friendly','11:00:00','21:30:00','Community cafe serving authentic Newari thali.',800,TRUE),
+('Dhokaima Cafe','Patan Dhoka, Lalitpur',27.6748,85.3215,'Restaurant','Continental','mid',4.5,198,'garden','08:00:00','22:00:00','Garden restaurant in a restored Newari home.',1100,TRUE),
+('The Old House Riverside','Jhamsikhel, Lalitpur',27.6746,85.3122,'Restaurant','Continental','expensive',4.6,256,'lively','12:00:00','23:00:00','Riverside lounge with live music nights.',1800,TRUE),
+('Jawalakhel Bara House','Jawalakhel, Lalitpur',27.6722,85.3112,'Restaurant','Newari','budget',4.3,213,'casual','08:00:00','20:00:00','Crispy wo (bara) and chatamari done right.',400,TRUE),
+('Sasa Mama Pulchowk','Pulchowk, Lalitpur',27.6788,85.3175,'Restaurant','Tibetan','budget',4.4,264,'casual','10:00:00','21:00:00','Beloved local momo and noodle spot.',450,TRUE),
+('Cafe de Patan','Mangal Bazar, Patan',27.6735,85.3248,'Cafe','Cafe','mid',4.5,187,'cozy','08:00:00','21:00:00','Heritage cafe steps from Patan Durbar Square.',700,TRUE),
+('Museum Cafe Patan','Patan Museum, Patan',27.6740,85.3258,'Cafe','Continental','mid',4.6,165,'garden','09:00:00','18:00:00','Tranquil garden cafe inside the museum grounds.',900,TRUE),
+('The Inn Patan','Mangal Bazar, Patan',27.6731,85.3252,'Restaurant','Continental','mid',4.3,121,'rooftop','09:00:00','21:30:00','Rooftop dining over the temple square.',1000,TRUE),
+('Honacha Newari Restaurant','Patan Durbar Square',27.6728,85.3245,'Restaurant','Newari','budget',4.4,298,'casual','10:00:00','20:00:00','Iconic smoky Newari eatery off the square.',350,TRUE),
+('Snowman Cafe','Freak Street, Basantapur',27.7022,85.3078,'Cafe','Bakery','budget',4.3,176,'cozy','08:00:00','20:00:00','Old-school cafe famous for chocolate cake.',400,TRUE);
+
+INSERT IGNORE INTO restaurants (name,address,latitude,longitude,category,cuisine,price_range,rating,review_count,ambience,opening_time,closing_time,description,avg_cost_per_person,is_active) VALUES
+('Newari Khaja Ghar Ason','Ason, Kathmandu',27.7068,85.3102,'Restaurant','Newari','budget',4.4,234,'casual','09:00:00','20:00:00','Bustling traditional snack house in old town.',350,TRUE),
+('Bhojan Griha Heritage','Dillibazar, Kathmandu',27.7072,85.3280,'Restaurant','Nepali','expensive',4.5,211,'fine_dining','11:00:00','22:00:00','Cultural dining in a restored Rana mansion.',1800,TRUE),
+('Krishnarpan Fine Dining','Battisputali, Kathmandu',27.7048,85.3492,'Restaurant','Nepali','expensive',4.7,121,'fine_dining','18:00:00','22:00:00','Multi-course Nepali tasting menu.',3500,TRUE),
+('Gaushala Thakali Kitchen','Gaushala, Kathmandu',27.7095,85.3445,'Restaurant','Thakali','mid',4.4,176,'family_friendly','10:00:00','21:30:00','Authentic Thakali set with refills.',650,TRUE),
+('Roadhouse Cafe Sanepa','Sanepa, Lalitpur',27.6818,85.3082,'Restaurant','Italian','mid',4.4,187,'casual','10:00:00','22:30:00','Sanepa branch with garden seating.',1100,TRUE),
+('Local Project Cafe','Sanepa, Lalitpur',27.6822,85.3088,'Cafe','Cafe','mid',4.5,143,'cozy','08:00:00','21:00:00','Trendy cafe with brunch and specialty coffee.',750,TRUE),
+('The Workshop Eatery','Kupondole, Lalitpur',27.6848,85.3158,'Restaurant','Continental','mid',4.5,165,'lively','11:00:00','23:00:00','Industrial-chic eatery with craft cocktails.',1300,TRUE),
+('Newa Lahana','Kirtipur, Kathmandu',27.6790,85.2780,'Restaurant','Newari','mid',4.5,232,'family_friendly','11:00:00','21:00:00','Authentic Newari feast with cultural views.',800,TRUE),
+('Trisara Garden Lazimpat','Lazimpat, Kathmandu',27.7228,85.3215,'Restaurant','Nepali','mid',4.5,188,'garden','12:00:00','22:00:00','Open courtyard Newari restaurant.',1300,TRUE),
+('Places Rooftop Thamel','Thamel, Kathmandu',27.7160,85.3112,'Restaurant','Continental','mid',4.4,142,'rooftop','11:00:00','23:00:00','Skyline rooftop popular for group hangouts.',1100,TRUE);
+
+INSERT IGNORE INTO restaurants (name,address,latitude,longitude,category,cuisine,price_range,rating,review_count,ambience,opening_time,closing_time,description,avg_cost_per_person,is_active) VALUES
+('Le Sherpa Restaurant','Lazimpat, Kathmandu',27.7340,85.3275,'Restaurant','Continental','expensive',4.6,244,'garden','08:00:00','22:00:00','Farm-to-table garden venue and weekend market.',2000,TRUE),
+('Newa Chhen Restaurant','Patan, Lalitpur',27.6738,85.3242,'Restaurant','Newari','mid',4.5,198,'cozy','11:00:00','21:30:00','Heritage-home Newari dining in Patan.',800,TRUE),
+('The Factory Cafe','Pulchowk, Lalitpur',27.6802,85.3162,'Cafe','Cafe','mid',4.5,167,'lively','08:00:00','22:00:00','Spacious industrial cafe and co-work spot.',750,TRUE),
+('Roadhouse Cafe Pulchowk','Pulchowk, Lalitpur',27.6798,85.3178,'Restaurant','Italian','mid',4.4,198,'casual','10:00:00','22:30:00','Patan''s busiest pizza branch.',1100,TRUE),
+('Roadhouse Cafe Jhamel','Jhamsikhel, Lalitpur',27.6757,85.3143,'Restaurant','Italian','mid',4.5,254,'casual','10:00:00','22:30:00','Flagship Jhamel pizza and pasta house.',1100,TRUE),
+('Tibet Kitchen Thamel','Thamel, Kathmandu',27.7155,85.3114,'Restaurant','Tibetan','mid',4.5,176,'cozy','11:00:00','22:00:00','Refined Tibetan cuisine and butter tea.',900,TRUE),
+('Chopstix Thamel','Thamel, Kathmandu',27.7143,85.3118,'Restaurant','Chinese','mid',4.3,143,'casual','11:00:00','22:00:00','Indian-Chinese favourites for groups.',800,TRUE),
+('Or-Khid Thai Kitchen','Lazimpat, Kathmandu',27.7222,85.3198,'Restaurant','Thai','mid',4.4,121,'cozy','11:30:00','22:00:00','Aromatic Thai curries and stir-fries.',1100,TRUE),
+('Sushi Ko','Durbar Marg, Kathmandu',27.7118,85.3172,'Restaurant','Japanese','expensive',4.5,132,'fine_dining','12:00:00','22:00:00','Fresh sushi and sashimi platters.',1900,TRUE),
+('Northfield Cafe','Thamel, Kathmandu',27.7152,85.3128,'Restaurant','Mexican','mid',4.4,176,'garden','07:00:00','22:00:00','Garden cafe known for breakfast and burritos.',1000,TRUE);
+
+INSERT IGNORE INTO restaurants (name,address,latitude,longitude,category,cuisine,price_range,rating,review_count,ambience,opening_time,closing_time,description,avg_cost_per_person,is_active) VALUES
+('Cafe Encounter Boudha','Boudha, Kathmandu',27.7210,85.3625,'Cafe','Cafe','mid',4.3,96,'rooftop','07:30:00','20:30:00','Mellow rooftop with stupa views.',600,TRUE),
+('Saturday Cafe Boudha','Boudha, Kathmandu',27.7205,85.3632,'Cafe','Cafe','mid',4.5,121,'rooftop','07:30:00','20:00:00','Sunny rooftop brunch near the monasteries.',650,TRUE),
+('Ekantakuna Thali House','Ekantakuna, Lalitpur',27.6648,85.3122,'Restaurant','Nepali','budget',4.2,154,'family_friendly','09:00:00','21:00:00','Unlimited daal-bhaat for hungry groups.',450,TRUE),
+('Satdobato Momo Center','Satdobato, Lalitpur',27.6582,85.3242,'Restaurant','Nepali','budget',4.3,221,'casual','10:00:00','21:00:00','Popular momo joint on the ring road.',350,TRUE),
+('Cafe Hessed','Lagankhel, Lalitpur',27.6668,85.3232,'Cafe','Cafe','mid',4.4,132,'quiet','08:00:00','21:00:00','Calm study cafe with good pastries.',600,TRUE),
+('Baber Mahal Cafe','Babar Mahal, Kathmandu',27.6982,85.3268,'Cafe','Cafe','mid',4.4,121,'garden','08:00:00','21:00:00','Courtyard cafe among boutique shops.',700,TRUE),
+('Chhetrapati Thakali','Chhetrapati, Kathmandu',27.7112,85.3068,'Restaurant','Thakali','budget',4.3,176,'family_friendly','09:00:00','21:00:00','Classic Thakali set near Thamel''s edge.',500,TRUE),
+('Paknajol Rooftop Cafe','Paknajol, Thamel',27.7178,85.3098,'Cafe','Cafe','mid',4.3,109,'rooftop','07:30:00','21:00:00','Quiet rooftop on the north end of Thamel.',600,TRUE),
+('Cafe Kalo Pothi','Thamel, Kathmandu',27.7146,85.3124,'Restaurant','Continental','mid',4.3,154,'cozy','08:00:00','22:00:00','Brunch and burgers in central Thamel.',950,TRUE),
+('Gokarna Forest Cafe','Gokarna, Kathmandu',27.7468,85.3855,'Cafe','Continental','expensive',4.6,121,'garden','08:00:00','21:00:00','Forest-resort cafe for a quiet escape.',1600,TRUE);
+
+
+-- =========================================
+-- SEED DATA: RESTAURANT OFFERS
+-- Linked by restaurant name lookup.
+-- INSERT IGNORE prevents duplicates.
+-- valid_until is 6 months from a known date;
+-- the Python seeder uses today + 180 days.
+-- =========================================
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Group brunch discount','20% off on groups of 3+ · Valid today',20,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='cafe de patan' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Free dessert deal','Free dessert with any set meal',0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='museum cafe patan' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Newari samay baji combo','Samay baji platter + local drink at a flat rate',0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='honacha newari restaurant' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Rooftop happy hour','15% off rooftop platters before 6 PM',15,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='the inn patan' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Heritage thali offer','10% off the Newari heritage thali',10,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='newa chhen restaurant' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Pizza for groups','Buy 2 large pizzas, get 1 garlic bread free',0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='fire and ice pizzeria' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Momo combo','Momo + thukpa combo at NPR 499',0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='yangling tibetan restaurant' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Veggie mezze deal','15% off the sharing mezze platter',15,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='or2k cushion lounge' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Butter tea on us','Free butter tea with any main course',0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='tibet kitchen thamel' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Breakfast special','20% off breakfast sets before 11 AM',20,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='northfield cafe' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Steak night','20% off steaks every weekday evening',20,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='k-too beer & steakhouse' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Coffee combo','Buy 2 coffees, get 1 pastry free',0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='java house durbar marg' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Sushi platter offer','15% off the signature sushi platter',15,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='sushi ko' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Pub grub deal','Free fries bucket with any 2 pints',0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='the tap house' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Sekuwa group set','10% off sekuwa sets for groups of 4+',10,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='bajeko sekuwa jhamsikhel' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Pizza Tuesday','25% off all pizzas on Tuesdays',25,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='roadhouse cafe jhamel' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Refill hour','Free filter coffee refill before noon',0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='karma coffee roasters' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Brunch combo','15% off weekend brunch platters',15,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='the yellow house' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Garden lunch deal','Free dessert with any garden lunch set',0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='dhokaima cafe' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Co-work coffee','Buy 1 coffee, get 1 half price all day',0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='the factory cafe' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Farm-to-table offer','10% off the farm-to-table tasting plate',10,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='le sherpa restaurant' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Brunch special','Free pastry with any breakfast set',0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='cafe cheeno' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Newari evening','15% off Newari platters after 6 PM',15,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='trisara garden lazimpat' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Rooftop veg deal','20% off vegetarian set meals',20,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='stupa view restaurant' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Stupa-view coffee','Buy 2 coffees, get 1 cheesecake free',0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='flavors cafe boudha' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Thenthuk combo','Thenthuk + momo combo at NPR 450',0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='utse tibetan restaurant' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Study session combo','Buy 2 coffees, get 1 pastry free before 5 PM',0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='himalayan java coffee' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Cultural dinner offer','10% off the cultural dinner set for groups',10,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='bhojan griha' LIMIT 1;
+
+INSERT IGNORE INTO restaurant_offers (restaurant_id,title,description,discount_percent,valid_from,valid_until,is_active)
+SELECT r.id,'Group pizza deal','20% off on orders above NPR 2500',20,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 180 DAY),TRUE
+FROM restaurants r WHERE LOWER(TRIM(r.name))='roadhouse cafe' LIMIT 1;

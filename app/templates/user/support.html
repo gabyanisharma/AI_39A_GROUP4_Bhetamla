@@ -1,14 +1,12 @@
-{% extends "base_dashboard.html" %}
+﻿{% extends "base_dashboard.html" %}
 {% set active_page = 'support' %}
 {% block title %}Support — Bhetamल{% endblock %}
 
 {% block page_content %}
 <div id="page-support" class="page active" style="flex-direction:column" role="main">
-  <div class="topbar">
-    <div class="topbar-controls">
-      <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
-    </div>
-  </div>
+  {% set topbar_show_sos = false %}
+  {% include '_topbar.html' %}
+
   <div style="padding:28px;max-width:700px">
     <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;margin-bottom:8px;color:var(--primary)">Support &amp; Help</h1>
     <p style="color:var(--muted);font-size:13.5px;margin-bottom:28px">Find answers, get help, and reach our support team.</p>

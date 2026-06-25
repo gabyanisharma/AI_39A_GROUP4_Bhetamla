@@ -1,4 +1,4 @@
-{% extends "base_dashboard.html" %}
+﻿{% extends "base_dashboard.html" %}
 {% set active_page = 'analytics' %}
 {% block title %}Meeting History & Analytics — Bhetamल{% endblock %}
 
@@ -22,10 +22,7 @@
 
 {% block page_content %}
 <div class="page active" style="flex-direction:column" role="main">
-  <div class="topbar">
-    <div class="topbar-controls"><button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button></div>
-    <button class="sos-btn" onclick="openModal('modal-sos')">&#10033; SOS</button>
-  </div>
+  {% include '_topbar.html' %}
 
   <div style="padding:28px;overflow-y:auto;flex:1">
     <h1 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--primary);margin-bottom:6px">Meeting History & Analytics</h1>
@@ -124,3 +121,4 @@
   </div>
 </div>
 {% endblock %}
+

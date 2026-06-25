@@ -9,9 +9,9 @@ from app.auth import get_current_user_id, is_logged_in
 from app.controllers.notification_controller import send_notification
 from app.models.place import Restaurant, RestaurantReview
 from app.models.meetup_route import MeetupRoute
+from app.database import execute_query
 import math
 from datetime import datetime
-from flask import render_template, request, redirect, url_for, flash, jsonify
 
 # ── Midpoint calculation ───────────────────────────────────────────
 def calculate_midpoint(locations):
@@ -175,15 +175,31 @@ def create_meetup():
         MeetupMember.add(meetup_id, user_id,
                          user_lat, user_lng, user_address, status='accepted')
 
-        # Invite friends
+        # Invite friends — send a rich notification with meetup details
+        current_user = User.get_by_id(user_id)
+        venue_hint = ''
+        if meetup_date:
+            from datetime import datetime as _dt
+            try:
+                d = _dt.strptime(meetup_date, '%Y-%m-%d')
+                venue_hint = f' on {d.strftime("%a, %b %d")}'
+                if meetup_time:
+                    t = _dt.strptime(meetup_time, '%H:%M')
+                    venue_hint += f' at {t.strftime("%I:%M %p").lstrip("0")}'
+            except ValueError:
+                pass
+
         for friend_id in invite_ids:
             MeetupMember.add(meetup_id, int(friend_id))
             friend = User.get_by_id(friend_id)
-            current_user = User.get_by_id(user_id)
             send_notification(
                 int(friend_id),
-                'Meetup Invitation',
-                f'{current_user["full_name"]} invited you to "{title}"!',
+                f'📅 Meetup Invitation: {title}',
+                (
+                    f'{current_user["full_name"]} invited you to '
+                    f'"{title}"{venue_hint}. '
+                    f'Tap to view details, accept or decline.'
+                ),
                 type='meetup',
                 link=f'/meetup/view/{meetup_id}'
             )
@@ -244,6 +260,13 @@ def view_meetup(meetup_id):
                     ), 2
                 )
 
+    # Fetch planning preferences (for the meeting summary sidebar)
+    from app.models.meetup_preference import MeetupPlanPreference
+    plan_prefs = MeetupPlanPreference.get(meetup_id, user_id) or {}
+    # Also try creator's preferences as fallback for venue/budget
+    if not plan_prefs and not is_creator:
+        plan_prefs = MeetupPlanPreference.get(meetup_id, meetup['created_by']) or {}
+
     return render_template('meetup/view.html',
                            meetup=meetup,
                            members=members,
@@ -261,7 +284,8 @@ def view_meetup(meetup_id):
                            is_member=is_member,
                            is_creator=is_creator,
                            can_edit_route=can_edit_route,
-                           user_id=user_id)
+                           user_id=user_id,
+                           plan_prefs=plan_prefs)
 
 
 # ── Update member location ─────────────────────────────────────────
@@ -389,13 +413,17 @@ def saved_places():
 
     from app.database import execute_query
     from app.models.place import RestaurantOffer
+    from app.models.trending_spot import SpotInteraction
     user_id = get_current_user_id()
     places  = execute_query(
         "SELECT * FROM saved_places WHERE user_id=%s ORDER BY created_at DESC",
         (user_id,), fetch=True
     )
     offers = RestaurantOffer.get_saved_by_user(user_id)
-    return render_template('place/saved.html', places=places, offers=offers)
+    # Also fetch trending spots the user has saved via the Explore page
+    saved_spots = SpotInteraction.get_user_interactions(user_id, 'save') or []
+    return render_template('place/saved.html', places=places, offers=offers,
+                           saved_spots=saved_spots)
 
 
 def _build_filters(args):
@@ -465,6 +493,59 @@ def restaurants():
                            budget_min=budget_min,
                            budget_max=budget_max,
                            group_budget=group_budget)
+
+# ── Offers page ───────────────────────────────────────────────────
+def offers():
+    if not is_logged_in():
+        return redirect(url_for('auth.login'))
+
+    from app.database import execute_query
+    search_q = (request.args.get('q') or '').strip()
+    cuisine_filter = (request.args.get('cuisine') or '').strip()
+
+    base_query = """
+        SELECT o.*, r.name as restaurant_name, r.cuisine, r.rating,
+               r.avg_cost_per_person, r.latitude, r.longitude
+        FROM restaurant_offers o
+        JOIN restaurants r ON o.restaurant_id = r.id
+        WHERE o.is_active = TRUE AND o.valid_until >= CURDATE()
+    """
+    params = []
+
+    if search_q:
+        base_query += " AND (o.title LIKE %s OR o.description LIKE %s OR r.name LIKE %s)"
+        like = f"%{search_q}%"
+        params.extend([like, like, like])
+
+    if cuisine_filter:
+        base_query += " AND LOWER(r.cuisine) LIKE %s"
+        params.append(f"%{cuisine_filter.lower()}%")
+
+    base_query += " ORDER BY o.discount_percent DESC, o.valid_until ASC"
+
+    offer_rows = execute_query(base_query, tuple(params) if params else None, fetch=True) or []
+
+    # Build unique cuisine list from all active offers for the filter dropdown
+    cuisine_rows = execute_query(
+        """
+        SELECT DISTINCT r.cuisine
+        FROM restaurant_offers o
+        JOIN restaurants r ON o.restaurant_id = r.id
+        WHERE o.is_active = TRUE AND o.valid_until >= CURDATE()
+          AND r.cuisine IS NOT NULL
+        ORDER BY r.cuisine
+        """,
+        fetch=True
+    ) or []
+    cuisines = [row['cuisine'] for row in cuisine_rows if row.get('cuisine')]
+
+    return render_template(
+        'place/offers.html',
+        offers=offer_rows,
+        cuisines=cuisines,
+        search_q=search_q,
+    )
+
 
 # ── API for AJAX filtering ─────────────────────────────────────────
 def api_filter_restaurants():
@@ -548,7 +629,7 @@ def restaurant_detail(restaurant_id):
 
     from app.models.place import RestaurantOffer
     active_offers = RestaurantOffer.get_active_by_restaurant(restaurant_id)
-    saved_offers_dict = {o['offer_id']: o for o in RestaurantOffer.get_saved_by_user(user_id)}
+    saved_offers_dict = {o['id']: o for o in RestaurantOffer.get_saved_by_user(user_id)}
     
     for offer in active_offers:
         if offer['id'] in saved_offers_dict:
@@ -740,6 +821,7 @@ def complete_meetup_plan(meetup_id):
     Meetup.update_status(meetup_id, 'completed')
 
     from app.services import achievement_service
+    current_user = User.get_by_id(user_id)
     members = MeetupMember.get_by_meetup(meetup_id)
     completed_user_ids = {user_id}
     completed_user_ids.update(
@@ -747,12 +829,25 @@ def complete_meetup_plan(meetup_id):
         for member in members
         if member.get('status') == 'accepted'
     )
-    for completed_user_id in completed_user_ids:
-        achievement_service.on_meetup_completed(completed_user_id)
+
+    # Award achievements + notify every member
+    for uid in completed_user_ids:
+        achievement_service.on_meetup_completed(uid)
+        if uid != user_id:
+            send_notification(
+                uid,
+                f'✅ Meetup Completed: {meetup["title"]}',
+                (
+                    f'{current_user["full_name"]} marked "{meetup["title"]}" as complete. '
+                    f'Check your History & Analytics for a recap!'
+                ),
+                type='meetup',
+                link='/analytics/history'
+            )
 
     return jsonify({
         'success': True,
-        'message': 'Meetup marked complete. History and analytics are updated.',
+        'message': 'Meetup marked complete!',
         'analytics_url': url_for('analytics.history')
     })
 

@@ -104,6 +104,7 @@ def initialize_db():
             _seed_achievements(cursor)
             _seed_demo_data(cursor)
             _seed_trending_spots(cursor)
+            _seed_kathmandu_restaurants(cursor)   # also calls _seed_kathmandu_offers
         connection.commit()
     finally:
         connection.close()
@@ -188,6 +189,21 @@ def _repair_existing_schema(cursor):
                    "winning_venue_name VARCHAR(255) NULL")
     _ensure_column(cursor, 'user_saved_offers', 'notified',
                    "notified TINYINT(1) NOT NULL DEFAULT 0")
+
+    # Idempotency constraints — prevent re-seeding from duplicating rows
+    # on databases created before these UNIQUE keys were added.
+    try:
+        cursor.execute(
+            "ALTER TABLE restaurants ADD UNIQUE KEY uq_restaurant_name (name)"
+        )
+    except Exception:
+        pass  # key already exists
+    try:
+        cursor.execute(
+            "ALTER TABLE restaurant_offers ADD UNIQUE KEY uq_offer_restaurant_title (restaurant_id, title)"
+        )
+    except Exception:
+        pass  # key already exists
 
 
 def _ensure_group_features_schema(cursor):
@@ -538,6 +554,88 @@ def _seed_trending_spots(cursor):
                 """,
                 row
             )
+
+
+def _seed_kathmandu_restaurants(cursor):
+    """Seed ~100 real Kathmandu Valley restaurants so every fresh install
+    has a rich dataset for Browse Restaurants and nearby-venue features."""
+    try:
+        from app.data.kathmandu_restaurants import KATHMANDU_RESTAURANTS
+    except ImportError:
+        return
+
+    for row in KATHMANDU_RESTAURANTS:
+        name = row[0]
+        cursor.execute("SELECT id FROM restaurants WHERE name = %s LIMIT 1", (name,))
+        existing = cursor.fetchone()
+        if not existing:
+            cursor.execute(
+                """
+                INSERT INTO restaurants
+                    (name, address, latitude, longitude, category, cuisine,
+                     price_range, rating, review_count, ambience,
+                     opening_time, closing_time, description,
+                     avg_cost_per_person, is_active)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s, TRUE)
+                """,
+                row
+            )
+
+    # Seed offers linked to the restaurants above
+    _seed_kathmandu_offers(cursor)
+
+
+def _seed_kathmandu_offers(cursor):
+    """Seed restaurant offers from KATHMANDU_OFFERS in the data file.
+
+    Each offer is linked to its restaurant by name lookup.  Offers run for
+    6 months from the current date so they are always 'active' on a fresh
+    install. Already-existing rows (matched by restaurant_id + title) are
+    skipped so re-running initialize_db() is safe.
+    """
+    try:
+        from app.data.kathmandu_restaurants import KATHMANDU_OFFERS
+    except ImportError:
+        return
+
+    import datetime
+    today = datetime.date.today()
+    valid_until = today + datetime.timedelta(days=180)
+
+    for restaurant_name, title, description, discount_percent in KATHMANDU_OFFERS:
+        # Resolve restaurant id by name (case-insensitive, trimmed)
+        cursor.execute(
+            "SELECT id FROM restaurants WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s)) LIMIT 1",
+            (restaurant_name,)
+        )
+        row = cursor.fetchone()
+        if not row:
+            # Restaurant not seeded yet — skip silently
+            continue
+        restaurant_id = row['id']
+
+        # Check for an existing identical offer to stay idempotent
+        cursor.execute(
+            """
+            SELECT id FROM restaurant_offers
+            WHERE restaurant_id = %s AND LOWER(TRIM(title)) = LOWER(TRIM(%s))
+            LIMIT 1
+            """,
+            (restaurant_id, title)
+        )
+        if cursor.fetchone():
+            continue
+
+        cursor.execute(
+            """
+            INSERT INTO restaurant_offers
+                (restaurant_id, title, description, discount_percent,
+                 valid_from, valid_until, is_active)
+            VALUES (%s, %s, %s, %s, %s, %s, TRUE)
+            """,
+            (restaurant_id, title, description, discount_percent,
+             today, valid_until)
+        )
 
 
 if __name__ == '__main__':

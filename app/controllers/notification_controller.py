@@ -127,7 +127,7 @@ def trigger_sos():
                 <p style="color:red;">Please check on {user['full_name']} immediately!</p>
             """
             mail.send(msg)
-            sent_to.append(recipient)
+            sent_to.append(contact_email)   # ← fixed: was `recipient` (NameError)
         except Exception as e:
             print(f"SOS email error for contact {contact['name']}: {e}")
 
@@ -205,16 +205,20 @@ def notifications():
     # Generate any due smart alerts before showing the feed.
     try:
         SmartAlertEngine.run(user_id)
-    except Exception as e:  # never let alert generation break the page
+    except Exception as e:
         print(f"Smart alert engine error: {e}")
 
-    prefs   = NotificationPreference.get_or_create(user_id)
-    notifs  = Notification.get_by_user(user_id)
+    prefs  = NotificationPreference.get_or_create(user_id)
+    notifs = Notification.get_by_user(user_id)
+    # Capture unread count BEFORE marking all as read so the template
+    # can still show it (avoids the bell going to 0 on this page).
+    unread_before = Notification.get_unread_count(user_id)
     Notification.mark_all_read(user_id)
 
     return render_template('user/notifications.html',
                            notifications=notifs,
-                           prefs=prefs)
+                           prefs=prefs,
+                           unread_before=unread_before)
 
 
 def update_notification_preferences():

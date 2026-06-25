@@ -122,52 +122,105 @@ def search_users():
     if not is_logged_in():
         return jsonify([])
 
-    query   = request.args.get('q', '').strip()
-    if len(query) < 2:
+    query_str = request.args.get('q', '').strip()
+    if len(query_str) < 2:
         return jsonify([])
 
-    results = Friend.search_users(query, get_current_user_id())
-    return jsonify([{
-        'id':       u['id'],
-        'name':     u['full_name'],
-        'email':    u['email']
-    } for u in results])
+    current_user_id = get_current_user_id()
+    results = Friend.search_users(query_str, current_user_id)
+    output = []
+    for u in results:
+        status, fid = Friend.get_friendship_status(current_user_id, u['id'])
+        output.append({
+            'id':       u['id'],
+            'name':     u['full_name'],
+            'email':    u['email'],
+            'status':   status,       # 'accepted' | 'pending_sent' | 'pending_received' | None
+            'fid':      fid           # friendship row id (for respond actions)
+        })
+    return jsonify(output)
 
 
 def send_friend_request():
     if not is_logged_in():
-        return redirect(url_for('auth.login'))
+        return jsonify({'success': False, 'message': 'Login required.'}), 401
 
-    if request.method == 'POST':
-        friend_id = request.form.get('friend_id')
-        if not friend_id:
-            flash('Invalid user.', 'error')
-            return redirect(url_for('meetup.scheduler_page'))
+    data      = request.get_json(silent=True) or {}
+    friend_id = data.get('friend_id') or request.form.get('friend_id')
 
-        friend = User.get_by_id(friend_id)
-        if not friend:
-            flash('User not found.', 'error')
-            return redirect(url_for('meetup.scheduler_page'))
+    if not friend_id:
+        return jsonify({'success': False, 'message': 'Invalid user.'}), 400
 
-        Friend.send_request(get_current_user_id(), int(friend_id))
-        flash(f'Friend request sent to {friend["full_name"]}!', 'success')
+    friend_id = int(friend_id)
+    current_user_id = get_current_user_id()
+    friend = User.get_by_id(friend_id)
 
-    return redirect(url_for('meetup.scheduler_page'))
+    if not friend:
+        return jsonify({'success': False, 'message': 'User not found.'}), 404
+
+    if friend_id == current_user_id:
+        return jsonify({'success': False, 'message': "Can't add yourself."}), 400
+
+    Friend.send_request(current_user_id, friend_id)
+
+    # Send notification to the recipient
+    from app.controllers.notification_controller import send_notification
+    current_user = User.get_by_id(current_user_id)
+    send_notification(
+        friend_id,
+        '👥 Friend Request',
+        f'{current_user["full_name"]} sent you a friend request.',
+        type='friend',
+        link='/meetup/groups'
+    )
+
+    return jsonify({'success': True, 'message': f'Friend request sent to {friend["full_name"]}!'})
 
 
 def respond_friend_request(request_id):
     if not is_logged_in():
-        return redirect(url_for('auth.login'))
+        return jsonify({'success': False, 'message': 'Login required.'}), 401
 
-    action = request.form.get('action')
+    data   = request.get_json(silent=True) or {}
+    action = data.get('action') or request.form.get('action')
+    current_user_id = get_current_user_id()
+
     if action == 'accept':
-        Friend.accept_request(request_id, get_current_user_id())
-        flash('Friend request accepted!', 'success')
-    elif action == 'reject':
-        Friend.reject_request(request_id, get_current_user_id())
-        flash('Friend request declined.', 'info')
+        Friend.accept_request(request_id, current_user_id)
+        # Notify the sender that their request was accepted
+        from app.database import execute_query as _eq
+        row = _eq("SELECT user_id FROM friends WHERE id=%s", (request_id,), fetch=True)
+        if row:
+            sender_id = row[0]['user_id']
+            current_user = User.get_by_id(current_user_id)
+            from app.controllers.notification_controller import send_notification
+            send_notification(
+                sender_id,
+                '✅ Friend Request Accepted',
+                f'{current_user["full_name"]} accepted your friend request!',
+                type='friend',
+                link='/meetup/groups'
+            )
+        return jsonify({'success': True, 'message': 'Friend request accepted!'})
 
-    return redirect(url_for('meetup.scheduler_page'))
+    elif action == 'reject':
+        Friend.reject_request(request_id, current_user_id)
+        return jsonify({'success': True, 'message': 'Friend request declined.'})
+
+    return jsonify({'success': False, 'message': 'Invalid action.'}), 400
+
+
+def remove_friend():
+    if not is_logged_in():
+        return jsonify({'success': False, 'message': 'Login required.'}), 401
+
+    data      = request.get_json(silent=True) or {}
+    friend_id = data.get('friend_id')
+    if not friend_id:
+        return jsonify({'success': False, 'message': 'Missing friend_id.'}), 400
+
+    Friend.remove_friend(get_current_user_id(), int(friend_id))
+    return jsonify({'success': True, 'message': 'Friend removed.'})
 
 
 def create_schedule():

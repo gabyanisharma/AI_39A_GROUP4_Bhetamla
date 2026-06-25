@@ -35,11 +35,10 @@ def register():
             flash('Registration failed. Please try again.', 'error')
             return render_template('auth/register.html')
 
-        # Send verification email
-        user = User.get_by_id(user_id)
-        _send_verification_email(user)
+        # Auto-verify immediately (email not configured)
+        User.verify_email(user_id)
 
-        flash('Account created! Please check your email to verify your account.', 'success')
+        flash('Account created! You can now log in.', 'success')
         return redirect(url_for('auth.login'))
 
     return render_template('auth/register.html')
@@ -103,6 +102,12 @@ def forgot_password():
         if user:
             token = User.set_reset_token(user['id'])
             _send_reset_email(user, token)
+            # Print link to terminal for dev use
+            from flask import current_app
+            with current_app.test_request_context():
+                pass
+            reset_link = url_for('auth.reset_password', token=token, _external=True)
+            print(f"\n[DEV] Password reset link for {user['email']}:\n{reset_link}\n")
 
         # Always show this message (don't reveal if email exists)
         flash('If that email exists, a reset link has been sent.', 'info')

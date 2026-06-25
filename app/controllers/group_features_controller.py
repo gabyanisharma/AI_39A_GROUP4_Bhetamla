@@ -50,20 +50,13 @@ def groups_page():
     if not is_logged_in():
         return redirect(url_for('auth.login'))
 
+    from app.models.base_model import Friend
     user_id = get_current_user_id()
     meetups = Meetup.get_by_user(user_id, include_hidden=False)
-    friends = execute_query(
-        """
-        SELECT u.id, u.full_name, u.email
-        FROM friends f
-        JOIN users u ON (
-            CASE WHEN f.user_id = %s THEN f.friend_id = u.id
-            ELSE f.user_id = u.id END
-        )
-        WHERE (f.user_id = %s OR f.friend_id = %s) AND f.status = 'accepted'
-        """,
-        (user_id, user_id, user_id), fetch=True
-    ) or []
+
+    friends          = Friend.get_friends(user_id) or []
+    pending_requests = Friend.get_pending_requests(user_id) or []
+    sent_requests    = Friend.get_sent_requests(user_id) or []
 
     chat_groups = FriendGroup.get_for_user(user_id)
     active_chat_group = chat_groups[0] if chat_groups else None
@@ -74,6 +67,8 @@ def groups_page():
         'meetup/groups.html',
         meetups=meetups,
         friends=friends,
+        pending_requests=pending_requests,
+        sent_requests=sent_requests,
         chat_groups=chat_groups,
         active_chat_group=active_chat_group,
         achievements=achievements,
@@ -494,6 +489,7 @@ def record_budget_split(meetup_id):
 TRANSLATE_LANGS = {
     'en': 'English',
     'ne': 'Nepali',
+    'np': 'Nepali',   
 }
 
 
@@ -519,6 +515,8 @@ def translate_message():
     payload = request.get_json(silent=True) or {}
     text = (payload.get('text') or '').strip()
     target = payload.get('target') or session.get('language') or 'en'
+    if target == 'np':
+        target = 'ne'   
     if target not in TRANSLATE_LANGS:
         target = 'en'
 

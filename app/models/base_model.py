@@ -4,9 +4,11 @@ class Friend:
 
     @staticmethod
     def send_request(user_id, friend_id):
+        """Send a friend request. Re-opens a previously rejected request."""
         query = """
-            INSERT IGNORE INTO friends (user_id, friend_id)
-            VALUES (%s, %s)
+            INSERT INTO friends (user_id, friend_id, status)
+            VALUES (%s, %s, 'pending')
+            ON DUPLICATE KEY UPDATE status = 'pending', created_at = CURRENT_TIMESTAMP
         """
         return execute_query(query, (user_id, friend_id))
 
@@ -25,6 +27,17 @@ class Friend:
             WHERE id = %s AND friend_id = %s
         """
         return execute_query(query, (friendship_id, user_id))
+
+    @staticmethod
+    def remove_friend(user_id, friend_id):
+        """Remove an accepted friendship (either direction)."""
+        query = """
+            DELETE FROM friends
+            WHERE ((user_id = %s AND friend_id = %s)
+               OR  (user_id = %s AND friend_id = %s))
+              AND status = 'accepted'
+        """
+        return execute_query(query, (user_id, friend_id, friend_id, user_id))
 
     @staticmethod
     def get_friends(user_id):
@@ -73,6 +86,27 @@ class Friend:
         return bool(results)
 
     @staticmethod
+    def get_friendship_status(user_id, other_id):
+        """Return 'accepted', 'pending_sent', 'pending_received', or None."""
+        query = """
+            SELECT id, user_id, friend_id, status FROM friends
+            WHERE (user_id = %s AND friend_id = %s)
+               OR (user_id = %s AND friend_id = %s)
+            LIMIT 1
+        """
+        rows = execute_query(query, (user_id, other_id, other_id, user_id), fetch=True)
+        if not rows:
+            return None, None
+        row = rows[0]
+        if row['status'] == 'accepted':
+            return 'accepted', row['id']
+        if row['status'] == 'pending':
+            if row['user_id'] == user_id:
+                return 'pending_sent', row['id']
+            return 'pending_received', row['id']
+        return row['status'], row['id']
+
+    @staticmethod
     def search_users(query_str, current_user_id):
         query = """
             SELECT DISTINCT id, full_name, email, profile_pic
@@ -81,8 +115,8 @@ class Friend:
             AND id != %s
             LIMIT 10
         """
-        search = f"%{query_str}%"
-        return execute_query(query, (search, search, current_user_id), fetch=True)
+        like = f'%{query_str}%'
+        return execute_query(query, (like, like, current_user_id), fetch=True) or []
 
 
 class AvailabilitySlot:

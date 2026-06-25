@@ -82,77 +82,109 @@
   })();
   </script>
 
-  <!-- ── Persistent Translation (EN ⇄ NE) — runs on every page ── -->
+  <!-- ── Language Engine — instant cache-first translation on every page ── -->
   <script>
   (function(){
-    var LANG_KEY = 'bhetamla-lang';
-    var CACHE_KEY = 'bhetamla-translate-cache';
-    var saved = null;
-    try { saved = localStorage.getItem(LANG_KEY); } catch(e){}
-    if (!saved || saved === 'en') return; // English = no translation needed
+    var LANG_KEY   = 'bhetamla-lang';
+    var CACHE_KEY  = 'bhetamla-ne-cache';   // maps EN text → NE translation
+    var SKIP_TAGS  = {SCRIPT:1,STYLE:1,NOSCRIPT:1,TEXTAREA:1,INPUT:1,SELECT:1,BUTTON:1,A:1};
 
-    // Load cache
+    // ── 1. Determine language (server session is authoritative) ──────────────
+    var serverLang = "{{ lang|default('en') }}";
+    try { localStorage.setItem(LANG_KEY, serverLang); } catch(e){}
+    window.currentLang = serverLang;
+
+    // ── 2. Apply data-en / data-ne attributes (sidebar, tagged elements) ────
+    if (typeof applyLang === 'function') applyLang(serverLang);
+
+    // ── 3. If English → nothing else to do ──────────────────────────────────
+    if (serverLang !== 'ne') return;
+
+    // ── 4. Load translation cache ────────────────────────────────────────────
     var cache = {};
     try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch(e){}
 
-    // Collect translatable text nodes (skip scripts, styles, inputs)
-    var root = document.body;
-    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-      acceptNode: function(node) {
-        var p = node.parentElement;
-        if (!p) return NodeFilter.FILTER_REJECT;
-        var tag = p.tagName;
-        if (['SCRIPT','STYLE','NOSCRIPT','TEXTAREA','INPUT','SELECT'].indexOf(tag) !== -1) return NodeFilter.FILTER_REJECT;
-        var text = node.textContent.trim();
-        if (!text || text.length < 2) return NodeFilter.FILTER_REJECT;
-        return NodeFilter.FILTER_ACCEPT;
-      }
-    }, false);
+    // ── 5. Collect all visible text nodes (skip data-ne elements already done)
+    var walker = document.createTreeWalker(
+      document.body, NodeFilter.SHOW_TEXT,
+      { acceptNode: function(node){
+          var p = node.parentElement;
+          if (!p) return NodeFilter.FILTER_REJECT;
+          if (SKIP_TAGS[p.tagName]) return NodeFilter.FILTER_REJECT;
+          // Skip elements that already have data-ne (handled by applyLang)
+          if (p.hasAttribute('data-ne')) return NodeFilter.FILTER_REJECT;
+          var text = node.textContent.trim();
+          if (!text || text.length < 2 || /^\d+$/.test(text)) return NodeFilter.FILTER_REJECT;
+          // Skip emojis / symbols only
+          if (/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{26FF}●•→←✓✕\s]+$/u.test(text)) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }, false
+    );
 
-    var nodes = [];
-    while (walker.nextNode()) nodes.push(walker.currentNode);
+    var allNodes = [];
+    while (walker.nextNode()) allNodes.push(walker.currentNode);
 
-    var pending = [];
-    nodes.forEach(function(node) {
+    // ── 6. Apply cache instantly (no flicker) ────────────────────────────────
+    var toFetch = [];
+    allNodes.forEach(function(node){
       var text = node.textContent.trim();
       if (cache[text]) {
         node.textContent = node.textContent.replace(text, cache[text]);
       } else {
-        pending.push(node);
+        toFetch.push({ node: node, text: text });
       }
     });
 
-    // Translate uncached nodes in batches of 5 to avoid hammering the endpoint
-    var batchSize = 5;
+    if (!toFetch.length) return;
+
+    // ── 7. Translate uncached strings via backend (batched, non-blocking) ────
+    var BATCH = 8;
     var idx = 0;
+
     function nextBatch() {
-      var batch = pending.slice(idx, idx + batchSize);
-      if (!batch.length) return;
-      idx += batchSize;
-      batch.forEach(function(node) {
-        var text = node.textContent.trim();
+      var batch = toFetch.slice(idx, idx + BATCH);
+      if (!batch.length) {
+        // Persist updated cache
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch(e){}
+        return;
+      }
+      idx += BATCH;
+      // de-duplicate texts in this batch
+      var unique = {};
+      batch.forEach(function(item){ unique[item.text] = true; });
+      var texts = Object.keys(unique);
+
+      // Translate each unique text
+      var done = 0;
+      texts.forEach(function(text){
         fetch('/meetup/chat/translate', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-          body: JSON.stringify({ text: text, target: saved })
+          headers: {'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+          body: JSON.stringify({text: text, target: 'ne'})
         })
         .then(function(r){ return r.json(); })
         .then(function(d){
-          if (d && d.success && d.translated) {
-            // Update cache
-            try {
-              cache[text] = d.translated;
-              localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-            } catch(e){}
-            node.textContent = node.textContent.replace(text, d.translated);
+          if (d && d.success && d.translated && d.translated !== text) {
+            cache[text] = d.translated;
+            // Update all nodes with this text
+            batch.forEach(function(item){
+              if (item.text === text && item.node.isConnected) {
+                item.node.textContent = item.node.textContent.replace(text, d.translated);
+              }
+            });
           }
         })
         .catch(function(){})
-        .finally(function(){ nextBatch(); });
+        .finally(function(){
+          done++;
+          if (done >= texts.length) nextBatch();
+        });
       });
     }
-    // Start first batch
-    nextBatch();
+
+    // Start after a short delay so the page renders first
+    setTimeout(nextBatch, 100);
   })();
   </script>
 </body>

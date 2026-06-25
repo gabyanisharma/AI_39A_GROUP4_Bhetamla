@@ -70,9 +70,13 @@ def create_app():
     from app.socket_events import register_socket_events
     register_socket_events(socketio)
 
-    # Start the background scheduler (only in the main process, not in the
-    # Werkzeug reloader child, and never during testing).
-    if not app.config.get('TESTING') and os.environ.get('WERKZEUG_RUN_MAIN') != 'false':
+    # Start the background scheduler only in the correct process:
+    # - Under the Werkzeug reloader: only in the child (WERKZEUG_RUN_MAIN=true)
+    # - In production (debug=False): always start (no reloader running)
+    if not app.config.get('TESTING') and (
+        os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+        or not app.debug
+    ):
         from apscheduler.schedulers.background import BackgroundScheduler
         from app.services.offer_reminder_service import (
             check_expiring_offers, check_meeting_reminders,
@@ -82,6 +86,7 @@ def create_app():
         scheduler = BackgroundScheduler(daemon=True)
         scheduler.add_job(
             func=check_expiring_offers,
+            args=[app],
             trigger='interval',
             hours=1,
             id='offer_reminder',

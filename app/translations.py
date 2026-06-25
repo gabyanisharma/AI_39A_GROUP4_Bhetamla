@@ -82,7 +82,7 @@ TRANSLATIONS = {
         'notification':       'Notification',
     },
 
-    'np': {
+    'ne': {
         # Navigation
         'dashboard':     'ड्यासबोर्ड',
         'plan_meetup':   'भेट योजना',

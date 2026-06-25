@@ -191,32 +191,59 @@
   }
 
   // ── Modal 5: Nearby Restaurants ──────────────────────────────────
-  // Defers to plan.html's refreshMidpointRestaurants() which fills
-  // #nearby-restaurant-results using the live midpoint from the map.
+  // Shows restaurants sorted by distance from the calculated midpoint.
+  // Respects cuisine + budget filters set in earlier steps, and lets
+  // the user adjust the search radius right inside the modal.
   async function loadNearby() {
+    // 1. Update the midpoint context pill at the top of the modal
+    const mid = getMidpoint();
+    const midLabel = document.getElementById('nearby-midpoint-label');
+    if (midLabel) {
+      midLabel.textContent = mid && mid.address
+        ? mid.address
+        : (mid ? (mid.lat.toFixed(4) + ', ' + mid.lng.toFixed(4)) : 'Midpoint not calculated yet');
+    }
+
+    // 2. Reflect active cuisine + budget filters from earlier steps
+    _renderActiveFilterPills();
+
+    // 3. Sync radius into global constant before fetching
+    const radiusSel = document.getElementById('nearby-radius-select');
+    if (radiusSel) {
+      window.PLAN_RESTAURANT_RADIUS_KM = parseFloat(radiusSel.value) || 5.0;
+    }
+
+    // 4. Use plan.html's refreshMidpointRestaurants() if available
     if (typeof window.refreshMidpointRestaurants === 'function') {
       window.refreshMidpointRestaurants();
       return;
     }
-    // Fallback: call the API directly
+
+    // 5. Fallback: call the API directly
     const container = document.getElementById('nearby-restaurant-results');
     if (!container) return;
     container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Finding nearby spots…</div>';
 
-    const mid = getMidpoint();
-    let url = API.nearby;
-    if (mid && mid.lat && mid.lng) {
-      url += `?lat=${mid.lat}&lng=${mid.lng}&radius=100.0`;
-      const sub = document.querySelector('#modal-nearby-restaurants .feat-modal-sub');
-      if (sub) sub.textContent = 'Nearest picks around ' + (mid.address || 'the midpoint') + '.';
+    if (!mid || !mid.lat || !mid.lng) {
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Calculate the midpoint first, then come back.</div>';
+      return;
     }
+
+    const radius = window.PLAN_RESTAURANT_RADIUS_KM || 5.0;
+    const filters = (window.planRestaurantFilters || {});
+    let url = `${API.nearby}?lat=${mid.lat}&lng=${mid.lng}&radius=${radius}`;
+    if (filters.cuisines && filters.cuisines.length) {
+      filters.cuisines.forEach(c => { url += `&cuisine=${encodeURIComponent(c)}`; });
+    }
+    if (filters.maxBudget) url += `&max_budget=${filters.maxBudget}`;
+    if (filters.minRating) url += `&min_rating=${filters.minRating}`;
 
     const data = await fetchJSON(url);
     if (!data || !data.success || !data.restaurants || !data.restaurants.length) {
-      container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">No restaurants found. Try adjusting the filters or midpoint.</div>';
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">No restaurants found within ' + radius + ' km. Try a larger radius.</div>';
       return;
     }
-    container.innerHTML = data.restaurants.slice(0, 6).map((r, i) => `
+    container.innerHTML = data.restaurants.slice(0, 8).map((r, i) => `
       <div class="venue-row ${i === 0 ? 'selected' : ''}"
            data-restaurant-name="${escapeHtml(r.name)}"
            data-lat="${r.latitude || ''}" data-lng="${r.longitude || ''}"
@@ -224,9 +251,48 @@
         <div class="venue-emoji">${offerEmoji(r.cuisine)}</div>
         <div style="flex:1">
           <div class="venue-name">${escapeHtml(r.name)}</div>
-          <div class="venue-rating">⭐ ${r.rating || '—'}${r.distance_km ? ' · ' + r.distance_km + ' km' : ''}${r.avg_cost_per_person ? ' · NPR ' + Math.round(r.avg_cost_per_person) : ''}</div>
+          <div class="venue-rating">⭐ ${Number(r.rating||0).toFixed(1)}${r.distance_km != null ? ' · 📍 ' + Number(r.distance_km).toFixed(1) + ' km' : ''}${r.avg_cost_per_person ? ' · NPR ' + Math.round(r.avg_cost_per_person) + '/person' : ''}</div>
         </div>
       </div>`).join('');
+  }
+
+  // Render active-filter pills inside the nearby modal so users can see
+  // which cuisine/budget constraints are being applied automatically.
+  function _renderActiveFilterPills() {
+    const pillsEl   = document.getElementById('nearby-filter-pills');
+    const wrapperEl = document.getElementById('nearby-active-filters');
+    if (!pillsEl || !wrapperEl) return;
+
+    const filters = window.planRestaurantFilters || {};
+    const pills = [];
+
+    // Cuisine chips selected in modal-cuisine-preference
+    (filters.cuisines || []).forEach(function(c) {
+      pills.push({ label: '🍽️ ' + c, type: 'cuisine' });
+    });
+
+    // Budget set in modal-budget-filter
+    if (filters.maxBudget && filters.maxBudget > 0) {
+      pills.push({ label: '💰 ≤ NPR ' + Number(filters.maxBudget).toLocaleString() + '/person', type: 'budget' });
+    }
+
+    // Rating set in the modal itself
+    const ratingEl = document.getElementById('restaurant-min-rating');
+    const rating = ratingEl ? parseFloat(ratingEl.value) : 0;
+    if (rating > 0) {
+      pills.push({ label: '⭐ ' + rating + '+ stars', type: 'rating' });
+    }
+
+    if (!pills.length) {
+      wrapperEl.style.display = 'none';
+      return;
+    }
+
+    wrapperEl.style.display = 'block';
+    pillsEl.innerHTML = pills.map(function(p) {
+      return '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(21,101,192,.1);color:var(--blue);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid rgba(21,101,192,.2);">' +
+        escapeHtml(p.label) + '</span>';
+    }).join('');
   }
 
 
@@ -416,6 +482,16 @@
   function loadModalData(modalId) {
     const loader = MODAL_LOADERS[modalId];
     if (loader) loader();
+    // Extra: sync midpoint label whenever the nearby modal opens
+    if (modalId === 'modal-nearby-restaurants') {
+      const mid = getMidpoint();
+      const midLabel = document.getElementById('nearby-midpoint-label');
+      if (midLabel) {
+        midLabel.textContent = (mid && mid.address)
+          ? mid.address
+          : (mid ? (Number(mid.lat).toFixed(4) + ', ' + Number(mid.lng).toFixed(4)) : 'Midpoint not set — calculate it first');
+      }
+    }
   }
 
   // ── MutationObserver — fire loader when modal gets class "open" ──
@@ -449,5 +525,15 @@
   window.loadRideCost         = loadRideCost;
   window.loadNearby           = loadNearby;
   window.loadOffers           = loadOffers;
+
+  // Radius dropdown handler — updates the global radius then re-fetches
+  window.updateNearbyRadius = function(val) {
+    window.PLAN_RESTAURANT_RADIUS_KM = parseFloat(val) || 5.0;
+    if (typeof window.refreshMidpointRestaurants === 'function') {
+      window.refreshMidpointRestaurants();
+    } else {
+      loadNearby();
+    }
+  };
 
 })();

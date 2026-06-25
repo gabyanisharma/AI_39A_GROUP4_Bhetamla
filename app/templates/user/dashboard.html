@@ -1,4 +1,4 @@
-{% extends "base_dashboard.html" %}
+﻿{% extends "base_dashboard.html" %}
 {% set active_page = 'dashboard' %}
 {% block title %}Dashboard — Bhetamल{% endblock %}
 
@@ -6,38 +6,12 @@
 <div id="page-dashboard" class="page active" role="main">
 
   <!-- ── TOP BAR ──────────────────────────────────────────────────────────── -->
-  <div class="topbar">
-    <div class="topbar-search" role="search" style="padding:0 14px;flex:1">
-      <label for="search-dashboard" style="display:flex;align-items:center;gap:10px;cursor:text;flex:1">
-        <span aria-hidden="true" style="font-size:14px">&#128269;</span>
-        <input id="search-dashboard" type="search"
-               placeholder="Search meetups, friends, or places..."
-               aria-label="Search meetups, friends, or places"
-               style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;padding:9px 0">
-      </label>
-    </div>
-    <div class="topbar-controls" style="display:flex;align-items:center;gap:10px;">
-      <button class="ctrl-btn" id="theme-toggle" onclick="toggleTheme()">&#127769; <span id="theme-label">Dark</span></button>
-      <button class="sos-btn" onclick="openModal('modal-sos')" style="cursor:pointer">&#10033; SOS</button>
-      <button aria-label="Notifications" onclick="openNotifPanel()"
-              style="background:none;border:none;cursor:pointer;font-size:20px;position:relative">
-        &#128276;
-        {% if unread_notifications_count > 0 %}
-        <span style="position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
-          {{ unread_notifications_count }}
-        </span>
-        {% endif %}
-      </button>
-      <div class="avatar" style="width:34px;height:34px;background:var(--blue);font-size:13px">
-        {{ session.get('user_name','U')[0]|upper }}
-      </div>
-    </div>
-  </div>
+  {% include '_topbar.html' %}
 
   {# today_str is passed from backend as YYYY-MM-DD for date comparisons #}
   {% set today_str = today_iso %}
   <!-- ── TWO-COLUMN LAYOUT ─────────────────────────────────────────────────── -->
-  <div class="dash-inner" style="display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:12px;padding:12px;align-items:start;max-width:1180px;margin:0 auto;">
+  <div class="dash-inner" style="display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:16px;padding:16px 20px;align-items:start;max-width:100%;margin:0;">
 
     <!-- ── LEFT / MAIN COLUMN ─────────────────────────────────────────────── -->
     <div class="dash-main">
@@ -94,53 +68,53 @@
       <!-- ── Stats Strip ──────────────────────────────────────────────────── -->
       <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px;">
 
-        <div style="background:var(--card-bg,#fff);border-radius:14px;padding:14px 16px;border:1px solid var(--border,#ddeee5);box-shadow:0 2px 10px rgba(20,50,42,.05);display:flex;align-items:center;gap:10px;">
+        <div style="background:var(--card-bg);border-radius:14px;padding:14px 16px;border:1px solid var(--border);box-shadow:0 2px 10px rgba(20,50,42,.05);display:flex;align-items:center;gap:10px;">
           <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#14322A,#1B6B3A);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📍</div>
           <div>
-            <div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,#14322A);line-height:1;">{{ saved_count }}</div>
-            <div style="font-size:11px;color:#4A6657;font-weight:500;margin-top:1px;">Spots Saved</div>
+            <div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,var(--text));line-height:1;">{{ saved_count }}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:500;margin-top:1px;">Spots Saved</div>
           </div>
         </div>
 
-        <div style="background:var(--card-bg,#fff);border-radius:14px;padding:16px 18px;border:1px solid var(--border,#ddeee5);box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
+        <div style="background:var(--card-bg);border-radius:14px;padding:16px 18px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
           <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#1A56C4,#0D3FA1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🤝</div>
           <div>
-            <div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,#14322A);line-height:1;">{{ friends_count }}</div>
-            <div style="font-size:11px;color:#4A6657;font-weight:500;margin-top:1px;">Friends Active</div>
+            <div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,var(--text));line-height:1;">{{ friends_count }}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:500;margin-top:1px;">Friends Active</div>
           </div>
         </div>
 
-        <div style="background:var(--card-bg,#fff);border-radius:14px;padding:16px 18px;border:1px solid var(--border,#ddeee5);box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
+        <div style="background:var(--card-bg);border-radius:14px;padding:16px 18px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
           <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#C8993A,#A07820);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🏅</div>
           <div>
-            <div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,#14322A);line-height:1;">{{ badges_count }}</div>
-            <div style="font-size:11px;color:#4A6657;font-weight:500;margin-top:1px;">Badges Earned</div>
+            <div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,var(--text));line-height:1;">{{ badges_count }}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:500;margin-top:1px;">Badges Earned</div>
           </div>
         </div>
 
-        <div style="background:var(--card-bg,#fff);border-radius:14px;padding:16px 18px;border:1px solid var(--border,#ddeee5);box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
+        <div style="background:var(--card-bg);border-radius:14px;padding:16px 18px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(20,50,42,.06);display:flex;align-items:center;gap:12px;">
           <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#C2416E,#96213e);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📆</div>
           <div>
-            <div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,#14322A);line-height:1;">{{ meetups|length }}</div>
-            <div style="font-size:11px;color:#4A6657;font-weight:500;margin-top:1px;">Total Meetups</div>
+            <div style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,var(--text));line-height:1;">{{ meetups|length }}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:500;margin-top:1px;">Total Meetups</div>
           </div>
         </div>
 
       </div>
 
       <!-- ── YOUR WORLD TODAY label ────────────────────────────────────────── -->
-      <div style="text-align:center;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--muted,#8a9e92);text-transform:uppercase;margin-bottom:20px;">Your World Today</div>
+      <div style="text-align:center;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:20px;">Your World Today</div>
 
       <!-- ── Active Meetups ─────────────────────────────────────────────────── -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div style="font-size:17px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,#14322A);">Active Meetups</div>
+        <div style="font-size:17px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,var(--text));">Active Meetups</div>
         <a href="{{ url_for('meetup.groups') }}" style="font-size:13px;color:var(--blue);font-weight:600;text-decoration:none;">View All →</a>
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-bottom:24px;">
         {% for m in meetups[:4] %}
         {% set members = meetup_member_map.get(m['id'], []) %}
-        <article style="background:var(--card-bg,#fff);border-radius:16px;padding:20px;border:1px solid var(--border,#e8f0eb);box-shadow:0 2px 16px rgba(20,50,42,.07);cursor:pointer;transition:transform .15s,box-shadow .15s;"
+        <article style="background:var(--card-bg);border-radius:16px;padding:20px;border:1px solid var(--border);box-shadow:0 2px 16px rgba(20,50,42,.07);cursor:pointer;transition:transform .15s,box-shadow .15s;"
                  onclick="window.location='{{ url_for('meetup.view_meetup', meetup_id=m['id']) }}'"
                  onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 24px rgba(20,50,42,.13)'"
                  onmouseleave="this.style.transform='';this.style.boxShadow='0 2px 16px rgba(20,50,42,.07)'"
@@ -170,16 +144,16 @@
             {% endif %}
           </div>
 
-          <div style="font-size:15px;font-weight:700;color:var(--heading,#14322A);margin-bottom:6px;font-family:'Playfair Display',serif;">{{ m['title'] }}</div>
+          <div style="font-size:15px;font-weight:700;color:var(--heading,var(--text));margin-bottom:6px;font-family:'Playfair Display',serif;">{{ m['title'] }}</div>
 
           {% if m.get('midpoint_address') %}
-          <div style="font-size:12px;color:var(--muted,#667f72);display:flex;align-items:center;gap:5px;margin-bottom:8px;">
+          <div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-bottom:8px;">
             <span style="color:#E53E3E">📍</span> {{ m['midpoint_address'] }}
           </div>
           {% endif %}
 
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border,#eef2ee);">
-            <div style="font-size:12px;color:var(--muted,#667f72);">
+            <div style="font-size:12px;color:var(--muted);">
               {% if m.get('meetup_date') %}
                 📅
                 {% if m['meetup_date']|string == today_str %}
@@ -195,7 +169,7 @@
           </div>
         </article>
         {% else %}
-        <div style="background:var(--card-bg,#fff);border-radius:16px;padding:32px;border:1px dashed var(--border,#ddeee5);text-align:center;color:var(--muted);">
+        <div style="background:var(--card-bg);border-radius:16px;padding:32px;border:1px dashed var(--border);text-align:center;color:var(--muted);">
           No meetups yet. <a href="{{ url_for('meetup.plan') }}" style="color:var(--blue);font-weight:600">Plan one →</a>
         </div>
         {% endfor %}
@@ -203,8 +177,8 @@
 
       <!-- ── Explore Trending Spots ─────────────────────────────────────────── -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div style="font-size:17px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,#14322A);">Explore Trending Spots</div>
-        <a href="{{ url_for('place.restaurants_page') }}" style="font-size:13px;color:var(--blue);font-weight:600;text-decoration:none;">View All →</a>
+        <div style="font-size:17px;font-weight:700;font-family:'Playfair Display',serif;color:var(--heading,var(--text));">Explore Trending Spots</div>
+        <a href="{{ url_for('explore.feed') }}" style="font-size:13px;color:var(--blue);font-weight:600;text-decoration:none;">View All →</a>
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
@@ -255,7 +229,7 @@
         ] %}
 
         {% for spot in spots %}
-        <div onclick="window.location='{{ url_for('place.restaurants_page') }}'"
+        <div onclick="window.location='{{ url_for('explore.feed') }}'"
              tabindex="0" role="button"
              style="position:relative;overflow:hidden;height:175px;border-radius:14px;cursor:pointer;transition:transform .15s;"
              onmouseenter="this.style.transform='scale(1.02)'"
@@ -281,8 +255,8 @@
     <aside style="display:flex;flex-direction:column;gap:10px;position:sticky;top:16px;">
 
       <!-- Pending Invites -->
-      <div style="background:var(--card-bg,#fff);border-radius:16px;padding:20px;border:1px solid var(--border,#e8f0eb);box-shadow:0 2px 12px rgba(20,50,42,.06);">
-        <div style="font-weight:700;font-size:15px;margin-bottom:14px;font-family:'Playfair Display',serif;color:var(--heading,#14322A);">Pending Invites</div>
+      <div style="background:var(--card-bg);border-radius:16px;padding:20px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(20,50,42,.06);">
+        <div style="font-weight:700;font-size:15px;margin-bottom:14px;font-family:'Playfair Display',serif;color:var(--heading,var(--text));">Pending Invites</div>
 
         {% if pending_invites %}
           {% for inv in pending_invites %}
@@ -292,7 +266,7 @@
               {{ inv.inviter_name[0]|upper if inv.inviter_name else '?' }}{{ inv.inviter_name.split(' ')[1][0]|upper if inv.inviter_name and inv.inviter_name.split(' ')|length > 1 else '' }}
             </div>
             <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:600;color:var(--heading,#14322A);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ inv.inviter_name }}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--heading,var(--text));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ inv.inviter_name }}</div>
               <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">invited you to "{{ inv.title[:22] }}{% if inv.title|length > 22 %}…{% endif %}"</div>
             </div>
             <!-- Accept / Decline -->
@@ -318,7 +292,7 @@
       </div>
 
       <!-- Mini Calendar -->
-      <div style="background:var(--card-bg,#fff);border-radius:16px;padding:20px;border:1px solid var(--border,#e8f0eb);box-shadow:0 2px 12px rgba(20,50,42,.06);">
+      <div style="background:var(--card-bg);border-radius:16px;padding:20px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(20,50,42,.06);">
         <div id="mini-cal" style="font-family:'DM Sans',sans-serif;"></div>
 
         <!-- Upcoming meetups under calendar -->
@@ -329,7 +303,7 @@
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;"
                onclick="window.location='{{ url_for('meetup.view_meetup', meetup_id=m['id']) }}'">
             <div style="width:8px;height:8px;border-radius:50%;background:{{ ['#2563EB','#059669','#D97706'][loop.index0 % 3] }};flex-shrink:0;"></div>
-            <div style="font-size:12px;color:var(--text,#1a2e1f);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ m['title'] }}</div>
+            <div style="font-size:12px;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ m['title'] }}</div>
           </div>
           {% endfor %}
         </div>
@@ -454,16 +428,16 @@ if(document.readyState !== 'loading') renderDashSplitMembers();
 
     let html = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <button onclick="calNav(-1)" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted,#667f72);padding:4px 8px;">‹</button>
-        <div style="font-size:14px;font-weight:700;color:var(--heading,#14322A);font-family:'Playfair Display',serif;">${monthName} ${year}</div>
-        <button onclick="calNav(1)" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted,#667f72);padding:4px 8px;">›</button>
+        <button onclick="calNav(-1)" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);padding:4px 8px;">‹</button>
+        <div style="font-size:14px;font-weight:700;color:var(--heading,var(--text));font-family:'Playfair Display',serif;">${monthName} ${year}</div>
+        <button onclick="calNav(1)" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);padding:4px 8px;">›</button>
       </div>
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;">
     `;
 
     // Day-of-week headers
     dow.forEach(d => {
-      html += `<div style="font-size:10px;font-weight:600;color:var(--muted,#8a9e92);padding:4px 0;">${d}</div>`;
+      html += `<div style="font-size:10px;font-weight:600;color:var(--muted);padding:4px 0;">${d}</div>`;
     });
 
     // Empty cells before first day
@@ -478,8 +452,8 @@ if(document.readyState !== 'loading') renderDashSplitMembers();
       const hasMeetup = meetupDates.has(dateStr);
 
       html += `<div style="position:relative;padding:5px 2px;border-radius:8px;font-size:12px;font-weight:${isToday?'700':'400'};
-        color:${isToday?'#fff':'var(--text,#1a2e1f)'};
-        background:${isToday?'#14322A':'transparent'};
+        color:${isToday?'#fff':'var(--text)'};
+        background:${isToday?'var(--primary)':'transparent'};
         cursor:default;">
         ${d}
         ${hasMeetup && !isToday ? `<div style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#2563EB;"></div>` : ''}
@@ -501,3 +475,4 @@ if(document.readyState !== 'loading') renderDashSplitMembers();
 })();
 </script>
 {% endblock %}
+

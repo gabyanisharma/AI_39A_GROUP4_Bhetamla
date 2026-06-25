@@ -12,6 +12,7 @@
   /* Backgrounds — very slightly tinted green-white for logo harmony */
   --bg:#EDF5F1;--white:#ffffff;--text:#102C25;--muted:#456050;
   --border:#C3D9CE;--surface:#ffffff;--card-bg:#ffffff;
+  --heading:#082D25;
   --sidebar:225px;--radius:14px;--shadow:0 2px 20px rgba(18,48,42,.10);
   --input-bg:#F0F7F3;--topbar-bg:#ffffff;
   /* Gradient uses logo's exact green→blue split */
@@ -29,6 +30,7 @@
   --input-bg:#162c1e;--topbar-bg:#0c1b12;
   --gold:#D4A840;
   --sidebar-bg-start:#0c1b14;--sidebar-bg-end:#09160f;
+  --heading:#cce3d6;
 }
 [data-theme="dark"] .sidebar{background:linear-gradient(180deg,#0d1c16 0%,#0f2018 60%,#0a1810 100%) !important;border-right:1px solid #1a3826 !important;}
 [data-theme="dark"] .sidebar-brand-name{color:#cfe3d8 !important;}
@@ -36,6 +38,56 @@
 [data-theme="dark"] .nav-btn{color:rgba(150,200,170,.7) !important;}
 [data-theme="dark"] .nav-btn.active,[data-theme="dark"] .nav-btn:hover{background:rgba(255,255,255,.07) !important;color:#cfe3d8 !important;}
 [data-theme="dark"] .sidebar-user{border-top:1px solid #1a3826 !important;}
+
+/* ── Dark mode: fix hardcoded text/bg colors throughout templates ── */
+/* Stat cards label text (was #4A6657 - invisible on dark) */
+[data-theme="dark"] [style*="color:#4A6657"] { color: var(--muted) !important; }
+/* Section headings with hardcoded fallback #14322A */
+[data-theme="dark"] [style*="color:var(--heading,#14322A)"] { color: var(--heading) !important; }
+[data-theme="dark"] [style*="color:var(--heading, #14322A)"] { color: var(--heading) !important; }
+/* Card backgrounds with hardcoded #fff fallback */
+[data-theme="dark"] [style*="background:var(--card-bg,#fff)"] { background: var(--card-bg) !important; }
+[data-theme="dark"] [style*="background:var(--card-bg, #fff)"] { background: var(--card-bg) !important; }
+/* Heading text color with hardcoded #14322A */
+[data-theme="dark"] [style*="color:var(--heading,#14322A)"] { color: var(--text) !important; }
+/* Calendar month/day text */
+[data-theme="dark"] [style*="color:var(--heading,#14322A)"] { color: var(--text) !important; }
+[data-theme="dark"] [style*="color:var(--text,#1a2e1f)"] { color: var(--text) !important; }
+[data-theme="dark"] [style*="color:var(--muted,#667f72)"] { color: var(--muted) !important; }
+[data-theme="dark"] [style*="color:var(--muted,#8a9e92)"] { color: var(--muted) !important; }
+/* Meetup card titles */
+[data-theme="dark"] [style*="color:var(--heading,#14322A)"] { color: var(--heading) !important; }
+/* Section header labels - "YOUR WORLD TODAY" etc */
+[data-theme="dark"] [style*="color:var(--muted,#8a9e92)"] { color: var(--muted) !important; }
+/* Card text in analytics and other pages */
+[data-theme="dark"] [style*="color:#4A6657"] { color: var(--muted) !important; }
+[data-theme="dark"] [style*="color:#456050"] { color: var(--muted) !important; }
+[data-theme="dark"] [style*="color:#14322A"] { color: var(--text) !important; }
+[data-theme="dark"] [style*="color:#082D25"] { color: var(--text) !important; }
+[data-theme="dark"] [style*="color:#102C25"] { color: var(--text) !important; }
+/* Card borders with hardcoded fallback */
+[data-theme="dark"] [style*="border:1px solid var(--border,#ddeee5)"] { border-color: var(--border) !important; }
+[data-theme="dark"] [style*="border:1px solid var(--border,#e8f0eb)"] { border-color: var(--border) !important; }
+/* Pending invite card */
+[data-theme="dark"] [style*="background:var(--card-bg,#fff)"] { background: var(--card-bg) !important; }
+/* Calendar background */
+[data-theme="dark"] [style*="background:#14322A"] { background: var(--blue) !important; } /* today highlight */
+/* General: any inline style with #fff card bg fallback */
+[data-theme="dark"] [style*="background:var(--white,#fff)"] { background: var(--white) !important; }
+/* Metric card number colors */
+[data-theme="dark"] [style*="font-family:'Playfair Display',serif;color:var(--heading,#14322A)"] { color: var(--heading) !important; }
+/* Analytics page hardcoded text */
+[data-theme="dark"] [style*="color:var(--primary)"] { color: var(--text) !important; }
+/* Fix modal boxes in dark mode */
+[data-theme="dark"] .modal-box { background: var(--card-bg) !important; }
+[data-theme="dark"] .modal-title { color: var(--text) !important; }
+[data-theme="dark"] .modal-sub { color: var(--muted) !important; }
+/* Fix any remaining #fff text on dark cards */
+[data-theme="dark"] .card { color: var(--text); }
+/* Notification panel */
+[data-theme="dark"] .notif-panel { background: var(--card-bg) !important; }
+/* Analytics bar chart bars */
+[data-theme="dark"] [style*="background:var(--primary)"] { background: var(--blue) !important; }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;transition:background .25s,color .25s;}
 .skip-link{position:absolute;top:-40px;left:0;background:var(--blue);color:#fff;padding:8px 16px;border-radius:0 0 8px 0;font-weight:700;z-index:9999;transition:top .2s;text-decoration:none;}

@@ -3,7 +3,7 @@ from app.routes.user_routes import login_required
 from app.controllers.meetup_controller import (
     scheduler, add_availability, delete_availability,
     search_users, send_friend_request, respond_friend_request,
-    create_schedule, respond_invite, get_common_availability,
+    remove_friend, create_schedule, respond_invite, get_common_availability,
     get_restaurants_data
 )
 from app.controllers.place_controller import (
@@ -221,6 +221,12 @@ def send_friend_request_route():
 @login_required
 def respond_friend_request_route(request_id):
     return respond_friend_request(request_id)
+
+
+@meetup_bp.route('/friend/remove', methods=['POST'])
+@login_required
+def remove_friend_route():
+    return remove_friend()
 
 @meetup_bp.route('/schedule/create', methods=['POST'])
 @login_required

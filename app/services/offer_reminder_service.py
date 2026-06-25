@@ -4,66 +4,71 @@ from app.database import execute_query
 logger = logging.getLogger(__name__)
 
 
-def check_expiring_offers():
+def check_expiring_offers(app=None):
     """
     Background job: find restaurant offers expiring within 24 hours where the
     user opted in for reminders (remind_me=1) and hasn't been notified yet.
     Insert a notification per match and mark the row as notified.
     """
-    try:
-        query = """
-            SELECT uso.user_id,
-                   uso.offer_id,
-                   o.title        AS offer_title,
-                   o.valid_until,
-                   r.name         AS restaurant_name
-            FROM user_saved_offers uso
-            JOIN restaurant_offers o  ON uso.offer_id       = o.id
-            JOIN restaurants       r  ON o.restaurant_id    = r.id
-            WHERE uso.remind_me   = 1
-              AND uso.notified    = 0
-              AND o.is_active     = 1
-              AND o.valid_until  >= CURDATE()
-              AND o.valid_until  <= DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-        """
-        rows = execute_query(query, fetch=True)
-
-        if not rows:
-            return
-
-        for row in rows:
-            user_id         = row['user_id']
-            offer_id        = row['offer_id']
-            offer_title     = row['offer_title']
-            restaurant_name = row['restaurant_name']
-            valid_until     = row['valid_until']
-
-            # Insert notification
-            notif_query = """
-                INSERT INTO notifications (user_id, title, message, type, link)
-                VALUES (%s, %s, %s, %s, %s)
+    def _run():
+        try:
+            query = """
+                SELECT uso.user_id,
+                       uso.offer_id,
+                       o.title        AS offer_title,
+                       o.valid_until,
+                       r.name         AS restaurant_name
+                FROM user_saved_offers uso
+                JOIN restaurant_offers o  ON uso.offer_id       = o.id
+                JOIN restaurants       r  ON o.restaurant_id    = r.id
+                WHERE uso.remind_me   = 1
+                  AND uso.notified    = 0
+                  AND o.is_active     = 1
+                  AND o.valid_until  >= CURDATE()
+                  AND o.valid_until  <= DATE_ADD(CURDATE(), INTERVAL 1 DAY)
             """
-            message = (
-                f"\"{offer_title}\" at {restaurant_name} expires on {valid_until}. "
-                f"Don\u2019t miss out!"
-            )
-            execute_query(
-                notif_query,
-                (user_id, "Offer Expiring Soon!", message, "reminder", "/places/saved"),
-            )
+            rows = execute_query(query, fetch=True)
 
-            # Mark as notified to prevent duplicate alerts
-            mark_query = """
-                UPDATE user_saved_offers
-                SET notified = 1
-                WHERE user_id = %s AND offer_id = %s
-            """
-            execute_query(mark_query, (user_id, offer_id))
+            if not rows:
+                return
 
-        logger.info("Offer reminder check complete — %d notification(s) sent.", len(rows))
+            for row in rows:
+                user_id         = row['user_id']
+                offer_id        = row['offer_id']
+                offer_title     = row['offer_title']
+                restaurant_name = row['restaurant_name']
+                valid_until     = row['valid_until']
 
-    except Exception as exc:
-        logger.error("Error in check_expiring_offers: %s", exc)
+                notif_query = """
+                    INSERT INTO notifications (user_id, title, message, type, link)
+                    VALUES (%s, %s, %s, %s, %s)
+                """
+                message = (
+                    f"\"{offer_title}\" at {restaurant_name} expires on {valid_until}. "
+                    f"Don\u2019t miss out!"
+                )
+                execute_query(
+                    notif_query,
+                    (user_id, "Offer Expiring Soon!", message, "reminder", "/places/saved"),
+                )
+
+                mark_query = """
+                    UPDATE user_saved_offers
+                    SET notified = 1
+                    WHERE user_id = %s AND offer_id = %s
+                """
+                execute_query(mark_query, (user_id, offer_id))
+
+            logger.info("Offer reminder check complete — %d notification(s) sent.", len(rows))
+
+        except Exception as exc:
+            logger.error("Error in check_expiring_offers: %s", exc)
+
+    if app is not None:
+        with app.app_context():
+            _run()
+    else:
+        _run()
 
 
 def check_meeting_reminders(app):

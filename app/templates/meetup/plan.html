@@ -41,29 +41,16 @@
 
 {% block page_content %}
 <div id="page-plan" class="page active" style="flex-direction:column" role="main">
-  <div class="topbar">
-    <div class="topbar-controls">
-      <button class="ctrl-btn" type="button" onclick="toggleTheme()">&#127769;</button>
-    </div>
-    <button class="sos-btn" type="button" onclick="openModal('modal-sos')">&#10033; SOS</button>
-    <button aria-label="Notifications" type="button" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;position:relative">
-      &#128276;
-      {% if unread_notifications_count > 0 %}
-      <span style="position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
-        {{ unread_notifications_count }}
-      </span>
-      {% endif %}
-    </button>
-  </div>
+  {% include '_topbar.html' %}
 
-  <div id="plan-phase-create" style="display:{{ 'none' if show_advanced else 'block' }};flex:1;overflow-y:auto;padding:32px;">
+  <div id="plan-phase-create" style="display:{{ 'none' if show_advanced else 'block' }};overflow-y:auto;padding:32px;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px;">
       <span style="font-size:22px;">📍</span>
       <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--primary);letter-spacing:0;">Plan a Meetup</h1>
     </div>
 
-    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
-      <div style="flex:1;min-width:320px;max-width:560px;background:var(--white);border-radius:20px;padding:30px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
+    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;max-width:960px;">
+      <div style="flex:1;min-width:320px;max-width:560px;align-self:flex-start;background:var(--white);border-radius:20px;padding:30px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
         <div style="font-weight:700;font-size:17px;color:var(--text);margin-bottom:22px;font-family:'Lora',serif;">Create New Meetup</div>
 
         <form method="POST" action="{{ url_for('meetup.create') }}" id="create-meetup-form">
@@ -156,7 +143,7 @@
         {% endif %}
       </div>
 
-      <div style="width:320px;flex-shrink:0;background:var(--white);border-radius:20px;padding:24px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
+      <div style="width:320px;flex-shrink:0;align-self:flex-start;background:var(--white);border-radius:20px;padding:24px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
           <div style="font-weight:700;font-size:16px;font-family:'Lora',serif;color:var(--text);">My Meetups</div>
           <span style="font-size:12px;color:var(--muted);font-weight:500;">{{ meetups|length }} total</span>
@@ -246,7 +233,7 @@ var planLatestRestaurants = [];
 var planRouteVersion = 0;
 var serialResponses = {};
 var midpointDirty = false;
-var PLAN_RESTAURANT_RADIUS_KM = 100.0;
+var PLAN_RESTAURANT_RADIUS_KM = 5.0;  // default; updated by the radius dropdown
 var planRestaurantFilters = {
   cuisines: [],
   ambiences: [],
@@ -1024,7 +1011,7 @@ function updateNearbyRestaurantList(restaurants){
   var list = ensureNearbyRestaurantControls();
   if(!list) return;
   if(!restaurants.length){
-    list.innerHTML = '<div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px">No restaurants match these filters.</div>';
+    list.innerHTML = '<div style="padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px">No restaurants match within ' + PLAN_RESTAURANT_RADIUS_KM + ' km. Try a larger radius or clear some filters.</div>';
     return;
   }
   list.innerHTML = restaurants.slice(0, 10).map(function(r, index){
@@ -1074,6 +1061,34 @@ function fetchMidpointRestaurants(midpoint){
 
 function refreshMidpointRestaurants(){
   ensureNearbyRestaurantControls();
+  // Read radius from the modal dropdown (falls back to 5 km, not 100)
+  var radiusSel = document.getElementById('nearby-radius-select');
+  if (radiusSel) {
+    PLAN_RESTAURANT_RADIUS_KM = parseFloat(radiusSel.value) || 5.0;
+  }
+  // Refresh active filter pills
+  if (typeof window.loadModalData === 'function') {
+    var nearbyModal = document.getElementById('modal-nearby-restaurants');
+    if (nearbyModal && nearbyModal.classList.contains('open')) {
+      // Re-render pills via plan-dynamic's internal helper by triggering loadNearby indirectly
+      var pillsEl = document.getElementById('nearby-filter-pills');
+      var wrapperEl = document.getElementById('nearby-active-filters');
+      if (pillsEl && wrapperEl) {
+        collectPlanRestaurantFilters();
+        var pills = [];
+        (planRestaurantFilters.cuisines||[]).forEach(function(c){ pills.push('🍽️ ' + c); });
+        if (planRestaurantFilters.maxBudget) pills.push('💰 ≤ NPR ' + Number(planRestaurantFilters.maxBudget).toLocaleString() + '/person');
+        var ratingEl = document.getElementById('restaurant-min-rating');
+        if (ratingEl && parseFloat(ratingEl.value) > 0) pills.push('⭐ ' + ratingEl.value + '+ stars');
+        if (pills.length) {
+          wrapperEl.style.display = 'block';
+          pillsEl.innerHTML = pills.map(function(p){ return '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(21,101,192,.1);color:var(--blue);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid rgba(21,101,192,.2);">' + p + '</span>'; }).join('');
+        } else {
+          wrapperEl.style.display = 'none';
+        }
+      }
+    }
+  }
   var points = getPlanMapPoints();
   var midpoint = getPlanMidpoint(points);
   if(planLeafletMap && midpoint) fetchMidpointRestaurants(midpoint);

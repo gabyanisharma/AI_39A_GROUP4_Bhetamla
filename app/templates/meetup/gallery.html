@@ -4,23 +4,7 @@
 
 {% block page_content %}
 <div id="page-gallery" class="page active" style="flex-direction:column" role="main">
-  <div class="topbar">
-    <div class="topbar-search" style="padding:0 14px">
-      <label style="display:flex;align-items:center;gap:10px;flex:1">
-        <span aria-hidden="true" style="font-size:14px">📸</span>
-        <span style="font-size:13px;color:var(--muted)">Meetup Gallery</span>
-      </label>
-    </div>
-    <div class="topbar-controls"><button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button></div>
-    <button aria-label="Notifications" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;position:relative">
-      &#128276;
-      {% if unread_notifications_count > 0 %}
-      <span style="position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
-        {{ unread_notifications_count }}
-      </span>
-      {% endif %}
-    </button>
-  </div>
+  {% include '_topbar.html' %}
 
   <div class="groups-inner">
     <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
