@@ -451,7 +451,9 @@ CREATE TABLE IF NOT EXISTS restaurants (
 
     is_active BOOLEAN DEFAULT TRUE,
 
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE KEY uq_restaurant_name (name)
 );
 
 
@@ -504,7 +506,9 @@ CREATE TABLE IF NOT EXISTS restaurant_offers (
 
     FOREIGN KEY (restaurant_id)
     REFERENCES restaurants(id)
-    ON DELETE CASCADE
+    ON DELETE CASCADE,
+
+    UNIQUE KEY uq_offer_restaurant_title (restaurant_id, title)
 );
 
 

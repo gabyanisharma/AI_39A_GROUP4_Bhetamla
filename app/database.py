@@ -190,6 +190,21 @@ def _repair_existing_schema(cursor):
     _ensure_column(cursor, 'user_saved_offers', 'notified',
                    "notified TINYINT(1) NOT NULL DEFAULT 0")
 
+    # Idempotency constraints — prevent re-seeding from duplicating rows
+    # on databases created before these UNIQUE keys were added.
+    try:
+        cursor.execute(
+            "ALTER TABLE restaurants ADD UNIQUE KEY uq_restaurant_name (name)"
+        )
+    except Exception:
+        pass  # key already exists
+    try:
+        cursor.execute(
+            "ALTER TABLE restaurant_offers ADD UNIQUE KEY uq_offer_restaurant_title (restaurant_id, title)"
+        )
+    except Exception:
+        pass  # key already exists
+
 
 def _ensure_group_features_schema(cursor):
     """Tables for group vote, gallery, chat, and achievements."""
