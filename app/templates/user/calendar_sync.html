@@ -58,7 +58,7 @@
           <div style="font-weight:800;font-size:16px;color:var(--primary)">Connected Accounts</div>
           <div style="font-size:12px;color:var(--muted)">Multiple accounts can be active at the same time.</div>
         </div>
-        <span class="badge" style="background:rgba(37,99,235,.1);color:var(--blue)">{{ accounts|length }} total</span>
+        <span class="badge" style="color:var(--blue)">{{ accounts|length }} total</span>
       </div>
 
       {% if accounts %}
@@ -81,7 +81,7 @@
               <button class="btn-sec" type="submit" style="font-size:12px;padding:8px 12px;color:var(--red)">Disconnect</button>
             </form>
             {% else %}
-            <span class="badge" style="background:rgba(100,116,139,.12);color:var(--muted)">Disconnected</span>
+            <span class="badge" style="color:var(--muted)">Disconnected</span>
             {% endif %}
           </div>
         </div>
@@ -124,7 +124,7 @@
           <div style="font-weight:800;font-size:16px;color:var(--primary)">Conflict Review</div>
           <div style="font-size:12px;color:var(--muted)">Imported events are compared with dated meetups.</div>
         </div>
-        <span class="badge" style="background:{% if conflicts %}rgba(220,38,38,.1){% else %}rgba(5,150,105,.12){% endif %};color:{% if conflicts %}var(--red){% else %}var(--green){% endif %}">{{ conflicts|length }} conflict{{ '' if conflicts|length == 1 else 's' }}</span>
+        <span class="badge" style="color:{% if conflicts %}var(--red){% else %}var(--green){% endif %}">{{ conflicts|length }} conflict{{ '' if conflicts|length == 1 else 's' }}</span>
       </div>
 
       {% if conflicts %}
@@ -159,7 +159,7 @@
         <div style="font-size:12px;color:var(--muted);line-height:1.5">{{ event.starts_at }} - {{ event.ends_at }}</div>
         {% if event.location %}<div style="font-size:12px;color:var(--muted);margin-top:4px">{{ event.location }}</div>{% endif %}
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px">
-          <span class="badge" style="background:rgba(37,99,235,.1);color:var(--blue)">{{ event.account_email }}</span>
+          <span class="badge" style="color:var(--blue)">{{ event.account_email }}</span>
           <form method="POST" action="{{ url_for('calendar.remove_event', event_id=event.id) }}">
             <button class="btn-sec" type="submit" style="font-size:12px;padding:7px 10px;color:var(--red)">Remove</button>
           </form>

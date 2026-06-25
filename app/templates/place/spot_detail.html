@@ -12,9 +12,9 @@
     {% endif %}
     <div style="position:relative;z-index:1">
       <div class="venue-hero-title">{{ spot.name }}</div>
-      <div class="venue-hero-loc">&#128205; {{ spot.address or 'Kathmandu' }}
-        {% if spot.is_featured %}&nbsp;·&nbsp;<span class="badge" style="background:rgba(255,255,255,.2);color:rgba(255,255,255,.9);font-size:10px">★ FEATURED</span>{% endif %}
-        {% if spot.trend_score and spot.trend_score|float > 0 %}&nbsp;·&nbsp;<span class="badge" style="background:rgba(255,255,255,.2);color:rgba(255,255,255,.9);font-size:10px">🔥 TREND {{ spot.trend_score|round(0)|int }}</span>{% endif %}
+      <div class="venue-hero-loc"><svg class="icon-svg" style="width:14px;height:14px;color:rgba(255,255,255,.95);display:inline-block;vertical-align:-0.15em;" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> {{ spot.address or 'Kathmandu' }}
+        {% if spot.is_featured %}&nbsp;·&nbsp;<span class="badge" style="color:#fff;font-size:10px;"><svg class="icon-svg" style="width:10px;height:10px;margin-right:3px;fill:currentColor;" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> FEATURED</span>{% endif %}
+        {% if spot.trend_score and spot.trend_score|float > 0 %}&nbsp;·&nbsp;<span class="badge" style="color:#fff;font-size:10px;"><svg class="icon-svg" style="width:10px;height:10px;margin-right:3px;" viewBox="0 0 24 24"><path d="M12 2c0 0-4.5 4.5-4.5 7.5S10 14 12 14s4.5-1.5 4.5-4.5S12 2 12 2z"></path></svg> TREND {{ spot.trend_score|round(0)|int }}</span>{% endif %}
       </div>
     </div>
   </div>
@@ -77,17 +77,6 @@
   </div>
 </div>
 
-<!-- SOS Modal -->
-<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
-  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
-    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
-    <div style="font-size:48px;margin-bottom:10px">🆘</div>
-    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
-    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
-    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
-    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
-  </div>
-</div>
 
 <style>
   .spot-action.is-active { border-color: var(--primary); background: var(--input-bg); }

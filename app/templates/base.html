@@ -9,7 +9,7 @@
   <title>{% block title %}Bhetamल{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,700;0,800;1,600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,700;0,800;1,600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
   {% block head %}{% endblock %}
   {% block extra_css %}{% endblock %}
@@ -45,11 +45,30 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <!-- SOS modal -->
+  <div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true" aria-label="Emergency SOS">
+    <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
+      <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
+      <div style="color:#fff;margin-bottom:14px;display:flex;justify-content:center;">
+        <svg class="icon-svg" style="width:48px;height:48px;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      </div>
+      <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
+      <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
+      <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
+      <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
+    </div>
+  </div>
+
   <!-- Win popup overlay -->
   <div class="win-popup-overlay" id="win-popup-overlay">
     <div class="win-popup">
-      <div class="win-popup-badge">🏆 WINNER ANNOUNCED</div>
-      <span class="win-popup-icon">🎉</span>
+      <div class="win-popup-badge" style="display:inline-flex;align-items:center;gap:4px;">
+        <svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"></path><path d="M12 2a6 6 0 0 1 6 6v1a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8a6 6 0 0 1 6-6z"></path></svg>
+        WINNER ANNOUNCED
+      </div>
+      <span class="win-popup-icon" style="color:var(--blue);display:block;margin:15px auto;">
+        <svg class="icon-svg" style="width:48px;height:48px;stroke-width:1.5;" viewBox="0 0 24 24"><path d="M5.8 11.3L2 22l10.7-3.8M4 14l3-3M9 19l3-3"></path><path d="M13.5 8.5c1-1 2.5-.5 3.5.5s1.5 2.5.5 3.5-2.5.5-3.5-.5-1.5-2.5-.5-3.5z"></path><path d="M19 3v3M22 6h-3M16 2l1.5 1.5M21.5 1.5L20 3M11 6c0-1.5 1.5-3 3-3s3 1.5 3 3"></path></svg>
+      </span>
       <div class="win-popup-title">We Have a Winner!</div>
       <div class="win-popup-place" id="win-popup-place-name">—</div>
       <div class="win-popup-stats">
@@ -59,7 +78,10 @@
       </div>
       <p class="win-popup-desc" id="win-popup-place-desc">—</p>
       <div class="win-popup-actions">
-        <button class="win-btn-primary" onclick="proceedToPlanWithWinner()">📅 Use This Venue for Meetup</button>
+        <button class="win-btn-primary" onclick="proceedToPlanWithWinner()" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+          <svg class="icon-svg" style="width:16px;height:16px;" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          Use This Venue for Meetup
+        </button>
         <button class="win-btn-sec" onclick="closeWinPopup()">Maybe Later</button>
       </div>
     </div>

@@ -1,4 +1,4 @@
-﻿{% extends "base_dashboard.html" %}
+{% extends "base_dashboard.html" %}
 {% set active_page = 'explore' %}
 {% block title %}Explore — Bhetamल{% endblock %}
 
@@ -9,11 +9,11 @@
   {% if s.thumbnail_url or s.image_url %}
   <img src="{{ s.thumbnail_url or s.image_url }}" alt="{{ s.name }}" style="width:100%;height:150px;object-fit:cover;border-radius:12px;margin-bottom:12px" onerror="this.style.display='none'">
   {% else %}
-  <div style="width:100%;height:150px;border-radius:12px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;font-size:42px;margin-bottom:12px">📍</div>
+  <div style="width:100%;height:150px;border-radius:12px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;color:var(--muted);margin-bottom:12px"><svg class="icon-svg" style="width:32px;height:32px;" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
   {% endif %}
   <div style="position:absolute;top:12px;left:12px;display:flex;gap:6px">
-    {% if s.is_featured %}<span class="badge" style="background:rgba(212,160,23,.92);color:#fff;font-size:10px">★ Featured</span>{% endif %}
-    {% if s.trend_score and s.trend_score|float > 0 %}<span class="badge" style="background:rgba(229,62,62,.9);color:#fff;font-size:10px">🔥 {{ s.trend_score|round(0)|int }}</span>{% endif %}
+    {% if s.is_featured %}<span class="badge" style="color:var(--amber);font-size:10px;background:var(--white) !important;border-color:var(--amber) !important;box-shadow:0 2px 8px rgba(0,0,0,.18);"><svg class="icon-svg" style="width:10px;height:10px;margin-right:3px;fill:currentColor;" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Featured</span>{% endif %}
+    {% if s.trend_score and s.trend_score|float > 0 %}<span class="badge" style="color:var(--red);font-size:10px;background:var(--white) !important;border-color:var(--red) !important;box-shadow:0 2px 8px rgba(0,0,0,.18);"><svg class="icon-svg" style="width:10px;height:10px;margin-right:3px;" viewBox="0 0 24 24"><path d="M12 2c0 0-4.5 4.5-4.5 7.5S10 14 12 14s4.5-1.5 4.5-4.5S12 2 12 2z"></path></svg> {{ s.trend_score|round(0)|int }}</span>{% endif %}
   </div>
   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
     <div>
@@ -33,14 +33,26 @@
     <button type="button" class="spot-action {% if s.id in liked_ids %}is-active{% endif %}"
             data-spot="{{ s.id }}" data-type="like"
             onclick="toggleSpot(this)"
-            style="flex:1;border:1px solid var(--border);background:none;border-radius:9px;padding:7px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text)">
-      <span class="ico">{% if s.id in liked_ids %}❤️{% else %}🤍{% endif %}</span> Like
+            style="flex:1;border:1px solid var(--border);background:none;border-radius:9px;padding:7px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;justify-content:center">
+      <span class="ico">
+        {% if s.id in liked_ids %}
+          <svg class="icon-svg" style="width:12px;height:12px;margin-right:4px;fill:var(--red);color:var(--red);" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        {% else %}
+          <svg class="icon-svg" style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        {% endif %}
+      </span> Like
     </button>
     <button type="button" class="spot-action {% if s.id in saved_ids %}is-active{% endif %}"
             data-spot="{{ s.id }}" data-type="save"
             onclick="toggleSpot(this)"
-            style="flex:1;border:1px solid var(--border);background:none;border-radius:9px;padding:7px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text)">
-      <span class="ico">{% if s.id in saved_ids %}🔖{% else %}📑{% endif %}</span> Save
+            style="flex:1;border:1px solid var(--border);background:none;border-radius:9px;padding:7px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;justify-content:center">
+      <span class="ico">
+        {% if s.id in saved_ids %}
+          <svg class="icon-svg" style="width:12px;height:12px;margin-right:4px;fill:var(--amber);color:var(--amber);" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+        {% else %}
+          <svg class="icon-svg" style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+        {% endif %}
+      </span> Save
     </button>
   </div>
 </div>
@@ -66,10 +78,10 @@
       {% else %}
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <form method="GET" action="{{ url_for('explore.feed') }}" style="display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:8px 14px;">
-          <span style="font-size:14px">&#128269;</span>
+          <svg class="icon-svg" style="width:14px;height:14px;color:var(--muted);" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <input name="q" type="search" value="{{ search_q }}" placeholder="Search trending spots..." style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);min-width:200px;padding:0" />
         </form>
-        <a href="{{ url_for('explore.saved') }}" style="color:var(--blue);font-size:13px;font-weight:700;text-decoration:none">🔖 Saved Spots</a>
+        <a href="{{ url_for('explore.saved') }}" style="color:var(--blue);font-size:13px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:4px"><svg class="icon-svg" style="width:13px;height:13px;color:var(--blue)" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>Saved Spots</a>
       </div>
       {% endif %}
     </div>
@@ -78,7 +90,7 @@
     {% if recommendations %}
     <div style="margin-bottom:28px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <h2 style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700">✨ Recommended for you</h2>
+        <h2 style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;display:flex;align-items:center;gap:4px"><svg class="icon-svg" style="width:15px;height:15px;color:var(--amber);fill:currentColor;" viewBox="0 0 24 24"><polygon points="12 2 13 9 20 10 13 11 12 18 11 11 4 10 11 9"></polygon></svg> Recommended for you</h2>
       </div>
       <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:6px">
         {% for s in recommendations %}
@@ -89,7 +101,7 @@
           {% if s.thumbnail_url or s.image_url %}
           <img src="{{ s.thumbnail_url or s.image_url }}" alt="{{ s.name }}" style="width:100%;height:120px;object-fit:cover;border-radius:12px;margin-bottom:10px" onerror="this.style.display='none'">
           {% else %}
-          <div style="width:100%;height:120px;border-radius:12px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:10px">📍</div>
+          <div style="width:100%;height:120px;border-radius:12px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;margin-bottom:10px"><svg class="icon-svg" style="width:32px;height:32px;color:var(--muted)" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
           {% endif %}
           <div style="font-weight:700;font-size:14px;margin-bottom:3px">{{ s.name }}</div>
           <div style="font-size:11px;color:var(--blue);font-weight:600;margin-bottom:6px">{{ s.recommendation_reason }}</div>
@@ -135,7 +147,7 @@
     {# ── Trending grid ── #}
     {% if spots %}
     {% if not saved_view and not search_q %}
-    <h2 style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:12px">🔥 Trending Now</h2>
+    <h2 style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px"><svg class="icon-svg" style="width:18px;height:18px;color:var(--red)" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg> Trending Now</h2>
     {% endif %}
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
       {% for s in spots %}
@@ -144,7 +156,7 @@
     </div>
     {% else %}
     <div class="card" style="text-align:center;padding:40px;color:var(--muted)">
-      <div style="font-size:36px;margin-bottom:14px">📍</div>
+      <div style="margin-bottom:14px"><svg class="icon-svg" style="width:36px;height:36px;color:var(--muted)" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
       {% if search_q %}
       <div style="font-size:15px;font-weight:600;margin-bottom:6px">No spots match "{{ search_q }}"</div>
       <div style="font-size:13px">Try a different search term.</div>
@@ -160,17 +172,8 @@
   </div>
 </div>
 
-<!-- SOS Modal -->
-<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
-  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
-    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
-    <div style="font-size:48px;margin-bottom:10px">🆘</div>
-    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
-    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
-    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
-    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
-  </div>
-</div>
+
+
 
 <style>
   .spot-action.is-active { border-color: var(--primary); background: var(--input-bg); }
@@ -189,8 +192,12 @@ function toggleSpot(btn) {
     if (!data.success) return;
     const ico = btn.querySelector('.ico');
     btn.classList.toggle('is-active', data.active);
-    if (type === 'like') ico.textContent = data.active ? '❤️' : '🤍';
-    if (type === 'save') ico.textContent = data.active ? '🔖' : '📑';
+    if (type === 'like') ico.innerHTML = data.active
+      ? '<svg class="icon-svg" style="width:12px;height:12px;margin-right:4px;fill:var(--red);color:var(--red);" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>'
+      : '<svg class="icon-svg" style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>';
+    if (type === 'save') ico.innerHTML = data.active
+      ? '<svg class="icon-svg" style="width:12px;height:12px;margin-right:4px;fill:var(--amber);color:var(--amber);" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>'
+      : '<svg class="icon-svg" style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>';
   })
   .catch(() => {});
 }

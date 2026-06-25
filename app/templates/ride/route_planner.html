@@ -256,7 +256,7 @@
   <div id="rp-shell" style="flex:1;position:relative;">
 
     <!-- Loading overlay -->
-    <div id="rp-loading">⏳ Calculating route…</div>
+    <div id="rp-loading">Calculating route…</div>
 
     <!-- ══ LEFT PANEL ══ -->
     <div id="rp-panel">
@@ -271,7 +271,7 @@
           <button onclick="addStopBySearch()" class="btn-primary" style="width:auto;padding:10px 14px;font-size:13px">＋ Add</button>
         </div>
         <button onclick="addCurrentLocation()" class="btn-sec" style="width:100%;justify-content:center;font-size:12px;padding:9px;margin-bottom:4px">
-          📍 Use My Current Location
+          <svg class="icon-svg" style="width:13px;height:13px;margin-right:4px;" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> Use My Current Location
         </button>
         <div style="font-size:11px;color:var(--muted);margin-bottom:12px;text-align:center">Or click anywhere on the map to add a stop</div>
 
@@ -286,35 +286,35 @@
         <div class="rp-section-head">Travel Mode</div>
         <div class="rp-mode-bar">
           <button id="mode-driving" class="rp-mode-btn active" onclick="setTravelMode('driving')">
-            <span class="rp-mode-icon">🚗</span>Driving
+            <span class="rp-mode-icon"><svg class="icon-svg" style="width:16px;height:16px;" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2" ry="2"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg></span>Driving
           </button>
           <button id="mode-walking" class="rp-mode-btn" onclick="setTravelMode('walking')">
-            <span class="rp-mode-icon">🚶</span>Walking
+            <span class="rp-mode-icon"><svg class="icon-svg" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"></circle><path d="M14 7l-2 9 3 3v5h-2l-2.5-4L8 22H6l2-8-2-2V9a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1l2-2"></path></svg></span>Walking
           </button>
           <button id="mode-cycling" class="rp-mode-btn" onclick="setTravelMode('cycling')">
-            <span class="rp-mode-icon">🚴</span>Cycling
+            <span class="rp-mode-icon"><svg class="icon-svg" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="5" cy="18" r="3"></circle><circle cx="19" cy="18" r="3"></circle><polyline points="12 2 12 7 16 11"></polyline><path d="M12 7L8 11l4 7h4"></path></svg></span>Cycling
           </button>
         </div>
 
         <!-- Optimization mode -->
         <div class="rp-section-head">Optimise By</div>
         <div style="display:flex;gap:8px;margin-bottom:14px;">
-          <button id="opt-time" class="opt-tab active" onclick="setOptMode('time')">⏱️ Fastest (Time)</button>
-          <button id="opt-distance" class="opt-tab" onclick="setOptMode('distance')">📏 Shortest (Distance)</button>
+          <button id="opt-time" class="opt-tab active" onclick="setOptMode('time')"><svg class="icon-svg" style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Fastest (Time)</button>
+          <button id="opt-distance" class="opt-tab" onclick="setOptMode('distance')"><svg class="icon-svg" style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg> Shortest (Distance)</button>
         </div>
 
         <!-- Action buttons -->
         <button onclick="calculateRoute()" class="btn-primary" style="width:100%;padding:13px;font-size:14px;margin-bottom:10px;border-radius:12px">
-          🧭 Calculate Route
+          <svg class="icon-svg" style="width:14px;height:14px;margin-right:5px;" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg> Calculate Route
         </button>
         <button onclick="optimiseRoute()" class="btn-sec" style="width:100%;justify-content:center;padding:13px;font-size:14px;margin-bottom:10px">
-          ⚡ Optimise Stop Order
+          <svg class="icon-svg" style="width:14px;height:14px;margin-right:5px;" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> Optimise Stop Order
         </button>
         <button onclick="openSaveModal()" class="btn-sec" style="width:100%;justify-content:center;padding:11px;font-size:13px;margin-bottom:8px">
-          💾 Save Route
+          <svg class="icon-svg" style="width:13px;height:13px;margin-right:4px;" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save Route
         </button>
         <button onclick="shareRoute()" class="btn-sec" style="width:100%;justify-content:center;padding:11px;font-size:13px;margin-bottom:8px">
-          🔗 Share / Open in Google Maps
+          <svg class="icon-svg" style="width:13px;height:13px;margin-right:4px;" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> Share / Open in Google Maps
         </button>
         <button onclick="clearRoute()" style="width:100%;padding:9px;font-size:12px;background:none;border:1.5px solid var(--border);border-radius:10px;color:var(--muted);cursor:pointer;margin-bottom:14px">
           ✕ Clear All Stops
@@ -327,7 +327,7 @@
           {% for r in saved_routes %}
           <div class="saved-route-card" onclick="loadSavedRoute({{ r.waypoints|tojson }})">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-              <div style="font-weight:700;font-size:13px;color:var(--text)">🗺️ {{ r.route_name }}</div>
+              <div style="font-weight:700;font-size:13px;color:var(--text);display:flex;align-items:center;gap:5px;"><svg class="icon-svg" style="width:13px;height:13px;" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg> {{ r.route_name }}</div>
               <button onclick="event.stopPropagation();deleteSavedRoute({{ r.id }}, this)"
                       style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:6px"
                       title="Delete">✕</button>
@@ -378,22 +378,10 @@
 <div class="modal-overlay" id="modal-save-route" role="dialog" aria-modal="true">
   <div class="modal-box" style="max-width:380px">
     <button class="modal-close" onclick="closeModal('modal-save-route')">✕</button>
-    <div class="modal-title">💾 Save Route</div>
+    <div class="modal-title" style="display:flex;align-items:center;"><svg class="icon-svg" style="width:18px;height:18px;margin-right:6px;" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save Route</div>
     <div class="modal-sub">Give this route a name to find it later.</div>
     <input id="route-name-input" class="field-input" placeholder="e.g. Saturday Pickup Route" style="margin-bottom:18px" />
     <button class="btn-primary" onclick="confirmSaveRoute()" style="width:100%">Save</button>
-  </div>
-</div>
-
-<!-- SOS Modal -->
-<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
-  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
-    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
-    <div style="font-size:48px;margin-bottom:10px">🆘</div>
-    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
-    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
-    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
-    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
   </div>
 </div>
 {% endblock %}
@@ -691,7 +679,7 @@ function calculateRoute() {
       updateStats(routeStats);
       // Fetch other modes for comparison
       fetchMultiETA(coords);
-      showToast('✅ Route calculated for ' + travelMode + '!');
+      showToast('Route calculated for ' + travelMode + '!');
     })
     .catch(() => showToast('Network error — could not reach routing server.'))
     .finally(() => setLoading(false));
@@ -767,9 +755,9 @@ function renderETAPanel() {
   if (!panel || !rows) return;
 
   var modeInfo = {
-    driving: { icon: '🚗', label: 'Driving' },
-    walking: { icon: '🚶', label: 'Walking' },
-    cycling: { icon: '🚴', label: 'Cycling' }
+    driving: { icon: '', label: 'Driving' },
+    walking: { icon: '', label: 'Walking' },
+    cycling: { icon: '', label: 'Cycling' }
   };
 
   var html = '';
@@ -834,7 +822,7 @@ function optimiseRoute() {
       multiETA[travelMode] = { dist: tripDist, dur: tripDur };
       updateStats(routeStats);
       fetchMultiETA(coords);
-      showToast('⚡ Stops optimised for ' + (optMode === 'time' ? 'fastest time' : 'shortest distance') + '!');
+      showToast('Stops optimised for ' + (optMode === 'time' ? 'fastest time' : 'shortest distance') + '!');
     })
     .catch(() => showToast('Network error during optimisation.'))
     .finally(() => setLoading(false));
@@ -875,8 +863,7 @@ function updateStats(data) {
     // Update ETA label to show active mode
     var etaLbl = document.querySelector('#rp-stats .rp-stat:nth-child(3) .rp-stat-lbl');
     if (etaLbl) {
-      var modeIcons = { driving: '🚗', walking: '🚶', cycling: '🚴' };
-      etaLbl.textContent = 'ETA (' + (modeIcons[travelMode] || '') + ' ' + travelMode + ')';
+      etaLbl.textContent = 'ETA (' + travelMode + ')';
     }
   } else {
     document.getElementById('stat-dist').textContent = '—';
@@ -923,7 +910,7 @@ function confirmSaveRoute() {
   })
   .then(r => r.json())
   .then(d => {
-    showToast(d.message || '✅ Route saved!');
+    showToast(d.message || 'Route saved!');
     if (d.success) setTimeout(() => location.reload(), 1500);
   })
   .catch(() => showToast('Failed to save route.'));
@@ -947,7 +934,7 @@ function loadSavedRoute(waypoints) {
   clearRoute();
   waypoints.forEach(w => addStop(w.name, w.lat, w.lng));
   fitMapToStops();
-  showToast(`📍 Route loaded with ${waypoints.length} stops. Hit Calculate to draw the path.`);
+  showToast(`Route loaded with ${waypoints.length} stops. Hit Calculate to draw the path.`);
 }
 
 // ── Share via Google Maps ─────────────────────────────────────
@@ -956,7 +943,7 @@ function shareRoute() {
   const base = 'https://www.google.com/maps/dir/';
   const path = stops.map(s => encodeURIComponent(s.name)).join('/');
   window.open(base + path, '_blank');
-  showToast('🗺️ Opening in Google Maps for navigation!');
+  showToast('Opening in Google Maps for navigation!');
 }
 // ── Auto-populate from spot_detail redirect ──────────────────
 (function autoPopulateFromURL() {
@@ -987,13 +974,13 @@ function shareRoute() {
         .finally(() => {
           addStop(toName, toLat, toLng);
           fitMapToStops();
-          showToast('📍 Route ready — hit Calculate Route to get directions!');
+          showToast('Route ready — hit Calculate Route to get directions!');
         });
     } else {
       // No origin coords passed — add destination then try geolocation
       addStop(toName, toLat, toLng);
       if (navigator.geolocation) {
-        showToast('📡 Detecting your location…');
+        showToast('Detecting your location…');
         navigator.geolocation.getCurrentPosition(
           function(pos) {
             const lat = pos.coords.latitude, lng = pos.coords.longitude;
@@ -1008,7 +995,7 @@ function shareRoute() {
                 rebuildMarkers();
                 renderStopList();
                 fitMapToStops();
-                showToast('✅ Route ready — hit Calculate Route!');
+                showToast('Route ready — hit Calculate Route!');
               })
               .catch(() => {
                 stops.unshift({ name: 'My Location', lat, lng });
@@ -1018,7 +1005,7 @@ function shareRoute() {
               });
           },
           function() {
-            showToast('⚠️ Could not detect your location. Add your starting point manually.');
+            showToast('Could not detect your location. Add your starting point manually.');
           },
           { timeout: 8000, maximumAge: 60000 }
         );

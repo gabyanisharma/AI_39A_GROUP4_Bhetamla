@@ -201,21 +201,21 @@
 
       <div class="auth-features">
         <div class="auth-feature">
-          <div class="auth-feature-icon" style="background:rgba(27,107,219,.2);">📍</div>
+          <div class="auth-feature-icon" style="background:rgba(27,107,219,.2);display:inline-flex;align-items:center;justify-content:center;"><svg class="icon-svg" style="width:18px;height:18px;color:#1B6BDB;" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
           <div class="auth-feature-text">
             <div class="auth-feature-title">Smart Midpoint Finder</div>
             <div class="auth-feature-sub">Instantly calculate the perfect meeting spot for everyone.</div>
           </div>
         </div>
         <div class="auth-feature">
-          <div class="auth-feature-icon" style="background:rgba(26,92,53,.2);">🗓️</div>
+          <div class="auth-feature-icon" style="background:rgba(26,92,53,.2);display:inline-flex;align-items:center;justify-content:center;"><svg class="icon-svg" style="width:18px;height:18px;color:#1A5C35;" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>
           <div class="auth-feature-text">
             <div class="auth-feature-title">Group Scheduling</div>
             <div class="auth-feature-sub">Sync availability across your entire friend group.</div>
           </div>
         </div>
         <div class="auth-feature">
-          <div class="auth-feature-icon" style="background:rgba(196,146,46,.2);">🆘</div>
+          <div class="auth-feature-icon" style="background:rgba(196,146,46,.2);display:inline-flex;align-items:center;justify-content:center;"><svg class="icon-svg" style="width:18px;height:18px;color:#C4922E;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div>
           <div class="auth-feature-text">
             <div class="auth-feature-title">Safety Hub</div>
             <div class="auth-feature-sub">SOS alerts and live location sharing for peace of mind.</div>
@@ -243,7 +243,7 @@
         {% endif %}
       {% endwith %}
 
-      <div class="auth-form-title">Welcome back 👋</div>
+      <div class="auth-form-title">Welcome back <svg class="icon-svg" style="width:24px;height:24px;color:#C4922E;display:inline-block;vertical-align:bottom;margin-left:4px;" viewBox="0 0 24 24"><path d="M18 8a3 3 0 0 0-3-3 3 3 0 0 0-3 3v4H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3h9a6 6 0 0 0 6-6V8z"></path></svg></div>
       <div class="auth-form-sub">Sign in to continue planning amazing meetups.</div>
 
       <form method="POST" action="{{ url_for('auth.login') }}" onsubmit="return handleAuthSubmit(this)">

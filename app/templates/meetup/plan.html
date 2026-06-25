@@ -45,12 +45,12 @@
 
   <div id="plan-phase-create" style="display:{{ 'none' if show_advanced else 'block' }};overflow-y:auto;padding:32px;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px;">
-      <span style="font-size:22px;">📍</span>
+      <svg class="icon-svg" style="width:22px;height:22px;color:var(--blue);" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
       <h1 style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--primary);letter-spacing:0;">Plan a Meetup</h1>
     </div>
 
     <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;max-width:960px;">
-      <div style="flex:1;min-width:320px;max-width:560px;align-self:flex-start;background:var(--white);border-radius:20px;padding:30px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
+      <div style="flex:1;min-width:320px;max-width:560px;align-self:flex-start;background:var(--card-bg) !important;border-radius:20px;padding:30px;box-shadow:var(--shadow) !important;border:1px solid var(--border) !important;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);">
         <div style="font-weight:700;font-size:17px;color:var(--text);margin-bottom:22px;font-family:'Lora',serif;">Create New Meetup</div>
 
         <form method="POST" action="{{ url_for('meetup.create') }}" id="create-meetup-form">
@@ -59,7 +59,7 @@
           <input type="hidden" id="pm-addr" name="user_address" />
 
           <div style="display:flex;align-items:center;gap:12px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:12px;padding:13px 16px;margin-bottom:20px;">
-            <span style="font-size:18px;flex-shrink:0;">📍</span>
+            <svg class="icon-svg" style="width:18px;height:18px;color:var(--blue);flex-shrink:0;" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
             <div style="flex:1;">
               <div style="font-weight:600;font-size:13px;color:var(--text);" id="pm-loc-label">Location not set</div>
               <div style="font-size:11.5px;color:var(--muted);margin-top:1px;">Your starting point for midpoint calculation</div>
@@ -108,8 +108,9 @@
             {% endif %}
           </div>
 
-          <button class="btn-primary" type="submit" style="width:100%;padding:15px;font-size:15px;border-radius:12px;">
-            🚀 Create Meetup
+          <button class="btn-primary" type="submit" style="width:100%;padding:15px;font-size:15px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+            <svg class="icon-svg" style="width:15px;height:15px;" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            Create Meetup
           </button>
         </form>
 
@@ -134,7 +135,10 @@
         <!-- Route Planner Step — shown after meetup created -->
         {% if meetup_id %}
         <div style="margin-top:18px;padding:18px;border:1.5px solid var(--border);border-radius:14px;background:var(--input-bg);">
-          <div style="font-weight:700;font-size:14px;margin-bottom:5px;">📍 Next: Plan Your Route</div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:5px;display:inline-flex;align-items:center;gap:6px;">
+            <svg class="icon-svg" style="width:14px;height:14px;color:var(--blue);" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            Next: Plan Your Route
+          </div>
           <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;">Add waypoints and directions for your meetup group.</div>
           <a href="{{ url_for('ride.planner') }}?meetup_id={{meetup_id }}" class="btn-primary" style="text-decoration:none;display:flex;justify-content:center;padding:12px;">
             Open Route Planner →
@@ -143,7 +147,7 @@
         {% endif %}
       </div>
 
-      <div style="width:320px;flex-shrink:0;align-self:flex-start;background:var(--white);border-radius:20px;padding:24px;box-shadow:0 2px 20px rgba(20,50,42,.09);border:1px solid rgba(200,225,210,.5);">
+      <div style="width:320px;flex-shrink:0;align-self:flex-start;background:var(--card-bg) !important;border-radius:20px;padding:24px;box-shadow:var(--shadow) !important;border:1px solid var(--border) !important;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
           <div style="font-weight:700;font-size:16px;font-family:'Lora',serif;color:var(--text);">My Meetups</div>
           <span style="font-size:12px;color:var(--muted);font-weight:500;">{{ meetups|length }} total</span>
@@ -152,7 +156,9 @@
         <div style="display:flex;align-items:center;gap:8px;padding:10px;border-radius:12px;border:1.5px solid var(--border);margin-bottom:10px;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
           {% if m.created_by == current_user_id %}
           <a href="{{ url_for('meetup.plan', meetup_id=m.id) }}" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;">
-            <div style="width:42px;height:42px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📅</div>
+            <div style="width:42px;height:42px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg class="icon-svg" style="width:20px;height:20px;color:var(--blue);" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            </div>
             <div style="flex:1;min-width:0;">
               <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ m.title }}</div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px;">By {{ m.creator_name }} — {{ m.meetup_date or 'Date not set' }}</div>
@@ -161,7 +167,9 @@
           </a>
           {% else %}
           <a href="javascript:void(0)" onclick="showToast('Only the organiser can make changes to this meetup.')" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit;cursor:pointer;">
-            <div style="width:42px;height:42px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📅</div>
+            <div style="width:42px;height:42px;border-radius:10px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg class="icon-svg" style="width:20px;height:20px;color:var(--blue);" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            </div>
             <div style="flex:1;min-width:0;">
               <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ m.title }}</div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px;">By {{ m.creator_name }} — {{ m.meetup_date or 'Date not set' }}</div>
@@ -187,17 +195,6 @@
   </div>
 
   {% include "meetup/_plan_advanced.html" %}
-</div>
-
-<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
-  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
-    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
-    <div style="font-size:48px;margin-bottom:10px">🆘</div>
-    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
-    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
-    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
-    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
-  </div>
 </div>
 
 {% include "meetup/_planner_modals.html" %}
@@ -947,7 +944,7 @@ function selectedRestaurantMarkerIcon(cuisine, isOffer){
 }
 
 function restaurantPopupHtml(r){
-  var offerBadge = r.is_featured_offer ? '<br><span style="background:var(--green);color:#fff;font-size:10px;padding:2px 6px;border-radius:6px;font-weight:700">' + escapePlanHtml(r.badge || 'OFFER') + '</span>' : '';
+  var offerBadge = r.is_featured_offer ? '<br><span class="badge" style="color:var(--green);font-size:10px;padding:2px 6px;margin-top:4px;display:inline-block">' + escapePlanHtml(r.badge || 'OFFER') + '</span>' : '';
   return '<strong>' + escapePlanHtml(r.name) + '</strong><br>' +
     escapePlanHtml(r.cuisine || 'Restaurant') + ' · Star ' + Number(r.rating || 0).toFixed(1) + '<br>' +
     restaurantPriceLabel(r.avg_cost_per_person) + ' · ' + restaurantDistanceLabel(r.distance_km) +
@@ -1137,7 +1134,7 @@ function renderOfferCards(pool, holder, append){
     return '<div class="restaurant-card'+selected+'" data-offer-restaurant="'+escapePlanHtml(r.name)+'" onclick="selectOfferRestaurant(this)">' +
       '<div class="rest-emoji">'+escapePlanHtml(r.emoji)+'</div>' +
       '<div style="flex:1"><div class="rest-name">'+escapePlanHtml(r.name)+'</div><div class="rest-meta">'+escapePlanHtml(r.offer)+'</div></div>' +
-      '<span style="background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px">'+escapePlanHtml(r.badge)+'</span>' +
+      '<span class="badge" style="color:var(--green);font-size:10px;font-weight:700;padding:3px 8px;">'+escapePlanHtml(r.badge)+'</span>' +
       '</div>';
   }).join('');
   if(append){

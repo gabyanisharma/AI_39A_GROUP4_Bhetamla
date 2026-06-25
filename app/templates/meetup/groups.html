@@ -1,4 +1,4 @@
-﻿{% extends "base_dashboard.html" %}
+{% extends "base_dashboard.html" %}
 {% set active_page = 'groups' %}
 {% block title %}My Groups — Bhetamल{% endblock %}
 
@@ -22,21 +22,21 @@
 
         <!-- Meetups -->
         <div class="card" style="padding:20px">
-          <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:16px">📅 Your Meetups ({{ meetups|length }})</div>
+          <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:16px;display:flex;align-items:center;gap:6px"><svg class="icon-svg" style="width:15px;height:15px;color:var(--primary)" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Your Meetups ({{ meetups|length }})</div>
           <div id="meetup-list" style="display:flex;flex-direction:column;gap:10px;max-height:400px;overflow-y:auto">
             {% for m in meetups %}
             <div class="meetup-row-item" data-meetup-id="{{ m.id }}" data-title="{{ m.title|lower }}"
                  style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;border:1.5px solid var(--border);cursor:pointer;transition:border-color .15s"
                  onclick="selectMeetup({{ m.id }})">
-              <div style="width:44px;height:44px;border-radius:12px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📅</div>
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--input-bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--blue);flex-shrink:0"><svg class="icon-svg" style="width:20px;height:20px;" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>
               <div style="flex:1;min-width:0">
                 <div style="font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.title }}</div>
-                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
-                  {{ m.meetup_date or 'Date not set' }}{% if m.winning_venue_name %} · 🏆 {{ m.winning_venue_name }}{% elif m.midpoint_address %} · 📍 {{ m.midpoint_address }}{% endif %}
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+                  <span>{{ m.meetup_date or 'Date not set' }}</span>{% if m.winning_venue_name %}<span>·</span><svg class="icon-svg" style="width:12px;height:12px;color:var(--amber)" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34M12 2a4 4 0 0 1 4 4v4.67a5 5 0 0 1-10 0V6a4 4 0 0 1 4-4z"></path></svg><span style="color:var(--text);font-weight:600">{{ m.winning_venue_name }}</span>{% elif m.midpoint_address %}<span>·</span><svg class="icon-svg" style="width:12px;height:12px;color:var(--red)" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg><span>{{ m.midpoint_address }}</span>{% endif %}
                 </div>
               </div>
               <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-                <span style="background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">
+                <span class="badge" style="color:var(--blue);font-size:10px;font-weight:700;">
                   {{ 'Organiser' if m.created_by == current_user_id else 'Member' }}
                 </span>
                 <form method="POST" action="{{ url_for('meetup.remove_from_groups', meetup_id=m.id) }}" onsubmit="return confirm('Remove from My Groups? It stays in History & Analytics.');" onclick="event.stopPropagation()">
@@ -61,10 +61,11 @@
 
           <!-- Header -->
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <div style="font-weight:700;font-size:15px;color:var(--primary)">
-              👥 Friends ({{ friends|length }})
+            <div style="font-weight:700;font-size:15px;color:var(--primary);display:flex;align-items:center;gap:6px">
+              <svg class="icon-svg" style="width:16px;height:16px;color:var(--primary)" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              Friends ({{ friends|length }})
               {% if pending_requests %}
-              <span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:6px;">
+              <span class="badge" style="color:var(--red);font-size:10px;font-weight:700;margin-left:6px;">
                 {{ pending_requests|length }} new
               </span>
               {% endif %}
@@ -120,7 +121,7 @@
               <div style="flex:1;min-width:0">
                 <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ req.full_name }}</div>
               </div>
-              <span style="font-size:10px;color:var(--muted);background:var(--input-bg);padding:2px 8px;border-radius:20px;border:1px solid var(--border);">Pending</span>
+              <span class="badge" style="font-size:10px;color:var(--muted);">Pending</span>
             </div>
             {% endfor %}
           </div>
@@ -153,12 +154,16 @@
 
         <!-- Achievements -->
         <div class="card" style="padding:20px">
-          <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:14px">🏅 Achievements</div>
+          <div style="font-weight:700;font-size:15px;color:var(--primary);margin-bottom:14px;display:flex;align-items:center;gap:6px"><svg class="icon-svg" style="width:16px;height:16px;color:var(--amber)" viewBox="0 0 24 24"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg> Achievements</div>
           <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
             {% for a in achievements %}
-            <div class="badge-item" style="opacity:{{ '1' if a.unlocked_at else '0.45' }};text-align:center;padding:10px;background:var(--input-bg);border-radius:12px">
-              <div class="badge-icon" style="width:40px;height:40px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:18px">
-                {% if a.unlocked_at %}🏅{% else %}🔒{% endif %}
+            <div class="badge-item" style="opacity:{{ '1' if a.unlocked_at else '0.45' }};text-align:center;padding:10px;background:var(--input-bg);border-radius:12px;border:1px solid var(--border);">
+              <div class="badge-icon" style="width:40px;height:40px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:18px;color:#fff;">
+                {% if a.unlocked_at %}
+                  <svg class="icon-svg" style="width:18px;height:18px;" viewBox="0 0 24 24"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+                {% else %}
+                  <svg class="icon-svg" style="width:18px;height:18px;color:rgba(255,255,255,0.75);" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                {% endif %}
               </div>
               <div class="badge-label" style="font-weight:700;font-size:11px">{{ a.title }}</div>
               <div class="badge-sub" style="font-size:10px;color:var(--muted);margin-top:2px">{{ a.description[:40] }}{% if a.description|length > 40 %}…{% endif %}</div>
@@ -175,7 +180,10 @@
 <div class="modal-overlay" id="modal-add-friend" role="dialog" aria-modal="true">
   <div class="modal-box" style="max-width:420px">
     <button class="modal-close" type="button" onclick="closeModal('modal-add-friend')">✕</button>
-    <div class="modal-title">👥 Add a Friend</div>
+    <div class="modal-title" style="display:flex;align-items:center;gap:6px">
+      <svg class="icon-svg" style="width:18px;height:18px;color:var(--primary)" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      Add a Friend
+    </div>
     <div class="modal-sub">Search by name or email address.</div>
 
     <div style="position:relative;margin-bottom:16px;">
@@ -184,7 +192,7 @@
              autocomplete="off"
              oninput="searchFriends(this.value)"
              style="padding-right:36px" />
-      <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--muted);">🔍</span>
+      <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;align-items:center;"><svg class="icon-svg" style="width:14px;height:14px;color:var(--muted);" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
     </div>
 
     <div id="friend-search-results" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;"></div>
@@ -197,14 +205,6 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
-  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
-    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
-    <div style="font-size:48px;margin-bottom:10px">🆘</div>
-    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
-    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel</button>
-  </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
@@ -264,11 +264,11 @@ function searchFriends(q) {
           var initials = (u.name || 'U').substring(0, 2).toUpperCase();
           var actionBtn = '';
           if (u.status === 'accepted') {
-            actionBtn = '<span style="font-size:11px;color:var(--green);font-weight:700;padding:5px 12px;background:var(--green-light);border-radius:8px;">✓ Friends</span>';
+            actionBtn = '<span class="badge" style="font-size:11px;color:var(--green);font-weight:700;"><svg class="icon-svg" style="width:10px;height:10px;margin-right:3px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> Friends</span>';
           } else if (u.status === 'pending_sent') {
-            actionBtn = '<span style="font-size:11px;color:var(--muted);padding:5px 12px;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;">Pending…</span>';
+            actionBtn = '<span class="badge" style="font-size:11px;color:var(--muted);">Pending…</span>';
           } else if (u.status === 'pending_received') {
-            actionBtn = '<button onclick="respondRequest(' + u.fid + ', \'accept\'); this.closest(\'.fr-row\').remove();" style="font-size:11px;background:var(--green);color:#fff;border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-weight:700;">Accept</button>';
+            actionBtn = '<button onclick="respondRequest(' + u.fid + ', \'accept\'); this.closest(\'.fr-row\').remove();" style="font-size:11px;background:var(--green);color:#fff;border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-weight:700;display:flex;align-items:center;gap:4px;"><svg class="icon-svg" style="width:10px;height:10px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>Accept</button>';
           } else {
             actionBtn = '<button onclick="sendRequest(' + u.id + ', \'' + (u.name || '').replace(/'/g, "\\'") + '\', this)" style="font-size:11px;background:var(--primary);color:#fff;border:none;border-radius:8px;padding:5px 14px;cursor:pointer;font-weight:700;">＋ Add</button>';
           }

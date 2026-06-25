@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS users (
 
     theme_preference ENUM('light', 'dark') DEFAULT 'light',
 
-    language_preference ENUM('en', 'np') DEFAULT 'en',
+    language_preference ENUM('en', 'ne', 'np') DEFAULT 'en',
 
     latitude DECIMAL(10,8),
     longitude DECIMAL(11,8),

@@ -22,28 +22,28 @@
           </div>
           <div style="flex:1">
             <div style="font-size:24px;font-weight:700;margin-bottom:7px">{{ user.full_name }}</div>
-            {% if user.is_verified %}<span class="badge" style="background:rgba(5,150,105,.12);color:var(--green)">&#10003; SAFETY VERIFIED</span>{% endif %}
-            <div style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;margin-top:8px">&#128205; {{ user.email }} · {{ user.phone or 'No phone added' }}</div>
+            {% if user.is_verified %}<span class="badge" style="color:var(--green)"><svg class="icon-svg" style="width:10px;height:10px;margin-right:3px;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>SAFETY VERIFIED</span>{% endif %}
+            <div style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;margin-top:8px"><svg class="icon-svg" style="width:13px;height:13px;color:var(--muted)" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> {{ user.email }} · {{ user.phone or 'No phone added' }}</div>
             <!-- Decorative badges — no backend data behind these yet -->
             <div style="display:flex;gap:8px;margin-top:10px">
-              <span class="badge" style="background:rgba(5,150,105,.1);color:var(--green)">PREMIUM MEMBER</span>
-              <span class="badge" style="background:rgba(124,58,237,.1);color:var(--purple)">SAFETY CHAMPION</span>
+              <span class="badge" style="color:var(--green)"><svg class="icon-svg" style="width:10px;height:10px;margin-right:3px;fill:currentColor;" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>PREMIUM MEMBER</span>
+              <span class="badge" style="color:var(--purple)"><svg class="icon-svg" style="width:10px;height:10px;margin-right:3px;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>SAFETY CHAMPION</span>
             </div>
           </div>
-          <button class="btn-primary" type="button" style="width:auto;padding:10px 18px;font-size:13px" onclick="openModal('modal-edit-profile')" data-en="✏️ Edit Profile" data-ne="✏️ प्रोफाइल सम्पादन">✏️ Edit Profile</button>
+          <button class="btn-primary" type="button" style="width:auto;padding:10px 18px;font-size:13px;display:flex;align-items:center;gap:4px" onclick="openModal('modal-edit-profile')" data-en="Edit Profile" data-ne="प्रोफाइल सम्पादन"><svg class="icon-svg" style="width:13px;height:13px;margin-right:4px;" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg><span data-en="Edit Profile" data-ne="प्रोफाइल सम्पादन">Edit Profile</span></button>
         </div>
       </div>
 
       <!-- Safety & Privacy -->
       <div class="card" style="margin-bottom:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-          <div style="font-weight:700;font-size:15px">&#128737; <span data-en="Safety &amp; Privacy" data-ne="सुरक्षा र गोपनीयता">Safety &amp; Privacy</span></div>
+          <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px"><svg class="icon-svg" style="width:16px;height:16px;color:var(--primary)" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg><span data-en="Safety &amp; Privacy" data-ne="सुरक्षा र गोपनीयता">Safety &amp; Privacy</span></div>
         </div>
         <div style="display:flex;gap:16px;flex-wrap:wrap">
           <div class="card" style="flex:1;min-width:220px;box-shadow:none;border:1px solid var(--border)">
             <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-              <span style="font-size:22px">&#128154;</span>
-              <span class="badge" style="background:rgba(5,150,105,.12);color:var(--green)">{{ contacts|length }} ACTIVE</span>
+              <span style="font-size:22px"><svg class="icon-svg" style="width:22px;height:22px;color:var(--green);fill:currentColor;" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg></span>
+              <span class="badge" style="color:var(--green)"><svg class="icon-svg" style="width:8px;height:8px;margin-right:4px;fill:currentColor;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle></svg>{{ contacts|length }} ACTIVE</span>
             </div>
             <div style="font-weight:700;font-size:14px;margin-bottom:4px" data-en="Emergency Contacts" data-ne="आपतकालीन सम्पर्क">Emergency Contacts</div>
             <div style="font-size:12px;color:var(--muted);margin-bottom:14px" data-en="Trusted individuals to notify in emergencies." data-ne="आपतकालमा सूचना दिने विश्वसनीय व्यक्तिहरू।">Trusted individuals to notify in emergencies.</div>

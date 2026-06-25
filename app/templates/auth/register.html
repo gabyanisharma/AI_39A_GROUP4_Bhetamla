@@ -82,7 +82,7 @@
         {% endif %}
       {% endwith %}
 
-      <div class="auth-form-title">Create your account ✨</div>
+      <div class="auth-form-title">Create your account <svg class="icon-svg" style="width:24px;height:24px;color:var(--amber);display:inline-block;vertical-align:bottom;margin-left:4px;" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></div>
       <div class="auth-form-sub">Join thousands planning smarter meetups in Kathmandu.</div>
 
       <form method="POST" action="{{ url_for('auth.register') }}" onsubmit="return validateRegister(this)">

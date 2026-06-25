@@ -51,7 +51,7 @@
               <div style="font-size:12.5px;color:var(--blue);font-weight:600;">@ {{ o.restaurant_name }}</div>
               {% if o.cuisine %}<div style="font-size:11px;color:var(--muted);margin-top:2px;">{{ o.cuisine }}</div>{% endif %}
             </div>
-            <span style="background:{{ badge_color }};color:{{ badge_text }};font-weight:800;font-size:11px;padding:4px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;">{{ badge }}</span>
+            <span class="badge" style="color:{{ badge_text }};font-weight:800;font-size:11px;white-space:nowrap;flex-shrink:0;">{{ badge }}</span>
           </div>
 
           {% if o.description %}
@@ -88,15 +88,4 @@
   </div>
 </div>
 
-<!-- SOS Modal -->
-<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
-  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
-    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
-    <div style="font-size:48px;margin-bottom:10px">🆘</div>
-    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
-    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
-    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
-    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
-  </div>
-</div>
 {% endblock %}

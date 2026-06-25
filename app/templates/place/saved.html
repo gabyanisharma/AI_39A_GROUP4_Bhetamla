@@ -1,4 +1,4 @@
-﻿{% extends "base_dashboard.html" %}
+{% extends "base_dashboard.html" %}
 {% set active_page = 'saved' %}
 {% block title %}Saved Places — Bhetamल{% endblock %}
 
@@ -132,7 +132,7 @@
             <div style="font-weight:700;font-size:15px;color:var(--text)">🏷️ {{ o.title }}</div>
             <div style="font-size:12px;color:var(--muted)">@ {{ o.restaurant_name }}</div>
           </div>
-          <span style="background:{{ badge_color }};color:{{ badge_text }};font-weight:700;font-size:11px;padding:4px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;">{{ badge }}</span>
+          <span class="badge" style="color:{{ badge_text }};font-weight:700;font-size:11px;white-space:nowrap;flex-shrink:0;">{{ badge }}</span>
         </div>
         <div style="font-size:12px;color:var(--text);margin-bottom:12px">Valid until: <strong style="color:var(--amber)">{{ o.valid_until }}</strong></div>
         <div style="display:flex;align-items:center;gap:8px">
@@ -176,17 +176,6 @@
   </div>
 </div>
 
-<!-- SOS Modal -->
-<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
-  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
-    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
-    <div style="font-size:48px;margin-bottom:10px">🆘</div>
-    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
-    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
-    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
-    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
-  </div>
-</div>
 {% endblock %}
 
 {% block scripts %}

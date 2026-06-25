@@ -1,4 +1,4 @@
-﻿{% extends "base_dashboard.html" %}
+{% extends "base_dashboard.html" %}
 {% set active_page = 'restaurants' %}
 {% block title %}Restaurants — Bhetamल{% endblock %}
 
@@ -20,7 +20,7 @@
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <form method="GET" action="{{ url_for('place.restaurants_page') }}" style="display:flex;align-items:center;gap:8px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:8px 14px;">
           {% if meetup_id %}<input type="hidden" name="meetup_id" value="{{ meetup_id }}" />{% endif %}
-          <span style="font-size:14px">&#128269;</span>
+          <svg class="icon-svg" style="width:14px;height:14px;color:var(--muted);" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <input name="q" type="search" value="{{ search_q }}" placeholder="Search restaurants..." style="background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);min-width:200px;padding:0" />
         </form>
         {% if meetup_id %}
@@ -35,13 +35,13 @@
       {% if search_q %}<input type="hidden" name="q" value="{{ search_q }}" />{% endif %}
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
         <select name="cuisine" class="field-input" style="width:auto;padding:8px 12px;font-size:13px" onchange="this.form.submit()">
-          <option value="">🍽️ All Cuisines</option>
+          <option value="">All Cuisines</option>
           {% for c in cuisines %}
           <option value="{{ c }}" {% if filters.get('cuisine') == c %}selected{% endif %}>{{ c }}</option>
           {% endfor %}
         </select>
         <select name="price_range" class="field-input" style="width:auto;padding:8px 12px;font-size:13px" onchange="this.form.submit()">
-          <option value="">💰 Any Price</option>
+          <option value="">Any Price</option>
           <option value="budget" {% if filters.get('price_range') == 'budget' %}selected{% endif %}>Budget</option>
           <option value="mid" {% if filters.get('price_range') == 'mid' %}selected{% endif %}>Mid-range</option>
           <option value="premium" {% if filters.get('price_range') == 'premium' %}selected{% endif %}>Premium</option>
@@ -65,14 +65,14 @@
         {% if r.thumbnail_url %}
         <img src="{{ r.thumbnail_url }}" alt="{{ r.name }}" style="width:100%;height:140px;object-fit:cover;border-radius:12px;margin-bottom:12px" onerror="this.style.display='none'">
         {% else %}
-        <div style="width:100%;height:140px;border-radius:12px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;font-size:40px;margin-bottom:12px">🍽️</div>
+        <div style="width:100%;height:140px;border-radius:12px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;margin-bottom:12px"><svg class="icon-svg" style="width:36px;height:36px;color:var(--muted)" viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg></div>
         {% endif %}
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
           <div>
             <div style="font-weight:700;font-size:14px;margin-bottom:3px">{{ r.name }}</div>
             <div style="font-size:11.5px;color:var(--muted)">{{ r.address or 'Kathmandu' }}{% if r.cuisine_type %} · {{ r.cuisine_type }}{% endif %}</div>
           </div>
-          {% if r.is_verified %}<span class="badge" style="background:rgba(5,150,105,.1);color:var(--green);font-size:10px;flex-shrink:0">✓ Verified</span>{% endif %}
+          {% if r.is_verified %}<span class="badge" style="color:var(--green);font-size:10px;flex-shrink:0"><svg class="icon-svg" style="width:10px;height:10px;margin-right:3px;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>Verified</span>{% endif %}
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:6px">
@@ -87,7 +87,7 @@
     </div>
     {% else %}
     <div class="card" style="text-align:center;padding:40px;color:var(--muted)">
-      <div style="font-size:36px;margin-bottom:14px">🍽️</div>
+      <div style="margin-bottom:14px"><svg class="icon-svg" style="width:36px;height:36px;color:var(--muted)" viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg></div>
       {% if search_q %}
       <div style="font-size:15px;font-weight:600;margin-bottom:6px">No results for "{{ search_q }}"</div>
       <div style="font-size:13px">Try a different search term or clear the filters.</div>
@@ -103,15 +103,4 @@
   </div>
 </div>
 
-<!-- SOS Modal -->
-<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
-  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
-    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
-    <div style="font-size:48px;margin-bottom:10px">🆘</div>
-    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
-    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
-    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
-    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
-  </div>
-</div>
 {% endblock %}

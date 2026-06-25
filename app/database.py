@@ -137,6 +137,10 @@ def _ensure_index(cursor, table, index_name, definition):
 
 def _repair_existing_schema(cursor):
     """Add columns that older local databases may be missing."""
+    try:
+        cursor.execute("ALTER TABLE users MODIFY COLUMN language_preference ENUM('en', 'ne', 'np') DEFAULT 'en'")
+    except Exception:
+        pass
     _ensure_column(cursor, 'users', 'role', "role ENUM('user', 'admin') DEFAULT 'user'")
     _ensure_column(cursor, 'users', 'updated_at',
                    "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")

@@ -1,4 +1,4 @@
-﻿{% extends "base_dashboard.html" %}
+{% extends "base_dashboard.html" %}
 {% set active_page = 'plan' %}
 {% block title %}{{ meetup.title }} — Bhetamla{% endblock %}
 
@@ -81,9 +81,9 @@
     border-radius: 20px;
     flex-shrink: 0;
   }
-  .status-active   { background: rgba(37,99,235,.1);  color: var(--blue);  border: 1px solid rgba(37,99,235,.2); }
-  .status-complete { background: rgba(5,150,105,.1);  color: var(--green); border: 1px solid rgba(5,150,105,.2); }
-  .status-planned  { background: var(--input-bg);     color: var(--muted); border: 1px solid var(--border); }
+  .status-active   { background: transparent;  color: var(--blue);  border: 1px solid currentColor; }
+  .status-complete { background: transparent;  color: var(--green); border: 1px solid currentColor; }
+  .status-planned  { background: transparent;  color: var(--muted); border: 1px solid currentColor; }
 
   /* ── Map ── */
   #meetup-map {
@@ -245,18 +245,8 @@
 </style>
 
 <div class="page active" style="flex-direction:column" role="main">
-  <div class="topbar">
-    <div class="topbar-controls">
-      <button class="ctrl-btn" onclick="toggleTheme()">&#127769;</button>
-    </div>
-    <button class="sos-btn" onclick="openModal('modal-sos')">&#10033; SOS</button>
-    <button aria-label="Notifications" onclick="openNotifPanel()" style="background:none;border:none;cursor:pointer;font-size:20px;position:relative">
-      &#128276;
-      {% if unread_notifications_count > 0 %}
-      <span style="position:absolute;top:-4px;right:-4px;background:#E53E3E;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;">{{ unread_notifications_count }}</span>
-      {% endif %}
-    </button>
-  </div>
+  <!-- ── TOP BAR ──────────────────────────────────────────────────────────── -->
+  {% include '_topbar.html' %}
 
   <div class="view-root">
     <!-- ══ LEFT COLUMN ══ -->
@@ -270,19 +260,19 @@
             <h1 class="meetup-title">{{ meetup.title }}</h1>
             <div class="meetup-meta">
               {% if meetup.meetup_date %}
-              <span>📅 {{ meetup.meetup_date }}{% if meetup.meetup_time %} · {{ meetup.meetup_time }}{% endif %}</span>
+              <span><svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> {{ meetup.meetup_date }}{% if meetup.meetup_time %} · {{ meetup.meetup_time }}{% endif %}</span>
               {% endif %}
               {% if meetup.midpoint_address %}
-              <span>📍 {{ meetup.midpoint_address }}</span>
+              <span><svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> {{ meetup.midpoint_address }}</span>
               {% endif %}
             </div>
             {% if meetup.description %}<div class="meetup-desc">{{ meetup.description }}</div>{% endif %}
           </div>
           <div>
             {% if meetup.status == 'completed' %}
-            <span class="status-pill status-complete">✅ Completed</span>
+            <span class="status-pill status-complete"><svg class="icon-svg" style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Completed</span>
             {% elif meetup.status == 'active' %}
-            <span class="status-pill status-active">● Active</span>
+            <span class="status-pill status-active"><svg class="icon-svg" style="width:10px;height:10px;margin-right:4px;fill:currentColor;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg> Active</span>
             {% else %}
             <span class="status-pill status-planned">Planned</span>
             {% endif %}
@@ -295,13 +285,13 @@
             {% if m.user_id == user_id %}
               {% if m.status == 'invited' %}
               <form method="POST" action="{{ url_for('meetup.respond', meetup_id=meetup.id) }}" style="display:flex;gap:10px;margin-top:16px">
-                <button name="action" value="accept" class="btn-primary" style="flex:1;padding:11px">✓ Accept Invite</button>
-                <button name="action" value="decline" class="btn-sec" style="flex:1;justify-content:center;padding:11px">✕ Decline</button>
+                <button name="action" value="accept" class="btn-primary" style="flex:1;padding:11px;display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Accept Invite</button>
+                <button name="action" value="decline" class="btn-sec" style="flex:1;justify-content:center;padding:11px;display:inline-flex;align-items:center;gap:6px;"><svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Decline</button>
               </form>
               {% elif m.status == 'accepted' %}
-              <div class="invite-accept" style="margin-top:16px">✓ You have accepted this meetup</div>
+              <div class="invite-accept" style="margin-top:16px;display:flex;align-items:center;gap:6px;"><svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> You have accepted this meetup</div>
               {% elif m.status == 'declined' %}
-              <div class="invite-decline" style="margin-top:16px">You declined this meetup</div>
+              <div class="invite-decline" style="margin-top:16px;display:flex;align-items:center;gap:6px;"><svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> You declined this meetup</div>
               {% endif %}
             {% endif %}
           {% endfor %}
@@ -309,15 +299,15 @@
 
         {% if can_edit_route %}
         <div class="header-actions">
-          <button class="btn-primary" onclick="openModal('modal-suggest')">📍 Suggest a Place</button>
-          <a href="{{ url_for('place.restaurants_page') }}?meetup_id={{ meetup.id }}" class="btn-sec">🍽️ Browse Restaurants</a>
+          <button class="btn-primary" onclick="openModal('modal-suggest')" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> Suggest a Place</button>
+          <a href="{{ url_for('place.restaurants_page') }}?meetup_id={{ meetup.id }}" class="btn-sec" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"><svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg> Browse Restaurants</a>
         </div>
         {% endif %}
       </div>
 
       <!-- Map card -->
       <div class="v-card">
-        <div class="v-card-title">🗺️ Map</div>
+        <div class="v-card-title" style="display:flex;align-items:center;gap:6px;"><svg class="icon-svg" style="width:14px;height:14px;stroke-width:2.5;" viewBox="0 0 24 24"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon><line x1="9" y1="3" x2="9" y2="18"></line><line x1="15" y1="6" x2="15" y2="21"></line></svg> Map</div>
         <div id="meetup-map"></div>
         <div id="meetup-map-fallback" style="display:none;padding:14px;background:var(--input-bg);border-radius:10px;color:var(--muted);font-size:12.5px;text-align:center;">
           Map could not load. Check your internet connection.
@@ -326,14 +316,14 @@
 
       <!-- Place suggestions card -->
       <div class="v-card">
-        <div class="v-card-title">💡 Place Suggestions ({{ suggestions|length }})</div>
+        <div class="v-card-title" style="display:flex;align-items:center;gap:6px;"><svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A5 5 0 0 0 8 8c0 1 .3 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><line x1="9" y1="18" x2="15" y2="18"></line><line x1="10" y1="22" x2="14" y2="22"></line></svg> Place Suggestions ({{ suggestions|length }})</div>
         {% for s in suggestions %}
         <div class="suggestion-item">
-          <div class="suggestion-icon">🍽️</div>
+          <div class="suggestion-icon" style="display:inline-flex;align-items:center;justify-content:center;"><svg class="icon-svg" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg></div>
           <div style="flex:1">
             <div class="suggestion-name">{{ s.place_name }}</div>
-            {% if s.address %}<div class="suggestion-addr">📍 {{ s.address }}</div>{% endif %}
-            {% if s.rating %}<div class="suggestion-rating">★ {{ s.rating }}</div>{% endif %}
+            {% if s.address %}<div class="suggestion-addr" style="display:flex;align-items:center;gap:4px;"><svg class="icon-svg" style="width:12px;height:12px;color:var(--muted);" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> {{ s.address }}</div>{% endif %}
+            {% if s.rating %}<div class="suggestion-rating" style="display:flex;align-items:center;gap:4px;"><svg class="icon-svg" style="width:12px;height:12px;color:var(--amber);fill:currentColor;" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> {{ s.rating }}</div>{% endif %}
           </div>
           {% if s.latitude and s.longitude %}
           <a href="https://www.google.com/maps?q={{ s.latitude }},{{ s.longitude }}" target="_blank" style="font-size:12px;color:var(--blue);font-weight:700;text-decoration:none;white-space:nowrap">Map →</a>
@@ -341,7 +331,7 @@
         </div>
         {% else %}
         <div class="empty-state">
-          <div style="font-size:32px;margin-bottom:8px">📍</div>
+          <div style="font-size:32px;margin-bottom:8px;color:var(--muted);display:flex;justify-content:center;"><svg class="icon-svg" style="width:32px;height:32px;" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
           No place suggestions yet. Be the first to suggest a spot!
         </div>
         {% endfor %}
@@ -351,7 +341,7 @@
     <!-- ══ RIGHT SIDEBAR ══ -->
     <div class="summary-sidebar">
       <div class="summary-banner">
-        <div class="summary-banner-icon">🗺️</div>
+        <div class="summary-banner-icon" style="color:#fff;display:flex;justify-content:center;margin-bottom:8px;"><svg class="icon-svg" style="width:38px;height:38px;" viewBox="0 0 24 24"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon><line x1="9" y1="3" x2="9" y2="18"></line><line x1="15" y1="6" x2="15" y2="21"></line></svg></div>
         <div class="summary-banner-title">Meeting Summary</div>
         <div class="summary-banner-sub">Everything at a glance</div>
       </div>
@@ -429,9 +419,9 @@
       <div class="summary-status">
         <div style="height:1px;background:var(--border);margin:0 20px 16px;"></div>
         {% if meetup.status == 'completed' %}
-        <span class="status-pill status-complete" style="padding:8px 22px;font-size:12.5px">✅ Completed</span>
+        <span class="status-pill status-complete" style="padding:8px 22px;font-size:12.5px"><svg class="icon-svg" style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Completed</span>
         {% elif meetup.status == 'active' %}
-        <span class="status-pill status-active" style="padding:8px 22px;font-size:12.5px">● Active</span>
+        <span class="status-pill status-active" style="padding:8px 22px;font-size:12.5px"><svg class="icon-svg" style="width:10px;height:10px;margin-right:4px;fill:currentColor;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg> Active</span>
         {% else %}
         <span class="status-pill status-planned" style="padding:8px 22px;font-size:12.5px">Planned</span>
         {% endif %}
@@ -442,12 +432,12 @@
       <div class="summary-steps">
         <div class="steps-label">PLANNING PROGRESS</div>
         <div class="steps-chips">
-          <span class="step-chip">✓ Midpoint</span>
-          {% if plan_prefs.cuisine %}<span class="step-chip">✓ Cuisine</span>{% endif %}
-          {% if plan_prefs.budget_max %}<span class="step-chip">✓ Budget</span>{% endif %}
-          {% if plan_prefs.selected_venue %}<span class="step-chip">✓ Venue</span>{% endif %}
-          {% if plan_prefs.ride_option %}<span class="step-chip">✓ Ride</span>{% endif %}
-          {% if plan_prefs.ambience %}<span class="step-chip">✓ Ambience</span>{% endif %}
+          <span class="step-chip" style="display:inline-flex;align-items:center;gap:4px;"><svg class="icon-svg" style="width:11px;height:11px;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Midpoint</span>
+          {% if plan_prefs.cuisine %}<span class="step-chip" style="display:inline-flex;align-items:center;gap:4px;"><svg class="icon-svg" style="width:11px;height:11px;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Cuisine</span>{% endif %}
+          {% if plan_prefs.budget_max %}<span class="step-chip" style="display:inline-flex;align-items:center;gap:4px;"><svg class="icon-svg" style="width:11px;height:11px;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Budget</span>{% endif %}
+          {% if plan_prefs.selected_venue %}<span class="step-chip" style="display:inline-flex;align-items:center;gap:4px;"><svg class="icon-svg" style="width:11px;height:11px;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Venue</span>{% endif %}
+          {% if plan_prefs.ride_option %}<span class="step-chip" style="display:inline-flex;align-items:center;gap:4px;"><svg class="icon-svg" style="width:11px;height:11px;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Ride</span>{% endif %}
+          {% if plan_prefs.ambience %}<span class="step-chip" style="display:inline-flex;align-items:center;gap:4px;"><svg class="icon-svg" style="width:11px;height:11px;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> Ambience</span>{% endif %}
         </div>
       </div>
       {% endif %}
@@ -479,19 +469,19 @@
       <!-- Quick actions -->
       <div class="summary-actions">
         {% if can_edit_route and meetup.status != 'completed' %}
-        <a href="{{ url_for('meetup.plan', meetup_id=meetup.id) }}" class="btn-primary">✏️ Continue Planning</a>
+        <a href="{{ url_for('meetup.plan', meetup_id=meetup.id) }}" class="btn-primary" style="display:inline-flex;align-items:center;gap:6px;"><svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Continue Planning</a>
         {% endif %}
         {% if meetup.meetup_date %}
-        <a href="{{ url_for('meetup.calendar_ics', meetup_id=meetup.id) }}" class="btn-sec">📅 Add to Calendar</a>
+        <a href="{{ url_for('meetup.calendar_ics', meetup_id=meetup.id) }}" class="btn-sec" style="display:inline-flex;align-items:center;gap:6px;"><svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Add to Calendar</a>
         {% endif %}
         {% if is_creator and meetup.status != 'completed' %}
         <button type="button" onclick="completeMeetup({{ meetup.id }})" id="complete-meetup-btn"
-                style="width:100%;padding:12px;font-size:13px;font-weight:700;background:linear-gradient(135deg,var(--green),#0B5E30);color:#fff;border:none;border-radius:12px;cursor:pointer;letter-spacing:.3px;">
-          🎉 Mark as Complete
+                style="width:100%;padding:12px;font-size:13px;font-weight:700;background:linear-gradient(135deg,var(--green),#0B5E30);color:#fff;border:none;border-radius:12px;cursor:pointer;letter-spacing:.3px;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+          <svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"></path><path d="M12 2a6 6 0 0 1 6 6v1a6 6 0 0 1-6 6 6 6 0 0 1-6-6V8a6 6 0 0 1 6-6z"></path></svg> Mark as Complete
         </button>
         {% endif %}
         {% if meetup.status == 'completed' %}
-        <a href="{{ url_for('analytics.history') }}" class="btn-sec">📊 View in Analytics</a>
+        <a href="{{ url_for('analytics.history') }}" class="btn-sec" style="display:inline-flex;align-items:center;gap:6px;"><svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> View in Analytics</a>
         {% endif %}
       </div>
     </div><!-- end sidebar -->
@@ -517,17 +507,7 @@
   </div>
 </div>
 
-<!-- ── SOS modal ── -->
-<div class="modal-overlay" id="modal-sos" role="dialog" aria-modal="true">
-  <div class="modal-box" style="background:linear-gradient(160deg,#8B0000,#C0392B);color:#fff;text-align:center;max-width:360px">
-    <button class="modal-close" onclick="closeModal('modal-sos')" style="color:rgba(255,255,255,.7)">✕</button>
-    <div style="font-size:48px;margin-bottom:10px">🆘</div>
-    <div class="modal-title" style="color:#fff;font-size:22px">Emergency SOS</div>
-    <div class="modal-sub" style="color:rgba(255,255,255,.8)">This will immediately alert your emergency contacts with your current location.</div>
-    <button class="sos-modal-btn" onclick="triggerSOS();closeModal('modal-sos')">Send SOS Alert Now</button>
-    <button class="sos-cancel-btn" onclick="closeModal('modal-sos')">Cancel — I'm Safe</button>
-  </div>
-</div>
+<!-- SOS Modal is centralized in base.html -->
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -563,7 +543,7 @@
     L.marker([midLat, midLng], {
       icon: L.divIcon({
         className: '',
-        html: '<div style="background:#1976D2;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)">📍</div>',
+        html: '<div style="background:#1976D2;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)"><svg class="icon-svg" style="width:14px;height:14px;color:#fff;display:block;" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>',
         iconSize:[28,28], iconAnchor:[14,14]
       })
     }).addTo(map).bindPopup('<strong>Smart Midpoint</strong>');

@@ -12,8 +12,8 @@
     {% endif %}
     <div style="position:relative;z-index:1">
       <div class="venue-hero-title">{{ restaurant.name }}</div>
-      <div class="venue-hero-loc">&#128205; {{ restaurant.address or 'Kathmandu' }}
-        {% if restaurant.is_verified %}&nbsp;·&nbsp;<span class="badge" style="background:rgba(255,255,255,.2);color:rgba(255,255,255,.9);font-size:10px">&#9989; VERIFIED</span>{% endif %}
+      <div class="venue-hero-loc"><svg class="icon-svg" style="width:14px;height:14px;color:rgba(255,255,255,.95);display:inline-block;vertical-align:-0.15em;" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> {{ restaurant.address or 'Kathmandu' }}
+        {% if restaurant.is_verified %}&nbsp;·&nbsp;<span class="badge" style="color:#fff;font-size:10px;"><svg class="icon-svg" style="width:10px;height:10px;margin-right:3px;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg> VERIFIED</span>{% endif %}
       </div>
     </div>
   </div>
